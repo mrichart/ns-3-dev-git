@@ -29,6 +29,7 @@ New user-visible features
   section in the Manual.
 - New Mac16Address has been added, Mac64Address is now in-line with 
   Mac48Address and all the three can be used in IPv6 autoconfigure. 
+- 11n- It is now possible to create a high throughput (HT) node that used the new 11n data rates and preambles.
 
 Bugs fixed
 ----------
