@@ -78,7 +78,9 @@ TxDurationTest::~TxDurationTest ()
 bool
 TxDurationTest::CheckPayloadDuration (uint32_t size, WifiMode payloadMode, uint32_t knownDurationMicroSeconds)
 {
-  uint32_t calculatedDurationMicroSeconds = WifiPhy::GetPayloadDurationMicroSeconds (size, payloadMode);
+  WifiTxVector txVector;
+  txVector.SetMode (payloadMode);
+  uint32_t calculatedDurationMicroSeconds = WifiPhy::GetPayloadDurationMicroSeconds (size, txVector);
   if (calculatedDurationMicroSeconds != knownDurationMicroSeconds)
     {
       std::cerr << " size=" << size
@@ -94,7 +96,9 @@ TxDurationTest::CheckPayloadDuration (uint32_t size, WifiMode payloadMode, uint3
 bool
 TxDurationTest::CheckTxDuration (uint32_t size, WifiMode payloadMode, WifiPreamble preamble, uint32_t knownDurationMicroSeconds)
 {
-  uint32_t calculatedDurationMicroSeconds = WifiPhy::CalculateTxDuration (size, payloadMode, preamble).GetMicroSeconds ();
+  WifiTxVector txVector;
+  txVector.SetMode (payloadMode);
+  uint32_t calculatedDurationMicroSeconds = WifiPhy::CalculateTxDuration (size, txVector, preamble).GetMicroSeconds ();
   if (calculatedDurationMicroSeconds != knownDurationMicroSeconds)
     {
       std::cerr << " size=" << size
