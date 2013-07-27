@@ -274,7 +274,10 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
     }
 
   station->m_longRetry++;
-
+  station->m_minstrelTable[station->m_txrate].numRateAttempt++; // for some reason kept track at FinalDataFail!!!
+  
+  uint32_t orig_tx_rate = station->m_txrate;
+  
   NS_LOG_DEBUG ("DoReportDataFailed " << station << "\t rate " << station->m_txrate << "\tlongRetry \t" << station->m_longRetry);
 
   /// for normal rate, we're not currently sampling random rates
@@ -379,6 +382,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
             }
         }
     }
+    NS_LOG_DEBUG ("DoReportDataFailed "<<station->m_state->m_address<<" old_rateIdx="<<orig_tx_rate<<" new_rateIdx="<<station->m_txrate);
 }
 
 void
@@ -398,10 +402,11 @@ MinstrelWifiManager::DoReportDataOk (WifiRemoteStation *st,
 
   station->m_minstrelTable[station->m_txrate].numRateSuccess++;
   station->m_minstrelTable[station->m_txrate].numRateAttempt++;
+  
+  NS_LOG_DEBUG("DoReportDataOk MAC="<<st->m_state->m_address<<" rateIdx="<<station->m_txrate);
 
   UpdateRetry (station);
 
-  station->m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
   station->m_packetCount++;
 
   if (m_nsupported >= 1)
@@ -421,7 +426,7 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   UpdateRetry (station);
 
-  station->m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
+  station->m_minstrelTable[station->m_txrate].numRateAttempt++;
   station->m_err++;
 
   if (m_nsupported >= 1)
@@ -571,7 +576,7 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
     }
 
 
-  NS_LOG_DEBUG ("FindRate " << "sample rate=" << idx);
+  NS_LOG_DEBUG ("FindRate MAC=" << station->m_state->m_address << " packet #=" << station->m_packetCount << " rateIdx="<<idx );
 
   return idx;
 }
@@ -588,7 +593,7 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
     {
       return;
     }
-  NS_LOG_DEBUG ("Updating stats=" << this);
+  NS_LOG_DEBUG ("Updating MAC=" << station->m_state->m_address << " Time="<<Simulator::Now ());
 
   station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
 
