@@ -74,6 +74,9 @@ struct MinstrelWifiRemoteStation : public WifiRemoteStation
   uint32_t m_txrate;  ///< current transmit rate
 
   bool m_initialized;  ///< for initializing tables
+
+  MinstrelRate m_minstrelTable;  ///< minstrel table
+  SampleRate m_sampleTable;  ///< sample table
 };
 
 NS_OBJECT_ENSURE_REGISTERED (MinstrelWifiManager);
@@ -206,8 +209,8 @@ MinstrelWifiManager::CheckInit (MinstrelWifiRemoteStation *station)
       // to make sure that the set of supported rates has been initialized
       // before we perform our own initialization.
       m_nsupported = GetNSupported (station);
-      m_minstrelTable = MinstrelRate (m_nsupported);
-      m_sampleTable = SampleRate (m_nsupported, std::vector<uint32_t> (m_sampleCol));
+      station->m_minstrelTable = MinstrelRate (m_nsupported);
+      station->m_sampleTable = SampleRate (m_nsupported, std::vector<uint32_t> (m_sampleCol));
       InitSampleTable (station);
       RateInit (station);
       station->m_initialized = true;
@@ -278,30 +281,30 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
   if (!station->m_isSampling)
     {
       /// use best throughput rate
-      if (station->m_longRetry < m_minstrelTable[station->m_txrate].adjustedRetryCount)
+      if (station->m_longRetry < station->m_minstrelTable[station->m_txrate].adjustedRetryCount)
         {
           ;  ///<  there's still a few retries left
         }
 
       /// use second best throughput rate
-      else if (station->m_longRetry <= (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                        m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
+      else if (station->m_longRetry <= (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                        station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
         {
           station->m_txrate = station->m_maxTpRate2;
         }
 
       /// use best probability rate
-      else if (station->m_longRetry <= (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                        m_minstrelTable[station->m_maxTpRate2].adjustedRetryCount +
-                                        m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
+      else if (station->m_longRetry <= (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                        station->m_minstrelTable[station->m_maxTpRate2].adjustedRetryCount +
+                                        station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
         {
           station->m_txrate = station->m_maxProbRate;
         }
 
       /// use lowest base rate
-      else if (station->m_longRetry > (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                       m_minstrelTable[station->m_maxTpRate2].adjustedRetryCount +
-                                       m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
+      else if (station->m_longRetry > (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                       station->m_minstrelTable[station->m_maxTpRate2].adjustedRetryCount +
+                                       station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
         {
           station->m_txrate = 0;
         }
@@ -314,30 +317,30 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       if (station->m_sampleRateSlower)
         {
           /// use best throughput rate
-          if (station->m_longRetry < m_minstrelTable[station->m_txrate].adjustedRetryCount)
+          if (station->m_longRetry < station->m_minstrelTable[station->m_txrate].adjustedRetryCount)
             {
               ; ///<  there are a few retries left
             }
 
           ///	use random rate
-          else if (station->m_longRetry <= (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                            m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
+          else if (station->m_longRetry <= (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                            station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
             {
               station->m_txrate = station->m_sampleRate;
             }
 
           /// use max probability rate
-          else if (station->m_longRetry <= (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                            m_minstrelTable[station->m_sampleRate].adjustedRetryCount +
-                                            m_minstrelTable[station->m_maxTpRate].adjustedRetryCount ))
+          else if (station->m_longRetry <= (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                            station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount +
+                                            station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount ))
             {
               station->m_txrate = station->m_maxProbRate;
             }
 
           /// use lowest base rate
-          else if (station->m_longRetry > (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                           m_minstrelTable[station->m_sampleRate].adjustedRetryCount +
-                                           m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
+          else if (station->m_longRetry > (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                           station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount +
+                                           station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
             {
               station->m_txrate = 0;
             }
@@ -347,30 +350,30 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       else
         {
           /// use random rate
-          if (station->m_longRetry < m_minstrelTable[station->m_txrate].adjustedRetryCount)
+          if (station->m_longRetry < station->m_minstrelTable[station->m_txrate].adjustedRetryCount)
             {
               ;    ///< keep using it
             }
 
           /// use the best rate
-          else if (station->m_longRetry <= (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                            m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
+          else if (station->m_longRetry <= (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                            station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
             {
               station->m_txrate = station->m_maxTpRate;
             }
 
           /// use the best probability rate
-          else if (station->m_longRetry <= (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                            m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
-                                            m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
+          else if (station->m_longRetry <= (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                            station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
+                                            station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
             {
               station->m_txrate = station->m_maxProbRate;
             }
 
           /// use the lowest base rate
-          else if (station->m_longRetry > (m_minstrelTable[station->m_txrate].adjustedRetryCount +
-                                           m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
-                                           m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
+          else if (station->m_longRetry > (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
+                                           station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
+                                           station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
             {
               station->m_txrate = 0;
             }
@@ -393,12 +396,12 @@ MinstrelWifiManager::DoReportDataOk (WifiRemoteStation *st,
       return;
     }
 
-  m_minstrelTable[station->m_txrate].numRateSuccess++;
-  m_minstrelTable[station->m_txrate].numRateAttempt++;
+  station->m_minstrelTable[station->m_txrate].numRateSuccess++;
+  station->m_minstrelTable[station->m_txrate].numRateAttempt++;
 
   UpdateRetry (station);
 
-  m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
+  station->m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
   station->m_packetCount++;
 
   if (m_nsupported >= 1)
@@ -418,7 +421,7 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   UpdateRetry (station);
 
-  m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
+  station->m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
   station->m_err++;
 
   if (m_nsupported >= 1)
@@ -469,7 +472,7 @@ uint32_t
 MinstrelWifiManager::GetNextSample (MinstrelWifiRemoteStation *station)
 {
   uint32_t bitrate;
-  bitrate = m_sampleTable[station->m_index][station->m_col];
+  bitrate = station->m_sampleTable[station->m_index][station->m_col];
   station->m_index++;
 
   /// bookeeping for m_index and m_col variables
@@ -550,7 +553,7 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
 
           /// is this rate slower than the current best rate
           station->m_sampleRateSlower =
-            (m_minstrelTable[idx].perfectTxTime > m_minstrelTable[station->m_maxTpRate].perfectTxTime);
+            (station->m_minstrelTable[idx].perfectTxTime > station->m_minstrelTable[station->m_maxTpRate].perfectTxTime);
 
           /// using the best rate instead
           if (station->m_sampleRateSlower)
@@ -596,7 +599,7 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
     {
 
       /// calculate the perfect tx time for this rate
-      txTime = m_minstrelTable[i].perfectTxTime;
+      txTime = station->m_minstrelTable[i].perfectTxTime;
 
       /// just for initialization
       if (txTime.GetMicroSeconds () == 0)
@@ -605,61 +608,61 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
         }
 
       NS_LOG_DEBUG ("m_txrate=" << station->m_txrate <<
-                    "\t attempt=" << m_minstrelTable[i].numRateAttempt <<
-                    "\t success=" << m_minstrelTable[i].numRateSuccess);
+                    "\t attempt=" << station->m_minstrelTable[i].numRateAttempt <<
+                    "\t success=" << station->m_minstrelTable[i].numRateSuccess);
 
       /// if we've attempted something
-      if (m_minstrelTable[i].numRateAttempt)
+      if (station->m_minstrelTable[i].numRateAttempt)
         {
           /**
            * calculate the probability of success
            * assume probability scales from 0 to 18000
            */
-          tempProb = (m_minstrelTable[i].numRateSuccess * 18000) / m_minstrelTable[i].numRateAttempt;
+          tempProb = (station->m_minstrelTable[i].numRateSuccess * 18000) / station->m_minstrelTable[i].numRateAttempt;
 
           /// bookeeping
-          m_minstrelTable[i].successHist += m_minstrelTable[i].numRateSuccess;
-          m_minstrelTable[i].attemptHist += m_minstrelTable[i].numRateAttempt;
-          m_minstrelTable[i].prob = tempProb;
+          station->m_minstrelTable[i].successHist += station->m_minstrelTable[i].numRateSuccess;
+          station->m_minstrelTable[i].attemptHist += station->m_minstrelTable[i].numRateAttempt;
+          station->m_minstrelTable[i].prob = tempProb;
 
           /// ewma probability (cast for gcc 3.4 compatibility)
-          tempProb = static_cast<uint32_t> (((tempProb * (100 - m_ewmaLevel)) + (m_minstrelTable[i].ewmaProb * m_ewmaLevel) ) / 100);
+          tempProb = static_cast<uint32_t> (((tempProb * (100 - m_ewmaLevel)) + (station->m_minstrelTable[i].ewmaProb * m_ewmaLevel) ) / 100);
 
-          m_minstrelTable[i].ewmaProb = tempProb;
+          station->m_minstrelTable[i].ewmaProb = tempProb;
 
           /// calculating throughput
-          m_minstrelTable[i].throughput = tempProb * (1000000 / txTime.GetMicroSeconds ());
+          station->m_minstrelTable[i].throughput = tempProb * (1000000 / txTime.GetMicroSeconds ());
 
         }
 
       /// bookeeping
-      m_minstrelTable[i].prevNumRateAttempt = m_minstrelTable[i].numRateAttempt;
-      m_minstrelTable[i].prevNumRateSuccess = m_minstrelTable[i].numRateSuccess;
-      m_minstrelTable[i].numRateSuccess = 0;
-      m_minstrelTable[i].numRateAttempt = 0;
+      station->m_minstrelTable[i].prevNumRateAttempt = station->m_minstrelTable[i].numRateAttempt;
+      station->m_minstrelTable[i].prevNumRateSuccess = station->m_minstrelTable[i].numRateSuccess;
+      station->m_minstrelTable[i].numRateSuccess = 0;
+      station->m_minstrelTable[i].numRateAttempt = 0;
 
       /// Sample less often below 10% and  above 95% of success
-      if ((m_minstrelTable[i].ewmaProb > 17100) || (m_minstrelTable[i].ewmaProb < 1800))
+      if ((station->m_minstrelTable[i].ewmaProb > 17100) || (station->m_minstrelTable[i].ewmaProb < 1800))
         {
           /**
            * retry count denotes the number of retries permitted for each rate
            * # retry_count/2
            */
-          m_minstrelTable[i].adjustedRetryCount = m_minstrelTable[i].retryCount >> 1;
-          if (m_minstrelTable[i].adjustedRetryCount > 2)
+          station->m_minstrelTable[i].adjustedRetryCount = station->m_minstrelTable[i].retryCount >> 1;
+          if (station->m_minstrelTable[i].adjustedRetryCount > 2)
             {
-              m_minstrelTable[i].adjustedRetryCount = 2;
+              station->m_minstrelTable[i].adjustedRetryCount = 2;
             }
         }
       else
         {
-          m_minstrelTable[i].adjustedRetryCount = m_minstrelTable[i].retryCount;
+          station->m_minstrelTable[i].adjustedRetryCount = station->m_minstrelTable[i].retryCount;
         }
 
       /// if it's 0 allow one retry limit
-      if (m_minstrelTable[i].adjustedRetryCount == 0)
+      if (station->m_minstrelTable[i].adjustedRetryCount == 0)
         {
-          m_minstrelTable[i].adjustedRetryCount = 1;
+          station->m_minstrelTable[i].adjustedRetryCount = 1;
         }
     }
 
@@ -669,19 +672,19 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
   /// go find max throughput, second maximum throughput, high probability succ
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-      NS_LOG_DEBUG ("throughput" << m_minstrelTable[i].throughput <<
-                    "\n ewma" << m_minstrelTable[i].ewmaProb);
+      NS_LOG_DEBUG ("throughput" << station->m_minstrelTable[i].throughput <<
+                    "\n ewma" << station->m_minstrelTable[i].ewmaProb);
 
-      if (max_tp < m_minstrelTable[i].throughput)
+      if (max_tp < station->m_minstrelTable[i].throughput)
         {
           index_max_tp = i;
-          max_tp = m_minstrelTable[i].throughput;
+          max_tp = station->m_minstrelTable[i].throughput;
         }
 
-      if (max_prob < m_minstrelTable[i].ewmaProb)
+      if (max_prob < station->m_minstrelTable[i].ewmaProb)
         {
           index_max_prob = i;
-          max_prob = m_minstrelTable[i].ewmaProb;
+          max_prob = station->m_minstrelTable[i].ewmaProb;
         }
     }
 
@@ -690,10 +693,10 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
   /// find the second highest max
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-      if ((i != index_max_tp) && (max_tp < m_minstrelTable[i].throughput))
+      if ((i != index_max_tp) && (max_tp < station->m_minstrelTable[i].throughput))
         {
           index_max_tp2 = i;
-          max_tp = m_minstrelTable[i].throughput;
+          max_tp = station->m_minstrelTable[i].throughput;
         }
     }
 
@@ -710,7 +713,7 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
   NS_LOG_DEBUG ("max tp=" << index_max_tp << "\nmax tp2=" << index_max_tp2 << "\nmax prob=" << index_max_prob);
 
   /// reset it
-  RateInit (station);
+  //RateInit (station);
 }
 
 void
@@ -720,18 +723,18 @@ MinstrelWifiManager::RateInit (MinstrelWifiRemoteStation *station)
 
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-      m_minstrelTable[i].numRateAttempt = 0;
-      m_minstrelTable[i].numRateSuccess = 0;
-      m_minstrelTable[i].prob = 0;
-      m_minstrelTable[i].ewmaProb = 0;
-      m_minstrelTable[i].prevNumRateAttempt = 0;
-      m_minstrelTable[i].prevNumRateSuccess = 0;
-      m_minstrelTable[i].successHist = 0;
-      m_minstrelTable[i].attemptHist = 0;
-      m_minstrelTable[i].throughput = 0;
-      m_minstrelTable[i].perfectTxTime = GetCalcTxTime (GetSupported (station, i));
-      m_minstrelTable[i].retryCount = 1;
-      m_minstrelTable[i].adjustedRetryCount = 1;
+      station->m_minstrelTable[i].numRateAttempt = 0;
+      station->m_minstrelTable[i].numRateSuccess = 0;
+      station->m_minstrelTable[i].prob = 0;
+      station->m_minstrelTable[i].ewmaProb = 0;
+      station->m_minstrelTable[i].prevNumRateAttempt = 0;
+      station->m_minstrelTable[i].prevNumRateSuccess = 0;
+      station->m_minstrelTable[i].successHist = 0;
+      station->m_minstrelTable[i].attemptHist = 0;
+      station->m_minstrelTable[i].throughput = 0;
+      station->m_minstrelTable[i].perfectTxTime = GetCalcTxTime (GetSupported (station, i));
+      station->m_minstrelTable[i].retryCount = 1;
+      station->m_minstrelTable[i].adjustedRetryCount = 1;
     }
 }
 
@@ -759,11 +762,11 @@ MinstrelWifiManager::InitSampleTable (MinstrelWifiRemoteStation *station)
           newIndex = (i + uv) % numSampleRates;
 
           /// this loop is used for filling in other uninitilized places
-          while (m_sampleTable[newIndex][col] != 0)
+          while (station->m_sampleTable[newIndex][col] != 0)
             {
               newIndex = (newIndex + 1) % m_nsupported;
             }
-          m_sampleTable[newIndex][col] = i;
+          station->m_sampleTable[newIndex][col] = i;
 
         }
     }
@@ -779,7 +782,7 @@ MinstrelWifiManager::PrintSampleTable (MinstrelWifiRemoteStation *station)
     {
       for (uint32_t j = 0; j < m_sampleCol; j++)
         {
-          std::cout << m_sampleTable[i][j] << "\t";
+          std::cout << station->m_sampleTable[i][j] << "\t";
         }
       std::cout << std::endl;
     }
@@ -792,7 +795,7 @@ MinstrelWifiManager::PrintTable (MinstrelWifiRemoteStation *station)
 
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-      std::cout << "index(" << i << ") = " << m_minstrelTable[i].perfectTxTime << "\n";
+      std::cout << "index(" << i << ") = " << station->m_minstrelTable[i].perfectTxTime << "\n";
     }
 }
 

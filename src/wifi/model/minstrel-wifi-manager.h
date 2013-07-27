@@ -153,9 +153,6 @@ private:
 
 
   typedef std::vector<std::pair<Time,WifiMode> > TxTime;
-  MinstrelRate m_minstrelTable;  ///< minstrel table
-  SampleRate m_sampleTable;  ///< sample table
-
 
   TxTime m_calcTxTime;  ///< to hold all the calculated TxTime for all modes
   Time m_updateStats;  ///< how frequent do we calculate the stats(1/10 seconds)
