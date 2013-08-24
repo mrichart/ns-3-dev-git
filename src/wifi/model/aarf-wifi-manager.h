@@ -61,6 +61,11 @@ private:
   double m_successK;
   uint32_t m_maxSuccessThreshold;
   double m_timerK;
+
+  /**
+   * The trace source fired when the transmission rate change
+   */
+  TracedCallback<uint32_t> m_rateChange;
 };
 
 } // namespace ns3

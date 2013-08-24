@@ -78,6 +78,9 @@ AarfWifiManager::GetTypeId (void)
                    UintegerValue (10),
                    MakeUintegerAccessor (&AarfWifiManager::m_minSuccessThreshold),
                    MakeUintegerChecker<uint32_t> ())
+   .AddTraceSource("RateChange",
+                   "The transmission rate has change",
+                   MakeTraceSourceAccessor(&AarfWifiManager::m_rateChange))
   ;
   return tid;
 }
@@ -146,6 +149,7 @@ AarfWifiManager::DoReportDataFailed (WifiRemoteStation *st)
           if (station->m_rate != 0)
             {
               station->m_rate--;
+              m_rateChange(station->m_rate);
             }
         }
       station->m_timer = 0;
@@ -161,6 +165,7 @@ AarfWifiManager::DoReportDataFailed (WifiRemoteStation *st)
           if (station->m_rate != 0)
             {
               station->m_rate--;
+              m_rateChange(station->m_rate);
             }
         }
       if (station->m_retry >= 2)
@@ -200,6 +205,7 @@ AarfWifiManager::DoReportDataOk (WifiRemoteStation *st,
     {
       NS_LOG_DEBUG ("station=" << station << " inc rate");
       station->m_rate++;
+      m_rateChange(station->m_rate);
       station->m_timer = 0;
       station->m_success = 0;
       station->m_recovery = true;
