@@ -279,7 +279,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 
   station->m_longRetry++;
   station->m_minstrelTable[station->m_txrate].numRateAttempt++; // for some reason kept track at FinalDataFail!!!
-  
+
   uint32_t orig_tx_rate = station->m_txrate;
   
   NS_LOG_DEBUG ("DoReportDataFailed " << station << "\t rate " << station->m_txrate << "\tlongRetry \t" << station->m_longRetry);
@@ -430,7 +430,6 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   UpdateRetry (station);
 
-  station->m_minstrelTable[station->m_txrate].numRateAttempt++;
   station->m_err++;
 
   if (m_nsupported >= 1)
