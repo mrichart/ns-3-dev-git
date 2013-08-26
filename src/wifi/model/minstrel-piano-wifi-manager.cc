@@ -129,7 +129,7 @@ MinstrelPianoWifiManager::GetTypeId (void)
                    MakeDoubleChecker <double> ())
     .AddAttribute ("PacketLength",
                    "The packet length used for calculating mode TxTime",
-                   DoubleValue (1200),
+                   DoubleValue (1420),
                    MakeDoubleAccessor (&MinstrelPianoWifiManager::m_pktLen),
                    MakeDoubleChecker <double> ())
     .AddAttribute ("LookAroundSamplePower",
@@ -144,7 +144,7 @@ MinstrelPianoWifiManager::GetTypeId (void)
                    MakeDoubleChecker <double> ())
     .AddAttribute ("PianoUpdateStats",
                    "How many reference or sample packets are needed for updating stats",
-                   UintegerValue (10),
+                   UintegerValue (100),
                    MakeUintegerAccessor (&MinstrelPianoWifiManager::m_pianoUpdateStats),
                    MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("IncrementLevel",
@@ -478,7 +478,7 @@ MinstrelPianoWifiManager::DoReportDataOk (WifiRemoteStation *st,
     }
 
   UpdateRetry (station); //updates m_retry and set long and short retry to 0
-  UpdateAttempts (station);
+  UpdateAttempts (station); //use m_retry to update attemps for each rate
 
   station->m_minstrelTable[station->m_txrate].numRateSuccess++;
   station->m_minstrelTable[station->m_txrate].numRateAttempt++;
@@ -504,7 +504,9 @@ MinstrelPianoWifiManager::DoReportDataOk (WifiRemoteStation *st,
   if (m_nsupported >= 1)
     {
       station->m_txrate = FindRate (station);//returns a sample rate or the best rate
+      station->m_txpower = FindPower(station);// retruns the power for the rate selected
       m_rateChange(station->m_txrate);
+      m_powerChange(station->m_txpower);
     }
 }
 
@@ -526,7 +528,9 @@ MinstrelPianoWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
   if (m_nsupported >= 1)
     {
       station->m_txrate = FindRate (station);
+      station->m_txpower = FindPower(station);
       m_rateChange(station->m_txrate);
+      m_powerChange(station->m_txpower);
     }
 }
 
@@ -546,7 +550,7 @@ MinstrelPianoWifiManager::UpdateAttempts (MinstrelPianoWifiRemoteStation *statio
 {
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-      station->m_minstrelTable[i].numRateAttempt = station->m_minstrelTable[i].retry;
+      station->m_minstrelTable[i].numRateAttempt += station->m_minstrelTable[i].retry;
       if (station->m_txpower == station->m_minstrelTable[i].refPower)
           {
                 station->m_minstrelTable[i].numRefAttempt += station->m_minstrelTable[i].retry; //this is not in the paper but i think its neeeded
@@ -577,7 +581,7 @@ MinstrelPianoWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
     }
   UpdateStats (station);
   UpdatePowerStats (station);
-  WifiTxVector vector =  WifiTxVector (GetSupported (station, station->m_txrate), FindPower(station), GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNoOfRx (station),GetNoOfTransmitters()), GetNoOfTx (station), GetStbc (station));
+  WifiTxVector vector =  WifiTxVector (GetSupported (station, station->m_txrate), station->m_txpower, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNoOfRx (station),GetNoOfTransmitters()), GetNoOfTx (station), GetStbc (station));
   m_getDataTxVector(vector);
   return vector;
 }
@@ -694,7 +698,7 @@ MinstrelPianoWifiManager::FindRate (MinstrelPianoWifiRemoteStation *station)
     }
 
   /*
-   * Piano does not interfere with minstel sampling.
+   * Piano does not interfere with minstrel sampling.
    * Since the power level used for sampling depends on the rate, in Piano,
    * we alternate between the best and 2nd best throughput rates.
    */
@@ -717,9 +721,7 @@ MinstrelPianoWifiManager::FindPower (MinstrelPianoWifiRemoteStation *station)
 
   if ((station->m_pianoSampleCount + station->m_pianoRefCount + station->m_packetCount) == 0)
     {
-	  station->m_txpower = m_nPower/2;
-	  m_powerChange(station->m_txpower);
-      return station->m_txpower;
+	  return m_nPower/2;
     }
 
 
@@ -728,9 +730,7 @@ MinstrelPianoWifiManager::FindPower (MinstrelPianoWifiRemoteStation *station)
    */
   if (station->m_isSampling)
     {
-	  station->m_txpower = station->m_minstrelTable[station->m_txrate].refPower;
-	  m_powerChange(station->m_txpower);
-	  return station->m_txpower;
+	  return station->m_minstrelTable[station->m_txrate].refPower;
     }
 
   /// for determining when to try a sample power
@@ -759,9 +759,7 @@ MinstrelPianoWifiManager::FindPower (MinstrelPianoWifiRemoteStation *station)
 			  station->m_pianoRefCount = 0;
 			}
 
-		  station->m_txpower = station->m_minstrelTable[station->m_txrate].samplePower;
-		  m_powerChange(station->m_txpower);
-		  return station->m_txpower;
+		  return station->m_minstrelTable[station->m_txrate].samplePower;
 	    }
 	  else if (((100 * station->m_pianoRefCount) / (station->m_pianoRefCount + station->m_packetCount )) < m_lookAroundRefPower)
 	    {
@@ -777,15 +775,11 @@ MinstrelPianoWifiManager::FindPower (MinstrelPianoWifiRemoteStation *station)
 			  station->m_pianoRefCount = 0;
 			}
 
-		  station->m_txpower = station->m_minstrelTable[station->m_txrate].refPower;
-		  m_powerChange(station->m_txpower);
-		  return station->m_txpower;
+		  return station->m_minstrelTable[station->m_txrate].refPower;
 	    }
     }
 
-    station->m_txpower = station->m_minstrelTable[station->m_txrate].dataPower;
-    m_powerChange(station->m_txpower);
-    return station->m_txpower;
+    return station->m_minstrelTable[station->m_txrate].dataPower;
 }
 
 void
