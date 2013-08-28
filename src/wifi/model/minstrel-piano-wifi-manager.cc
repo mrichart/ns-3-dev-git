@@ -264,7 +264,7 @@ MinstrelPianoWifiManager::DoCreateStation (void) const
   station->m_txrate = 0;
   station->m_initialized = false;
   station->m_pianoRefCount = 0;
-  station->m_pianoSampleCount = 0;
+  station->m_pianoSampleCount = 100 / m_lookAroundSamplePower;
   station->m_txpower = m_nPower-1;
   m_powerChange(station->m_txpower);
   m_rateChange(station->m_txrate);
@@ -503,8 +503,9 @@ MinstrelPianoWifiManager::DoReportDataOk (WifiRemoteStation *st,
 
   if (m_nsupported >= 1)
     {
-      station->m_txrate = FindRate (station);//returns a sample rate or the best rate
-      station->m_txpower = FindPower(station);// retruns the power for the rate selected
+      /*station->m_txrate = FindRate (station);//returns a sample rate or the best rate
+      station->m_txpower = FindPower(station);// retruns the power for the rate selected*/
+	  SetRatePower(station);
       m_rateChange(station->m_txrate);
       m_powerChange(station->m_txpower);
     }
@@ -527,8 +528,9 @@ MinstrelPianoWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   if (m_nsupported >= 1)
     {
-      station->m_txrate = FindRate (station);
-      station->m_txpower = FindPower(station);
+/*      station->m_txrate = FindRate (station);
+      station->m_txpower = FindPower(station);*/
+	  SetRatePower(station);
       m_rateChange(station->m_txrate);
       m_powerChange(station->m_txpower);
     }
@@ -780,6 +782,121 @@ MinstrelPianoWifiManager::FindPower (MinstrelPianoWifiRemoteStation *station)
     }
 
     return station->m_minstrelTable[station->m_txrate].dataPower;
+}
+
+void
+MinstrelPianoWifiManager::SetRatePower (MinstrelPianoWifiRemoteStation *station)
+{
+  NS_LOG_DEBUG ("SetRatePower " << "packet=" << station->m_packetCount );
+
+  uint32_t rate;
+  uint8_t power;
+
+  if ((station->m_sampleCount + station->m_packetCount) == 0)
+    {
+      rate = 0;
+    }
+
+  /// for determining when to try a sample rate
+  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
+
+  /**
+   * if we are below the target of look around rate percentage, look around
+   * note: do it randomly by flipping a coin instead sampling
+   * all at once until it reaches the look around rate
+   */
+  if ( (((100 * station->m_sampleCount) / (station->m_sampleCount + station->m_packetCount )) < m_lookAroundRate)
+       && (coinFlip == 1) )
+    {
+
+      /// now go through the table and find an index rate
+      rate = GetNextSample (station);
+
+
+      /**
+       * This if condition is used to make sure that we don't need to use
+       * the sample rate it is the same as our current rate
+       */
+      if (rate != station->m_maxTpRate && rate != station->m_txrate)
+        {
+
+          /// start sample count
+          station->m_sampleCount++;
+
+          /// set flag that we are currently sampling
+          station->m_isSampling = true;
+
+          /// bookeeping for resetting stuff
+          if (station->m_packetCount >= 10000)
+            {
+              station->m_sampleCount = 0;
+              station->m_packetCount = 0;
+            }
+
+          /// error check
+          if (rate >= m_nsupported)
+            {
+              NS_LOG_DEBUG ("ALERT!!! ERROR");
+            }
+
+          /// set the rate that we're currently sampling
+          station->m_sampleRate = rate;
+
+          // we make the random not to be the best throughput
+          if (station->m_sampleRate == station->m_maxTpRate)
+            {
+              station->m_sampleRate = station->m_maxTpRate2;
+            }
+
+          /// is this rate slower than the current best rate
+          station->m_sampleRateSlower =
+            (station->m_minstrelTable[rate].perfectTxTime > station->m_minstrelTable[station->m_maxTpRate].perfectTxTime);
+
+          /// using the best rate instead
+          if (station->m_sampleRateSlower)
+            {
+              rate =  station->m_maxTpRate;
+            }
+        }
+
+      /* When Minstrel sampling use reference power*/
+      power = station->m_minstrelTable[rate].refPower;
+
+    }
+  else
+    {
+	  if (station->m_pianoSampleCount > 0)
+	    {
+		  station->m_pianoSampleCount--;
+	      rate = station->m_maxTpRate;
+	      power = station->m_minstrelTable[rate].dataPower;
+	    }
+	  /**
+	   * if minstrel is not sampling and
+	   * if we are below the target of look around power percentage, look around
+	   */
+	  else
+	    {
+		  station->m_pianoSampleCount = 100 / m_lookAroundSamplePower;
+
+		  rate = (station->m_sampleBest? station->m_maxTpRate : station->m_maxTpRate2);
+		  station->m_sampleBest = !station->m_sampleBest;
+
+		  /// for determining when to try a sample power
+		  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
+
+		  if (coinFlip == 1)
+			{
+			  power = station->m_minstrelTable[rate].samplePower;
+			}
+		  else
+			{
+			  power = station->m_minstrelTable[rate].refPower;
+			}
+	  	}
+    }
+  station->m_txrate = rate;
+  station->m_txpower = power;
 }
 
 void

@@ -191,6 +191,8 @@ private:
   /// find a power to use from Minstrel Piano Table
   uint8_t FindPower (MinstrelPianoWifiRemoteStation *station);
 
+  void SetRatePower (MinstrelPianoWifiRemoteStation *station);
+
   /// updating the Minstrel Table every 1/10 seconds
   void UpdateStats (MinstrelPianoWifiRemoteStation *station);
 
