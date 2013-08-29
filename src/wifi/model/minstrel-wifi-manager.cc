@@ -37,6 +37,7 @@
 #include "ns3/wifi-mac.h"
 #include "ns3/assert.h"
 #include <vector>
+#include <iomanip>
 
 #define Min(a,b) ((a < b) ? a : b)
 
@@ -119,6 +120,9 @@ MinstrelWifiManager::GetTypeId (void)
                    DoubleValue (1200),
                    MakeDoubleAccessor (&MinstrelWifiManager::m_pktLen),
                    MakeDoubleChecker <double> ())
+   .AddTraceSource("RateChange",
+                   "The transmission rate has change",
+                   MakeTraceSourceAccessor(&MinstrelWifiManager::m_rateChange))
   ;
   return tid;
 }
@@ -199,6 +203,7 @@ MinstrelWifiManager::DoCreateStation (void) const
   station->m_retry = 0;
   station->m_err = 0;
   station->m_txrate = 0;
+  m_rateChange(station->m_txrate);
   station->m_initialized = false;
 
   return station;
@@ -298,6 +303,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                         station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
         {
           station->m_txrate = station->m_maxTpRate2;
+          m_rateChange(station->m_txrate);
         }
 
       /// use best probability rate
@@ -306,6 +312,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                         station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
         {
           station->m_txrate = station->m_maxProbRate;
+          m_rateChange(station->m_txrate);
         }
 
       /// use lowest base rate
@@ -314,6 +321,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                        station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
         {
           station->m_txrate = 0;
+          m_rateChange(station->m_txrate);
         }
     }
 
@@ -334,6 +342,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                             station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
             {
               station->m_txrate = station->m_sampleRate;
+              m_rateChange(station->m_txrate);
             }
 
           /// use max probability rate
@@ -342,6 +351,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                             station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount ))
             {
               station->m_txrate = station->m_maxProbRate;
+              m_rateChange(station->m_txrate);
             }
 
           /// use lowest base rate
@@ -350,6 +360,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                            station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
             {
               station->m_txrate = 0;
+              m_rateChange(station->m_txrate);
             }
         }
 
@@ -367,6 +378,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                             station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
             {
               station->m_txrate = station->m_maxTpRate;
+              m_rateChange(station->m_txrate);
             }
 
           /// use the best probability rate
@@ -375,6 +387,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                             station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
             {
               station->m_txrate = station->m_maxProbRate;
+              m_rateChange(station->m_txrate);
             }
 
           /// use the lowest base rate
@@ -383,6 +396,7 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                            station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount))
             {
               station->m_txrate = 0;
+              m_rateChange(station->m_txrate);
             }
         }
     }
@@ -416,6 +430,7 @@ MinstrelWifiManager::DoReportDataOk (WifiRemoteStation *st,
   if (m_nsupported >= 1)
     {
       station->m_txrate = FindRate (station);
+      m_rateChange(station->m_txrate);
     }
 }
 
@@ -435,6 +450,7 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
   if (m_nsupported >= 1)
     {
       station->m_txrate = FindRate (station);
+      m_rateChange(station->m_txrate);
     }
 }
 
@@ -457,6 +473,7 @@ MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
 
       /// start the rate at half way
       station->m_txrate = m_nsupported / 2;
+      m_rateChange(station->m_txrate);
     }
   UpdateStats (station);
   return WifiTxVector (GetSupported (station, station->m_txrate), GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNoOfRx (station),GetNoOfTransmitters()), GetNoOfTx (station), GetStbc (station));
@@ -716,12 +733,14 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
   if (index_max_tp > station->m_txrate)
     {
       station->m_txrate = index_max_tp;
+      m_rateChange(station->m_txrate);
     }
 
   NS_LOG_DEBUG ("max tp=" << index_max_tp << "\nmax tp2=" << index_max_tp2 << "\nmax prob=" << index_max_prob);
 
   /// reset it
   //RateInit (station);
+  //PrintTable(station);
 }
 
 void
@@ -801,9 +820,14 @@ MinstrelWifiManager::PrintTable (MinstrelWifiRemoteStation *station)
 {
   NS_LOG_DEBUG ("PrintTable=" << station);
 
+  std::cout << "PrintTable = " << station<< "\n";
+
+  std::cout << "index throughput ewmaProb prob success(attempt) successHist attemptHist\n";
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-      std::cout << "index(" << i << ") = " << station->m_minstrelTable[i].perfectTxTime << "\n";
+      std::cout << std::setw(2) << i << std::setw(10) << station->m_minstrelTable[i].throughput << std::setw(10) << station->m_minstrelTable[i].ewmaProb << std::setw(10) << station->m_minstrelTable[i].prob
+                  << std::setw(10) << station->m_minstrelTable[i].prevNumRateSuccess << "(" << station->m_minstrelTable[i].prevNumRateAttempt << ")" << std::setw(10) << station->m_minstrelTable[i].successHist
+                  << std::setw(10) << station->m_minstrelTable[i].attemptHist << "\n";
     }
 }
 
