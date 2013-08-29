@@ -51,13 +51,13 @@ AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
 void
 PowerCallback (std::string path, uint8_t power)
 {
-  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << path << " " <<  (int)power);
+  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << (int)power);
 }
 
 void
 RateCallback (std::string path, uint32_t rate)
 {
-  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << path << " " <<  rate);
+  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << rate);
 }
 
 void
@@ -208,6 +208,7 @@ ThroughputCounter::PhyCallback (std::string path, Ptr<const Packet> packet)
 {
   totalPower += actualPower * GetCalcTxTime(actualMode).GetSeconds();
   totalTime += GetCalcTxTime(actualMode).GetSeconds();
+  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << actualMode.GetDataRate()/1000000 << " " << (int)actualPower);
 }
 
 void
@@ -426,7 +427,7 @@ int main (int argc, char *argv[])
     }
   else if (manager == 4)
     {
-      wifi.SetRemoteStationManager ("ns3::MinstrelWifiManager");
+      wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
     }
   else
     {
@@ -537,29 +538,6 @@ int main (int argc, char *argv[])
                     MakeCallback (&ThroughputCounter::PhyCallback, atmCounter));
 
   atmCounter->CheckThroughput(stepsTime);
-
-
-//  ThroughputCounter* stateCounter = new ThroughputCounter();
-//
-//  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/$ns3::YansWifiPhy/State/State", MakeCallback (&ThroughputCounter::StateCallback, stateCounter));
-//
-//  //stateCounter->CheckTime();
-//
-//  ThroughputCounter* stateCounter2 = new ThroughputCounter();
-//
-//  Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/$ns3::YansWifiPhy/State/State", MakeCallback (&ThroughputCounter::StateCallback, stateCounter2));
-
-  //stateCounter2->CheckTime();
-
-
-//  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::MinstrelPianoWifiManager/DoGetDataTxVector",
-//    				MakeCallback (&TxVectorCallback));
-//  Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/RateChange",
-//    				MakeCallback (&RateCallback));
-//  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/PowerChange",
-//    				MakeCallback (&PowerCallback));
-//  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/RateChange",
-//    				MakeCallback (&RateCallback));
 
   Simulator::Stop (Seconds (simuTime));
   Simulator::Run ();
