@@ -108,6 +108,7 @@ AarfWifiManager::DoCreateStation (void) const
   station->m_recovery = false;
   station->m_retry = 0;
   station->m_timer = 0;
+  m_rateChange(station->m_rate);
 
   return station;
 }
