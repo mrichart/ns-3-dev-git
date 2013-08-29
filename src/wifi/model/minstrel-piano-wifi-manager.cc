@@ -39,6 +39,7 @@
 #include <vector>
 #include <stdio.h>
 #include <fstream>
+#include <iomanip>
 
 #define Min(a,b) ((a < b) ? a : b)
 #define Max(a,b) ((a > b) ? a : b)
@@ -92,6 +93,8 @@ struct MinstrelPianoWifiRemoteStation : public WifiRemoteStation
   uint8_t m_txRefPower;  ///< current transmit power level for reference packets
   uint8_t m_txSamplePower;  ///< current transmit power level for sample packets
   uint8_t m_txDataPower;  ///< current transmit power level for data packets
+
+  bool m_samplingPiano;
 };
 
 NS_OBJECT_ENSURE_REGISTERED (MinstrelPianoWifiManager);
@@ -143,8 +146,8 @@ MinstrelPianoWifiManager::GetTypeId (void)
                    MakeDoubleAccessor (&MinstrelPianoWifiManager::m_lookAroundRefPower),
                    MakeDoubleChecker <double> ())
     .AddAttribute ("PianoUpdateStats",
-                   "How many reference or sample packets are needed for updating stats",
-                   UintegerValue (100),
+                   "How many reference and sample packets are needed for updating stats",
+                   UintegerValue (10),
                    MakeUintegerAccessor (&MinstrelPianoWifiManager::m_pianoUpdateStats),
                    MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("IncrementLevel",
@@ -154,17 +157,17 @@ MinstrelPianoWifiManager::GetTypeId (void)
                    MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("DecrementLevel",
                    "How much levels to decrease power each time",
-                   UintegerValue (2),
+                   UintegerValue (1),
                    MakeUintegerAccessor (&MinstrelPianoWifiManager::m_deltaDec),
                    MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("Delta",
                    "Power levels of separation between data and sample power",
-                   UintegerValue (1),
+                   UintegerValue (2),
                    MakeUintegerAccessor (&MinstrelPianoWifiManager::m_delta),
                    MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("IncrementThreshold",
                    "The threshold between probabilities needed to increase power",
-                   DoubleValue (0.1),
+                   DoubleValue (0.05),
                    MakeDoubleAccessor (&MinstrelPianoWifiManager::m_thInc),
                    MakeDoubleChecker <double> ())
     .AddAttribute ("DecrementThreshold",
@@ -266,6 +269,7 @@ MinstrelPianoWifiManager::DoCreateStation (void) const
   station->m_pianoRefCount = 0;
   station->m_pianoSampleCount = 100 / m_lookAroundSamplePower;
   station->m_txpower = m_nPower-1;
+  station->m_samplingPiano = false;
   m_powerChange(station->m_txpower);
   m_rateChange(station->m_txrate);
 
@@ -362,7 +366,8 @@ MinstrelPianoWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       else if (station->m_minstrelTable[station->m_txrate].longRetry <= (station->m_minstrelTable[station->m_txrate].adjustedRetryCount +
                                         station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount))
         {
-          station->m_txrate = station->m_maxTpRate2;
+          station->m_txrate = ((station->m_samplingPiano && station->m_sampleBest)? station->m_maxTpRate2 : station->m_maxTpRate);
+          //station->m_txrate = station->m_maxTpRate2;
           m_rateChange(station->m_txrate);
         }
 
@@ -485,27 +490,25 @@ MinstrelPianoWifiManager::DoReportDataOk (WifiRemoteStation *st,
 
   if (station->m_txpower == station->m_minstrelTable[station->m_txrate].refPower)
     {
-  	  station->m_minstrelTable[station->m_txrate].numRefSuccess++;
-  	  station->m_minstrelTable[station->m_txrate].numRefAttempt++;
+      station->m_minstrelTable[station->m_txrate].numRefSuccess++;
+      station->m_minstrelTable[station->m_txrate].numRefAttempt++;
     }
   else if (station->m_txpower == station->m_minstrelTable[station->m_txrate].dataPower)
     {
-  	  station->m_minstrelTable[station->m_txrate].numDataSuccess++;
-  	  station->m_minstrelTable[station->m_txrate].numDataAttempt++;
+      station->m_minstrelTable[station->m_txrate].numDataSuccess++;
+      station->m_minstrelTable[station->m_txrate].numDataAttempt++;
     }
   else if (station->m_txpower == station->m_minstrelTable[station->m_txrate].samplePower)
     {
-  	  station->m_minstrelTable[station->m_txrate].numSampleSuccess++;
-  	  station->m_minstrelTable[station->m_txrate].numSampleAttempt++;
+      station->m_minstrelTable[station->m_txrate].numSampleSuccess++;
+      station->m_minstrelTable[station->m_txrate].numSampleAttempt++;
     }
 
   station->m_packetCount++;
 
   if (m_nsupported >= 1)
     {
-      /*station->m_txrate = FindRate (station);//returns a sample rate or the best rate
-      station->m_txpower = FindPower(station);// retruns the power for the rate selected*/
-	  SetRatePower(station);
+      SetRatePower(station);
       m_rateChange(station->m_txrate);
       m_powerChange(station->m_txpower);
     }
@@ -528,9 +531,7 @@ MinstrelPianoWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   if (m_nsupported >= 1)
     {
-/*      station->m_txrate = FindRate (station);
-      station->m_txpower = FindPower(station);*/
-	  SetRatePower(station);
+      SetRatePower(station);
       m_rateChange(station->m_txrate);
       m_powerChange(station->m_txpower);
     }
@@ -554,16 +555,16 @@ MinstrelPianoWifiManager::UpdateAttempts (MinstrelPianoWifiRemoteStation *statio
     {
       station->m_minstrelTable[i].numRateAttempt += station->m_minstrelTable[i].retry;
       if (station->m_txpower == station->m_minstrelTable[i].refPower)
-          {
-                station->m_minstrelTable[i].numRefAttempt += station->m_minstrelTable[i].retry; //this is not in the paper but i think its neeeded
-          }
+        {
+          station->m_minstrelTable[i].numRefAttempt += station->m_minstrelTable[i].retry; //this is not in the paper but i think its needed
+        }
         else if (station->m_txpower == station->m_minstrelTable[i].dataPower)
           {
-                station->m_minstrelTable[i].numDataAttempt += station->m_minstrelTable[i].retry;
+            station->m_minstrelTable[i].numDataAttempt += station->m_minstrelTable[i].retry;
           }
         else if (station->m_txpower == station->m_minstrelTable[i].samplePower)
           {
-                station->m_minstrelTable[i].numSampleAttempt += station->m_minstrelTable[i].retry;
+            station->m_minstrelTable[i].numSampleAttempt += station->m_minstrelTable[i].retry;
           }
     }
 }
@@ -622,168 +623,6 @@ MinstrelPianoWifiManager::GetNextSample (MinstrelPianoWifiRemoteStation *station
   return bitrate;
 }
 
-uint32_t
-MinstrelPianoWifiManager::FindRate (MinstrelPianoWifiRemoteStation *station)
-{
-  NS_LOG_DEBUG ("FindRate " << "packet=" << station->m_packetCount );
-
-  if ((station->m_sampleCount + station->m_packetCount) == 0)
-    {
-      return 0;
-    }
-
-
-  uint32_t idx;
-
-  /// for determining when to try a sample rate
-  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
-
-  /**
-   * if we are below the target of look around rate percentage, look around
-   * note: do it randomly by flipping a coin instead sampling
-   * all at once until it reaches the look around rate
-   */
-  if ( (((100 * station->m_sampleCount) / (station->m_sampleCount + station->m_packetCount )) < m_lookAroundRate)
-       && (coinFlip == 1) )
-    {
-
-      /// now go through the table and find an index rate
-      idx = GetNextSample (station);
-
-
-      /**
-       * This if condition is used to make sure that we don't need to use
-       * the sample rate it is the same as our current rate
-       */
-      if (idx != station->m_maxTpRate && idx != station->m_txrate)
-        {
-
-          /// start sample count
-          station->m_sampleCount++;
-
-          /// set flag that we are currently sampling
-          station->m_isSampling = true;
-
-          /// bookeeping for resetting stuff
-          if (station->m_packetCount >= 10000)
-            {
-              station->m_sampleCount = 0;
-              station->m_packetCount = 0;
-            }
-
-          /// error check
-          if (idx >= m_nsupported)
-            {
-              NS_LOG_DEBUG ("ALERT!!! ERROR");
-            }
-
-          /// set the rate that we're currently sampling
-          station->m_sampleRate = idx;
-
-          // we make the random not to be the best throughput
-          if (station->m_sampleRate == station->m_maxTpRate)
-            {
-              station->m_sampleRate = station->m_maxTpRate2;
-            }
-
-          /// is this rate slower than the current best rate
-          station->m_sampleRateSlower =
-            (station->m_minstrelTable[idx].perfectTxTime > station->m_minstrelTable[station->m_maxTpRate].perfectTxTime);
-
-          /// using the best rate instead
-          if (station->m_sampleRateSlower)
-            {
-              idx =  station->m_maxTpRate;
-            }
-        }
-
-    }
-
-  /*
-   * Piano does not interfere with minstrel sampling.
-   * Since the power level used for sampling depends on the rate, in Piano,
-   * we alternate between the best and 2nd best throughput rates.
-   */
-  else
-    {
-      idx = (station->m_sampleBest? station->m_maxTpRate : station->m_maxTpRate2);
-      station->m_sampleBest = !station->m_sampleBest;
-    }
-
-
-  NS_LOG_DEBUG ("FindRate " << "sample rate=" << idx);
-
-  return idx;
-}
-
-uint8_t
-MinstrelPianoWifiManager::FindPower (MinstrelPianoWifiRemoteStation *station)
-{
-  NS_LOG_DEBUG ("FindPower " << "packet=" << station->m_packetCount );
-
-  if ((station->m_pianoSampleCount + station->m_pianoRefCount + station->m_packetCount) == 0)
-    {
-	  return m_nPower/2;
-    }
-
-
-  /*
-   * Piano does not interfere with minstrel sampling.
-   */
-  if (station->m_isSampling)
-    {
-	  return station->m_minstrelTable[station->m_txrate].refPower;
-    }
-
-  /// for determining when to try a sample power
-  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
-
-  /**
-   * if minstrel is not sampling and
-   * if we are below the target of look around power percentage, look around
-   * note: do it randomly by flipping a coin instead sampling
-   * all at once until it reaches the look around power
-   */
-  if (coinFlip == 1)
-    {
-	  coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
-	  if ( (((100 * station->m_pianoSampleCount) / (station->m_pianoSampleCount + station->m_packetCount )) < m_lookAroundSamplePower) && (coinFlip == 1) )
-	    {
-		  /// start sample count
-		  station->m_pianoSampleCount++;
-
-		  /// bookeeping for resetting stuff
-		  if (station->m_packetCount >= 10000)
-			{
-			  station->m_sampleCount = 0;
-			  station->m_packetCount = 0;
-			  station->m_pianoSampleCount = 0;
-			  station->m_pianoRefCount = 0;
-			}
-
-		  return station->m_minstrelTable[station->m_txrate].samplePower;
-	    }
-	  else if (((100 * station->m_pianoRefCount) / (station->m_pianoRefCount + station->m_packetCount )) < m_lookAroundRefPower)
-	    {
-		  /// start sample count
-		  station->m_pianoRefCount++;
-
-		  /// bookeeping for resetting stuff
-		  if (station->m_packetCount >= 10000)
-			{
-			  station->m_sampleCount = 0;
-			  station->m_packetCount = 0;
-			  station->m_pianoSampleCount = 0;
-			  station->m_pianoRefCount = 0;
-			}
-
-		  return station->m_minstrelTable[station->m_txrate].refPower;
-	    }
-    }
-
-    return station->m_minstrelTable[station->m_txrate].dataPower;
-}
-
 void
 MinstrelPianoWifiManager::SetRatePower (MinstrelPianoWifiRemoteStation *station)
 {
@@ -792,108 +631,114 @@ MinstrelPianoWifiManager::SetRatePower (MinstrelPianoWifiRemoteStation *station)
   uint32_t rate;
   uint8_t power;
 
+  station->m_samplingPiano = false;
+
   if ((station->m_sampleCount + station->m_packetCount) == 0)
     {
       rate = 0;
-    }
-
-  /// for determining when to try a sample rate
-  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
-
-  /**
-   * if we are below the target of look around rate percentage, look around
-   * note: do it randomly by flipping a coin instead sampling
-   * all at once until it reaches the look around rate
-   */
-  if ( (((100 * station->m_sampleCount) / (station->m_sampleCount + station->m_packetCount )) < m_lookAroundRate)
-       && (coinFlip == 1) )
-    {
-
-      /// now go through the table and find an index rate
-      rate = GetNextSample (station);
-
-
-      /**
-       * This if condition is used to make sure that we don't need to use
-       * the sample rate it is the same as our current rate
-       */
-      if (rate != station->m_maxTpRate && rate != station->m_txrate)
-        {
-
-          /// start sample count
-          station->m_sampleCount++;
-
-          /// set flag that we are currently sampling
-          station->m_isSampling = true;
-
-          /// bookeeping for resetting stuff
-          if (station->m_packetCount >= 10000)
-            {
-              station->m_sampleCount = 0;
-              station->m_packetCount = 0;
-            }
-
-          /// error check
-          if (rate >= m_nsupported)
-            {
-              NS_LOG_DEBUG ("ALERT!!! ERROR");
-            }
-
-          /// set the rate that we're currently sampling
-          station->m_sampleRate = rate;
-
-          // we make the random not to be the best throughput
-          if (station->m_sampleRate == station->m_maxTpRate)
-            {
-              station->m_sampleRate = station->m_maxTpRate2;
-            }
-
-          /// is this rate slower than the current best rate
-          station->m_sampleRateSlower =
-            (station->m_minstrelTable[rate].perfectTxTime > station->m_minstrelTable[station->m_maxTpRate].perfectTxTime);
-
-          /// using the best rate instead
-          if (station->m_sampleRateSlower)
-            {
-              rate =  station->m_maxTpRate;
-            }
-        }
-
-      /* When Minstrel sampling use reference power*/
-      power = station->m_minstrelTable[rate].refPower;
-
+      power = m_nPower;
     }
   else
     {
-	  if (station->m_pianoSampleCount > 0)
-	    {
-		  station->m_pianoSampleCount--;
-	      rate = station->m_maxTpRate;
-	      power = station->m_minstrelTable[rate].dataPower;
-	    }
-	  /**
-	   * if minstrel is not sampling and
-	   * if we are below the target of look around power percentage, look around
-	   */
-	  else
-	    {
-		  station->m_pianoSampleCount = 100 / m_lookAroundSamplePower;
+      /// for determining when to try a sample rate
+      int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
 
-		  rate = (station->m_sampleBest? station->m_maxTpRate : station->m_maxTpRate2);
-		  station->m_sampleBest = !station->m_sampleBest;
+      /**
+       * if we are below the target of look around rate percentage, look around
+       * note: do it randomly by flipping a coin instead sampling
+       * all at once until it reaches the look around rate
+       */
+      if ( (((100 * station->m_sampleCount) / (station->m_sampleCount + station->m_packetCount )) < m_lookAroundRate)
+           && (coinFlip == 1) )
+        {
 
-		  /// for determining when to try a sample power
-		  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
+          /// now go through the table and find an index rate
+          rate = GetNextSample (station);
 
-		  if (coinFlip == 1)
-			{
-			  power = station->m_minstrelTable[rate].samplePower;
-			}
-		  else
-			{
-			  power = station->m_minstrelTable[rate].refPower;
-			}
-	  	}
+
+          /**
+           * This if condition is used to make sure that we don't need to use
+           * the sample rate it is the same as our current rate
+           */
+          if (rate != station->m_maxTpRate && rate != station->m_txrate)
+            {
+
+              /// start sample count
+              station->m_sampleCount++;
+
+              /// set flag that we are currently sampling
+              station->m_isSampling = true;
+
+              /// bookeeping for resetting stuff
+              if (station->m_packetCount >= 10000)
+                {
+                  station->m_sampleCount = 0;
+                  station->m_packetCount = 0;
+                }
+
+              /// error check
+              if (rate >= m_nsupported)
+                {
+                  NS_LOG_DEBUG ("ALERT!!! ERROR");
+                }
+
+              /// set the rate that we're currently sampling
+              station->m_sampleRate = rate;
+
+              // we make the random not to be the best throughput
+              if (station->m_sampleRate == station->m_maxTpRate)
+                {
+                  station->m_sampleRate = station->m_maxTpRate2;
+                }
+
+              /// is this rate slower than the current best rate
+              station->m_sampleRateSlower =
+                (station->m_minstrelTable[rate].perfectTxTime > station->m_minstrelTable[station->m_maxTpRate].perfectTxTime);
+
+              /// using the best rate instead
+              if (station->m_sampleRateSlower)
+                {
+                  rate =  station->m_maxTpRate;
+                }
+            }
+
+          /* When Minstrel sampling use reference power*/
+          power = station->m_minstrelTable[rate].refPower;
+
+        }
+      else
+        {
+          if (station->m_pianoSampleCount > 0)
+            {
+              station->m_pianoSampleCount--;
+              rate = station->m_maxTpRate;
+              power = station->m_minstrelTable[rate].dataPower;
+            }
+          /**
+           * if minstrel is not sampling and
+           * if we are below the target of look around power percentage, look around
+           */
+          else
+            {
+                station->m_pianoSampleCount = 100 / m_lookAroundSamplePower;
+
+                rate = (station->m_sampleBest? station->m_maxTpRate : station->m_maxTpRate2);
+                station->m_samplingPiano = true;
+                station->m_sampleBest = !station->m_sampleBest;
+
+                /// for determining when to try a sample power
+                int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
+
+                if (coinFlip == 1)
+                  {
+                    power = station->m_minstrelTable[rate].samplePower;
+                  }
+                else
+                  {
+                    power = station->m_minstrelTable[rate].refPower;
+                  }
+              }
+        }
     }
   station->m_txrate = rate;
   station->m_txpower = power;
@@ -1035,16 +880,13 @@ MinstrelPianoWifiManager::UpdateStats (MinstrelPianoWifiRemoteStation *station)
     }
 
   NS_LOG_DEBUG ("max tp=" << index_max_tp << "\nmax tp2=" << index_max_tp2 << "\nmax prob=" << index_max_prob);
+
+  //PrintTable(station);
 }
 
 void
 MinstrelPianoWifiManager::UpdatePowerStats (MinstrelPianoWifiRemoteStation *station)
 {
-//  if ( (station->m_minstrelTable[station->m_txrate].numSampleAttempt <= m_min_update) && (station->m_minstrelTable[station->m_txrate].numRefAttempt <= m_min_update))
-//    {
-//      return;
-//    }
-
   if (!station->m_initialized)
     {
       return;
@@ -1058,12 +900,10 @@ MinstrelPianoWifiManager::UpdatePowerStats (MinstrelPianoWifiRemoteStation *stat
 
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-
       NS_LOG_DEBUG ("m_txrate=" << station->m_txrate <<
                     "\t attempt=" << station->m_minstrelTable[i].numRateAttempt <<
                     "\t success=" << station->m_minstrelTable[i].numRateSuccess);
 
-      /// if we've attempted something
       if (station->m_minstrelTable[i].numSampleAttempt > m_pianoUpdateStats && station->m_minstrelTable[i].numRefAttempt > m_pianoUpdateStats)
         {
           /**
@@ -1075,11 +915,11 @@ MinstrelPianoWifiManager::UpdatePowerStats (MinstrelPianoWifiRemoteStation *stat
 
           if (station->m_minstrelTable[i].numDataAttempt)
             {
-        	  dataTempProb = (station->m_minstrelTable[i].numDataSuccess * 18000) / station->m_minstrelTable[i].numDataAttempt;
+              dataTempProb = (station->m_minstrelTable[i].numDataSuccess * 18000) / station->m_minstrelTable[i].numDataAttempt;
             }
           else
             {
-        	  dataTempProb = 18000;
+              dataTempProb = 18000;
             }
 
           /// bookeeping
@@ -1102,46 +942,47 @@ MinstrelPianoWifiManager::UpdatePowerStats (MinstrelPianoWifiRemoteStation *stat
           station->m_minstrelTable[i].ewmaDataProb = dataTempProb;
           station->m_minstrelTable[i].ewmaSampleProb = sampleTempProb;
 
-		  station->m_minstrelTable[i].numRefSuccess = 0;
-		  station->m_minstrelTable[i].numRefAttempt = 0;
-		  station->m_minstrelTable[i].numDataSuccess = 0;
-		  station->m_minstrelTable[i].numDataAttempt = 0;
-		  station->m_minstrelTable[i].numSampleSuccess = 0;
-		  station->m_minstrelTable[i].numSampleAttempt = 0;
+          station->m_minstrelTable[i].numRefSuccess = 0;
+          station->m_minstrelTable[i].numRefAttempt = 0;
+          station->m_minstrelTable[i].numDataSuccess = 0;
+          station->m_minstrelTable[i].numDataAttempt = 0;
+          station->m_minstrelTable[i].numSampleSuccess = 0;
+          station->m_minstrelTable[i].numSampleAttempt = 0;
 
-		  if (station->m_minstrelTable[i].ewmaSampleProb < (station->m_minstrelTable[i].ewmaRefProb - m_thInc*18000))
-			{
-			  station->m_minstrelTable[i].samplePower = Min((m_nPower-1),(station->m_minstrelTable[i].samplePower + m_deltaInc));
-			}
+          if (station->m_minstrelTable[i].ewmaSampleProb < (station->m_minstrelTable[i].ewmaRefProb - m_thInc*18000))
+            {
+              station->m_minstrelTable[i].samplePower = Min((m_nPower-1),(station->m_minstrelTable[i].samplePower + m_deltaInc));
+            }
 
-		  if (station->m_minstrelTable[i].ewmaDataProb > (station->m_minstrelTable[i].ewmaRefProb - m_thDec*18000))
-			{
-			  station->m_minstrelTable[i].samplePower = Max(0,(station->m_minstrelTable[i].samplePower - m_deltaDec));
-			}
+          if (station->m_minstrelTable[i].ewmaDataProb > (station->m_minstrelTable[i].ewmaRefProb - m_thDec*18000))
+            {
+              station->m_minstrelTable[i].samplePower = Max(0,(station->m_minstrelTable[i].samplePower - m_deltaDec));
+            }
 
-		  if (station->m_minstrelTable[i].ewmaRefProb < (18000 - m_thInc*18000))
-			{
-			  station->m_minstrelTable[i].refPower = Min((m_nPower-1),(station->m_minstrelTable[i].refPower + m_deltaInc));
-			}
+          if (station->m_minstrelTable[i].ewmaRefProb < (18000 - m_thInc*18000))
+            {
+              station->m_minstrelTable[i].refPower = Min((m_nPower-1),(station->m_minstrelTable[i].refPower + m_deltaInc));
+            }
 
-		  if (station->m_minstrelTable[i].ewmaRefProb > (18000 - m_thDec*18000))
-			{
-			  station->m_minstrelTable[i].refPower = Max(0,(station->m_minstrelTable[i].refPower - m_deltaDec));
-			}
+          if (station->m_minstrelTable[i].ewmaRefProb > (18000 - m_thDec*18000))
+            {
+              station->m_minstrelTable[i].refPower = Max(0,(station->m_minstrelTable[i].refPower - m_deltaDec));
+            }
 
-		  station->m_minstrelTable[i].dataPower = station->m_minstrelTable[i].samplePower + m_delta;
+          station->m_minstrelTable[i].dataPower = station->m_minstrelTable[i].samplePower + m_delta;
         }
 
       if (station->m_minstrelTable[i].numDataAttempt > m_pianoUpdateStats)
         {
-          station->m_minstrelTable[i].successSampleHist += station->m_minstrelTable[i].numSampleSuccess;
-          station->m_minstrelTable[i].attemptSampleHist += station->m_minstrelTable[i].numSampleAttempt;
-          station->m_minstrelTable[i].sampleProb = sampleTempProb;
+          dataTempProb = (station->m_minstrelTable[i].numDataSuccess * 18000) / station->m_minstrelTable[i].numDataAttempt;
+          station->m_minstrelTable[i].successDataHist += station->m_minstrelTable[i].numDataSuccess;
+          station->m_minstrelTable[i].attemptDataHist += station->m_minstrelTable[i].numDataAttempt;
+          station->m_minstrelTable[i].dataProb = dataTempProb;
 
-          sampleTempProb = static_cast<uint32_t> (((sampleTempProb * (100 - m_ewmaLevel)) + (station->m_minstrelTable[i].ewmaSampleProb * m_ewmaLevel) ) / 100);
-          station->m_minstrelTable[i].ewmaSampleProb = sampleTempProb;
-		  station->m_minstrelTable[i].numDataSuccess = 0;
-		  station->m_minstrelTable[i].numDataAttempt = 0;
+          dataTempProb = static_cast<uint32_t> (((dataTempProb * (100 - m_ewmaLevel)) + (station->m_minstrelTable[i].ewmaDataProb * m_ewmaLevel) ) / 100);
+          station->m_minstrelTable[i].ewmaDataProb = dataTempProb;
+          station->m_minstrelTable[i].numDataSuccess = 0;
+          station->m_minstrelTable[i].numDataAttempt = 0;
         }
     }
 }
@@ -1254,9 +1095,15 @@ MinstrelPianoWifiManager::PrintTable (MinstrelPianoWifiRemoteStation *station)
 {
   NS_LOG_DEBUG ("PrintTable=" << station);
 
+  std::cout << "PrintTable = " << station<< "\n";
+
+  std::cout << "index throughput ewmaProb prob success(attempt) successHist attemptHist ewmaRefProb ewmaSampleProb ewmaDataProb\n";
   for (uint32_t i = 0; i < m_nsupported; i++)
     {
-      std::cout << "index(" << i << ") = " << station->m_minstrelTable[i].perfectTxTime << "\n";
+      std::cout << std::setw(2) << i << std::setw(10) << station->m_minstrelTable[i].throughput << std::setw(10) << station->m_minstrelTable[i].ewmaProb << std::setw(10) << station->m_minstrelTable[i].prob
+                  << std::setw(10) << station->m_minstrelTable[i].prevNumRateSuccess << "(" << station->m_minstrelTable[i].prevNumRateAttempt << ")" << std::setw(10) << station->m_minstrelTable[i].successHist
+                  << std::setw(10) << station->m_minstrelTable[i].attemptHist << std::setw(10) << station->m_minstrelTable[i].ewmaRefProb << std::setw(10) << station->m_minstrelTable[i].ewmaSampleProb
+                  << std::setw(10) << station->m_minstrelTable[i].ewmaDataProb <<"\n";
     }
 }
 
