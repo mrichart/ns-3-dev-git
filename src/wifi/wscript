@@ -71,6 +71,7 @@ def build(bld):
         'helper/qos-wifi-mac-helper.cc',
         'model/parf-wifi-manager.cc',
         'model/minstrel-piano-wifi-manager.cc',
+        'model/rule-based-wifi-manager.cc',
         'model/aparf-wifi-manager.cc',
         ]
 
@@ -150,6 +151,7 @@ def build(bld):
         'helper/qos-wifi-mac-helper.h',
         'model/parf-wifi-manager.h',
         'model/minstrel-piano-wifi-manager.h',
+        'model/rule-based-wifi-manager.h',
         'model/aparf-wifi-manager.h',
         ]
 

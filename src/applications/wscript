@@ -1,7 +1,7 @@
 ## -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
 
 def build(bld):
-    module = bld.create_ns3_module('applications', ['internet', 'config-store','stats'])
+    module = bld.create_ns3_module('applications', ['internet', 'config-store','stats', 'wifi'])
     module.source = [
         'model/bulk-send-application.cc',
         'model/onoff-application.cc',
@@ -18,6 +18,8 @@ def build(bld):
         'model/udp-echo-client.cc',
         'model/udp-echo-server.cc',
         'model/v4ping.cc',
+        'model/prc-monitor.cc',
+        'model/prc-pep.cc',
         'helper/bulk-send-helper.cc',
         'helper/on-off-helper.cc',
         'helper/packet-sink-helper.cc',
@@ -50,6 +52,8 @@ def build(bld):
         'model/udp-echo-client.h',
         'model/udp-echo-server.h',
         'model/v4ping.h',
+        'model/prc-monitor.h',
+        'model/prc-pep.h',
         'helper/bulk-send-helper.h',
         'helper/on-off-helper.h',
         'helper/packet-sink-helper.h',
