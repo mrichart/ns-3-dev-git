@@ -949,6 +949,11 @@ MinstrelPianoWifiManager::UpdatePowerStats (MinstrelPianoWifiRemoteStation *stat
           station->m_minstrelTable[i].numSampleSuccess = 0;
           station->m_minstrelTable[i].numSampleAttempt = 0;
 
+          if (station->m_minstrelTable[i].ewmaDataProb < 0.1 || station->m_txrate == 0)
+          {
+        	  RateInit(station);
+          }
+
           if (station->m_minstrelTable[i].ewmaSampleProb < (station->m_minstrelTable[i].ewmaRefProb - m_thInc*18000))
             {
               station->m_minstrelTable[i].samplePower = Min((m_nPower-1),(station->m_minstrelTable[i].samplePower + m_deltaInc));
