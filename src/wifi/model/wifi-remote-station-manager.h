@@ -326,7 +326,10 @@ public:
   WifiRemoteStationInfo GetInfo (Mac48Address address);
   void SetDefaultTxPowerLevel (uint8_t txPower);
 
- uint32_t GetNoOfTransmitters (void);
+  uint32_t GetNoOfTransmitters (void);
+
+   WifiRemoteStation* GetStation (Mac48Address address, uint8_t tid);
+   std::vector <Mac48Address> GetAssociatedStations (void);
 
  protected:
   virtual void DoDispose (void);

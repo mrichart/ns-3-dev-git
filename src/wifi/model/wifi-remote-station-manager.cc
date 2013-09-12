@@ -1261,6 +1261,27 @@ WifiRemoteStationManager::GetNoOfTransmitters (void)
 {
   return m_wifiPhy->GetNumberOfTx();
 }
+
+std::vector <Mac48Address>
+WifiRemoteStationManager::GetAssociatedStations (void)
+{
+  std::vector <Mac48Address> stations;
+  for (Stations::const_iterator i = m_stations.begin (); i != m_stations.end (); i++)
+    {
+	  if ((*i)->m_state->m_state == WifiRemoteStationState::GOT_ASSOC_TX_OK)
+	    {
+	      stations.push_back((*i)->m_state->m_address);
+	    }
+    }
+  return stations;
+}
+
+WifiRemoteStation*
+WifiRemoteStationManager::GetStation (Mac48Address address, uint8_t tid)
+{
+	return Lookup (address, tid);
+}
+
 //WifiRemoteStationInfo constructor
 WifiRemoteStationInfo::WifiRemoteStationInfo ()
   : m_memoryTime (Seconds (1.0)),
