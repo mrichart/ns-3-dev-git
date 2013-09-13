@@ -70,7 +70,7 @@ PrcMonitor::GetTypeId (void)
 				  MakeUintegerAccessor (&PrcMonitor::m_myPort),
 				  MakeUintegerChecker<uint16_t> ())
    .AddAttribute ("UpdateTimer", "Time for updating stats in seconds",
-				  UintegerValue (10),
+				  UintegerValue (1),
 				  MakeUintegerAccessor (&PrcMonitor::m_updateTimer),
 				  MakeUintegerChecker<uint32_t> ())
     ;
@@ -141,7 +141,7 @@ PrcMonitor::SendSub ()
   Ptr<Packet> sub = CreateSubscriptionPacket(filter.str());
   int error = m_socket->Send(sub);
   if (error >= 0)
-	  NS_LOG_INFO("Subscription sent, " << error << " bytes");
+    NS_LOG_INFO("Subscription sent, " << error << " bytes");
 }
 
 void
@@ -160,18 +160,47 @@ PrcMonitor::UpdateStats ()
 
       for (std::vector<Mac48Address>::const_iterator i = stations.begin (); i != stations.end (); i++)
         {
+          /*Send loss rate*/
     	  uint32_t prob = wifiManager->GetStats(*i);
 
-    	  Ptr<Packet> p = CreateTrapPacket("sProb", prob);
+    	  Ptr<Packet> p = CreateTrapPacket("sProb", prob, *i);
 
     	  if ((m_socket->Send(p)) >= 0)
-		    {
-    		  NS_LOG_INFO ("Prob event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " sProb: " << prob);
-		    }
-		  else
-		    {
-			  NS_LOG_INFO ("Error while sending event to the RNR " << m_socket->GetErrno());
-		    }
+    	    {
+    	      NS_LOG_INFO ("Prob event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " sProb: " << prob << " station:" << *i);
+    	    }
+    	  else
+    	    {
+    	      NS_LOG_INFO ("Error while sending event to the RNR " << m_socket->GetErrno());
+    	    }
+
+    	  /*Send current rate*/
+          uint32_t rate = wifiManager->GetCurrentRate(*i);
+
+          p = CreateTrapPacket("rate", rate, *i);
+
+          if ((m_socket->Send(p)) >= 0)
+            {
+              NS_LOG_INFO ("Rate event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " rate: " << rate << " station:" << *i);
+            }
+           else
+            {
+              NS_LOG_INFO ("Error while sending event to the RNR " << m_socket->GetErrno());
+            }
+
+          /*Send current power*/
+          uint8_t power = wifiManager->GetCurrentPower(*i);
+
+          p = CreateTrapPacket("power", power, *i);
+
+          if ((m_socket->Send(p)) >= 0)
+            {
+              NS_LOG_INFO ("Power event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " power: " << (int)power << " station:" << *i);
+            }
+           else
+            {
+              NS_LOG_INFO ("Error while sending event to the RNR " << m_socket->GetErrno());
+            }
         }
     }
   else
@@ -197,7 +226,7 @@ PrcMonitor::ConnectionFailed (Ptr<Socket> socket)
 }
 
 Ptr<Packet>
-PrcMonitor::CreateTrapPacket(std::string mib, uint32_t value)
+PrcMonitor::CreateTrapPacket(std::string mib, uint32_t value, Mac48Address address)
 {
 	Ptr<UniformRandomVariable> urv = CreateObject<UniformRandomVariable> ();
 	uint32_t nid = urv->GetInteger(0, 999999);
@@ -212,6 +241,7 @@ PrcMonitor::CreateTrapPacket(std::string mib, uint32_t value)
     		<< "timestamp=" << Simulator::Now () << "\n"
     		<< "mib=" << mib << "\n"
     		<< "value=" << value << "\n"
+    		<< "station=" << address << "\n"
     		<<"END\n";
 
     size_t size = strlen(msg.str().c_str());
@@ -236,7 +266,7 @@ PrcMonitor::CreateSubscriptionPacket(std::string filter)
     		<< "ttl=" << ttl << "\n"
     		<< "FILTER\n"
     		<< filter
-    		<<"END\n";
+    		<< "END\n";
 
     size_t size = strlen(msg.str().c_str());
     uint8_t* data = new uint8_t [size];

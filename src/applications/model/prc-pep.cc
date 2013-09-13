@@ -142,7 +142,7 @@ PrcPep::SendSub ()
   Ptr<Packet> sub = CreateSubscriptionPacket(filter.str());
   int error = m_socket->Send(sub);
   if (error >= 0)
-	  NS_LOG_INFO("Subscription sent, " << error << " bytes");
+    NS_LOG_INFO("Subscription sent, " << error << " bytes");
 }
 
 void
@@ -150,42 +150,58 @@ PrcPep::HandleRead (Ptr<Socket> socket)
 {
   if (m_connected)
     {
-	  Ptr<Packet> packet;
-	  Ptr<Node> node = GetNode();
-	  Ptr<NetDevice> device = node->GetDevice(1);
-	  Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
-	  Ptr<WifiRemoteStationManager> manager = wifiDevice->GetRemoteStationManager();
-	  Ptr<RuleBasedWifiManager> wifiManager = DynamicCast<RuleBasedWifiManager> (manager);
+      Ptr<Packet> packet;
+      Ptr<Node> node = GetNode();
+      Ptr<NetDevice> device = node->GetDevice(1);
+      Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
+      Ptr<WifiRemoteStationManager> manager = wifiDevice->GetRemoteStationManager();
+      Ptr<RuleBasedWifiManager> wifiManager = DynamicCast<RuleBasedWifiManager> (manager);
 
-	  while (packet = socket->Recv())
-		{
-		  NS_LOG_INFO ("PrcPep: Packet received, " << packet->GetSize() << " bytes");
-		  if (packet->GetSize () > 0)
-			{
-			  Command cmd = ParseActionPacket(packet);
-			  if (cmd.action == "decrease_rate")
-			  {
-				NS_LOG_INFO ("Decrease rate in " << cmd.level << " for station " << cmd.station);
+      while (packet = socket->Recv())
+        {
+          NS_LOG_INFO ("PrcPep: Packet received, " << packet->GetSize() << " bytes");
+          if (packet->GetSize () > 0)
+            {
+              Command cmd = ParseActionPacket(packet);
+              if (cmd.action == "decrease_rate")
+                {
+                  NS_LOG_INFO ("Decrease rate in " << cmd.level << " for station " << cmd.station);
 
-				Mac48Address address = Mac48Address(cmd.station.c_str());
+                  Mac48Address address = Mac48Address(cmd.station.c_str());
 
-				Simulator::Schedule (Seconds(0), &RuleBasedWifiManager::DecreaseRate, wifiManager, address, cmd.level);
-			  }
-			  else if (cmd.action == "increase_rate")
-			  {
-				NS_LOG_INFO ("Increase rate in " << cmd.level << " for station " << cmd.station);
+                  Simulator::Schedule (Seconds(0), &RuleBasedWifiManager::DecreaseRate, wifiManager, address, cmd.level);
+                }
+              else if (cmd.action == "increase_rate")
+                {
+                  NS_LOG_INFO ("Increase rate in " << cmd.level << " for station " << cmd.station);
 
-				Mac48Address address = Mac48Address(cmd.station.c_str());
+                  Mac48Address address = Mac48Address(cmd.station.c_str());
 
-				Simulator::Schedule (Seconds(0), &RuleBasedWifiManager::IncreaseRate, wifiManager, address, cmd.level);
-			  }
-			}
-		}
+                  Simulator::Schedule (Seconds(0), &RuleBasedWifiManager::IncreaseRate, wifiManager, address, cmd.level);
+                }
+              else if (cmd.action == "decrease_power")
+                {
+                  NS_LOG_INFO ("Decrease power in " << cmd.level << " for station " << cmd.station);
+
+                  Mac48Address address = Mac48Address(cmd.station.c_str());
+
+                  Simulator::Schedule (Seconds(0), &RuleBasedWifiManager::DecreasePower, wifiManager, address, cmd.level);
+                }
+              else if (cmd.action == "increase_power")
+                {
+                  NS_LOG_INFO ("Increase power in " << cmd.level << " for station " << cmd.station);
+
+                  Mac48Address address = Mac48Address(cmd.station.c_str());
+
+                  Simulator::Schedule (Seconds(0), &RuleBasedWifiManager::IncreasePower, wifiManager, address, cmd.level);
+                }
+            }
+        }
     }
   else
-  {
-	  NS_LOG_INFO ("PrcPep: Error in HandleRead, not connected");
-  }
+    {
+      NS_LOG_INFO ("PrcPep: Error in HandleRead, not connected");
+    }
   m_socket->SetRecvCallback (MakeCallback (&PrcPep::HandleRead, this));
 }
 
@@ -209,7 +225,7 @@ Command
 PrcPep::ParseActionPacket(Ptr<Packet> p)
 {
     std::ostringstream msg;
-    msg << p->PeekData();
+    msg << p->PeekData() << "\n";
     NS_LOG_INFO ("***PrcPep, parsing message***");
     NS_LOG_INFO (msg.str());
     size_t ini = msg.str().find("command=", 0);

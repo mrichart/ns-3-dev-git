@@ -60,6 +60,8 @@ public:
   void DecreasePower (Mac48Address address, uint32_t levels);
   void IncreasePower (Mac48Address address, uint32_t levels);
   uint32_t GetStats (Mac48Address address);
+  uint32_t GetCurrentRate (Mac48Address address);
+  uint8_t GetCurrentPower (Mac48Address address);
 
 private:
   // overriden from base class

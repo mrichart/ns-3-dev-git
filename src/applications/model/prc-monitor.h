@@ -63,7 +63,7 @@ private:
 
   void UpdateStats (void);
   
-  Ptr<Packet> CreateTrapPacket(std::string mib, uint32_t value);
+  Ptr<Packet> CreateTrapPacket(std::string mib, uint32_t value, Mac48Address address);
 
   /**
    * \brief create a Packet with a suscription

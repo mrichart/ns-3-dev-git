@@ -64,8 +64,8 @@ RuleBasedWifiManager::GetTypeId (void)
     .SetParent<WifiRemoteStationManager> ()
     .AddConstructor<RuleBasedWifiManager> ()
 	.AddTraceSource ("DoGetDataTxVector",
-				   "A TxVector is ask for a new data frame",
-					MakeTraceSourceAccessor (&RuleBasedWifiManager::m_getDataTxVector))
+       "A TxVector is ask for a new data frame",
+            MakeTraceSourceAccessor (&RuleBasedWifiManager::m_getDataTxVector))
   ;
   return tid;
 }
@@ -297,7 +297,7 @@ RuleBasedWifiManager::GetStats (Mac48Address address)
   uint8_t tid = 0;
   RuleBasedWifiRemoteStation *station = (RuleBasedWifiRemoteStation *) GetStation (address, tid);
 
-  uint32_t prob = 1;
+  uint32_t prob = 0;
 
   if (station->m_attempt)
   {
@@ -308,6 +308,28 @@ RuleBasedWifiManager::GetStats (Mac48Address address)
 
   NS_LOG_DEBUG ("prob=" << prob);
   return prob;
+}
+
+uint32_t
+RuleBasedWifiManager::GetCurrentRate (Mac48Address address)
+{
+  NS_LOG_DEBUG ("Updating stats=" << this);
+
+  uint8_t tid = 0;
+  RuleBasedWifiRemoteStation *station = (RuleBasedWifiRemoteStation *) GetStation (address, tid);
+
+  return station->m_rate;
+}
+
+uint8_t
+RuleBasedWifiManager::GetCurrentPower (Mac48Address address)
+{
+  NS_LOG_DEBUG ("Updating stats=" << this);
+
+  uint8_t tid = 0;
+  RuleBasedWifiRemoteStation *station = (RuleBasedWifiRemoteStation *) GetStation (address, tid);
+
+  return station->m_power;
 }
 
 } // namespace ns3
