@@ -179,7 +179,7 @@ ThroughputCounter::PhyCallback (std::string path, Ptr<const Packet> packet)
 {
   totalPower += actualPower * GetCalcTxTime(actualMode).GetSeconds();
   totalTime += GetCalcTxTime(actualMode).GetSeconds();
-  //NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << actualMode.GetDataRate()/1000000 << " " << (int)actualPower);
+  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << actualMode.GetDataRate()/1000000 << " " << (int)actualPower);
 }
 
 void
@@ -492,16 +492,16 @@ int main (int argc, char *argv[])
 
   if (manager == 0)
     {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/PowerChange",
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/PowerChange",
                                     MakeCallback (&ThroughputCounter::PowerCallback, atmCounter));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/RateChange",
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/RateChange",
                                     MakeCallback (&ThroughputCounter::RateCallback, atmCounter));
     }
   else if (manager == 1)
     {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/PowerChange",
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/PowerChange",
                                     MakeCallback (&ThroughputCounter::PowerCallback, atmCounter));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/RateChange",
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/RateChange",
                                     MakeCallback (&ThroughputCounter::RateCallback, atmCounter));
     }
   else if (manager == 2)
