@@ -59,6 +59,11 @@ private:
 
   WifiMode m_dataMode;
   WifiMode m_ctlMode;
+
+  /**
+   * The trace source fired when a txVector is asked
+   */
+  TracedCallback<WifiTxVector> m_getDataTxVector;
 };
 
 } // namespace ns3

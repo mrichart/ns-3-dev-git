@@ -5,6 +5,7 @@
 
 #include <sstream>
 #include <fstream>
+#include <math.h>
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -21,19 +22,47 @@
 using namespace ns3;
 using namespace std;
 
-NS_LOG_COMPONENT_DEFINE ("PowerExperiment2Links");
+NS_LOG_COMPONENT_DEFINE ("PowerExperimentDistance");
 
-void PowerCallback (std::string path, uint8_t power) {
-  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << path << " " <<  (int)power);
-  // end PowerCallback
+static void
+SetPosition (Ptr<Node> node, Vector position)
+{
+  Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
+  mobility->SetPosition (position);
 }
 
-void RateCallback (std::string path, uint32_t rate) {
-  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << path << " " <<  rate);
-  // end PowerCallback
+static Vector
+GetPosition (Ptr<Node> node)
+{
+  Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
+  return mobility->GetPosition ();
 }
 
-void TxVectorCallback (std::string path, WifiTxVector vector) {
+static void
+AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
+{
+  Vector pos = GetPosition (node);
+  pos.x += stepsSize;
+  SetPosition (node, pos);
+  //std::cout << "x="<<pos.x << std::endl;
+  Simulator::Schedule (Seconds (stepsTime), &AdvancePosition, node, stepsSize, stepsTime);
+}
+
+void
+PowerCallback (std::string path, uint8_t power)
+{
+  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << (int)power);
+}
+
+void
+RateCallback (std::string path, uint32_t rate)
+{
+  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << rate);
+}
+
+void
+TxVectorCallback (std::string path, WifiTxVector vector)
+{
   NS_LOG_UNCOND (path << " " << (Simulator::Now ()).GetSeconds () << " " <<  vector.GetMode().GetDataRate()/1000000  << " " << (int)vector.GetTxPowerLevel());
 }
 
@@ -52,7 +81,7 @@ public:
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void PowerCallback (std::string path, uint8_t power);
   void RateCallback (std::string path, uint32_t rate);
-  void CheckThroughput (double time);
+  void CheckThroughput (int time);
   void TxVectorCallback (std::string path, WifiTxVector vector);
   void StateCallback (std::string path, Time init, Time duration, enum WifiPhy::State state);
   Gnuplot2dDataset GetDatafile();
@@ -148,7 +177,7 @@ ThroughputCounter::SetupPhy (Ptr<WifiPhy> phy)
       txVector.SetMode(mode);
       timeTable.push_back (std::make_pair (phy->CalculateTxDuration (1420, txVector, WIFI_PREAMBLE_LONG), mode));
     }
-  actualMode = phy->GetMode (0);
+  actualMode = phy->GetMode (3);
 }
 
 Time
@@ -179,7 +208,7 @@ ThroughputCounter::PhyCallback (std::string path, Ptr<const Packet> packet)
 {
   totalPower += actualPower * GetCalcTxTime(actualMode).GetSeconds();
   totalTime += GetCalcTxTime(actualMode).GetSeconds();
-  NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << actualMode.GetDataRate()/1000000 << " " << (int)actualPower);
+  //NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << actualMode.GetDataRate()/1000000 << " " << (int)actualPower);
 }
 
 void
@@ -232,36 +261,36 @@ void
 ThroughputCounter::StateCallback (std::string path, Time init, Time duration, enum WifiPhy::State state) {
   if (state == WifiPhy::CCA_BUSY)
   {
-          busyTime += duration.GetSeconds();
-          totalBusyTime += duration.GetSeconds();
+	  busyTime += duration.GetSeconds();
+	  totalBusyTime += duration.GetSeconds();
   }
   else if (state == WifiPhy::IDLE)
   {
-          idleTime += duration.GetSeconds();
+	  idleTime += duration.GetSeconds();
       totalIdleTime += duration.GetSeconds();
   }
   else if (state == WifiPhy::TX)
   {
-          txTime += duration.GetSeconds();
-          totalTxTime += duration.GetSeconds();
+	  txTime += duration.GetSeconds();
+  	  totalTxTime += duration.GetSeconds();
   }
   else if (state == WifiPhy::RX)
   {
-          rxTime += duration.GetSeconds();
-          totalRxTime += duration.GetSeconds();
+	  rxTime += duration.GetSeconds();
+  	  totalRxTime += duration.GetSeconds();
   }
 }
 
 void
-ThroughputCounter::CheckThroughput(double time)
+ThroughputCounter::CheckThroughput(int time)
 {
   double mbs = ((bytesTotal * 8.0) / (time*1000000));
   double atm = pow (10, ((totalPower / time) / 10));
   totalPower = 0;
   totalTime = 0;
   bytesTotal = 0;
-  m_output.Add ((Simulator::Now ()).GetSeconds (), mbs);
-  m_output_power.Add ((Simulator::Now ()).GetSeconds (), atm);
+  m_output.Add ((Simulator::Now ()).GetSeconds () - 20, mbs);
+  m_output_power.Add ((Simulator::Now ()).GetSeconds () - 20, atm);
   Simulator::Schedule (Seconds (time), &ThroughputCounter::CheckThroughput, this, time);
 }
 
@@ -310,7 +339,8 @@ ThroughputCounter::GetBusyTime()
 
 int main (int argc, char *argv[])
 {
-  //LogComponentEnable("ns3::ParfWifiManager", LOG_LEVEL_DEBUG);
+  //LogComponentEnable("DcaTxop", LOG_LEVEL_DEBUG);
+  //LogComponentEnable("MacLow", LOG_LEVEL_DEBUG);
 
   double maxPower = 17;
   double minPower = 0;
@@ -318,18 +348,18 @@ int main (int argc, char *argv[])
 
   int ap1_x = 0;
   int ap1_y = 0;
-  int sta1_x = 10;
+  int sta1_x = 0;
   int sta1_y = 0;
-  int ap2_x = 200;
-  int ap2_y = 0;
-  int sta2_x = 180;
-  int sta2_y = 0;
   int manager = 0;
-  int simuTime = 100;
+  int steps = 20;
+  int stepsSize = 10;
+  int stepsTime = 10;
 
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager: 0-PARF, 1-APARF, 2-Minstrel-Piano, 3-Rule-Based 4-Aarf(fixed max power)", manager);
-  cmd.AddValue ("simuTime", "Total simulation time", simuTime);
+  cmd.AddValue ("steps", "How many different distances to try", steps);
+  cmd.AddValue ("stepsTime", "Time on each step", stepsTime);
+  cmd.AddValue ("stepsSize", "Distance between steps", stepsSize);
   cmd.AddValue ("maxPower", "Maximum available transmission level (dbm).", maxPower);
   cmd.AddValue ("minPower", "Minimum available transmission level (dbm).", minPower);
   cmd.AddValue ("powerLevels", "Number of transmission power levels available between "
@@ -338,19 +368,17 @@ int main (int argc, char *argv[])
   cmd.AddValue ("AP1_y", "Position of AP1 in y coordinate", ap1_y);
   cmd.AddValue ("STA1_x", "Position of STA1 in x coordinate", sta1_x);
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
-  cmd.AddValue ("AP2_x", "Position of AP2 in x coordinate", ap2_x);
-  cmd.AddValue ("AP2_y", "Position of AP2 in y coordinate", ap2_y);
-  cmd.AddValue ("STA2_x", "Position of STA2 in x coordinate", sta2_x);
-  cmd.AddValue ("STA2_y", "Position of STA2 in y coordinate", sta2_y);
   cmd.Parse (argc, argv);
+
+  int simuTime = steps*stepsTime + 2*stepsTime;
 
   // Define the APs
   NodeContainer wifiApNodes;
-  wifiApNodes.Create (2);
+  wifiApNodes.Create (1);
 
   //Define the STAs
   NodeContainer wifiStaNodes;
-  wifiStaNodes.Create(2);
+  wifiStaNodes.Create(1);
 
   WifiHelper wifi = WifiHelper::Default ();
 
@@ -376,15 +404,10 @@ int main (int argc, char *argv[])
 
   Ssid ssid = Ssid ("AP0");
   wifiMac.SetType ("ns3::StaWifiMac",
-		  	  	  "Ssid", SsidValue (ssid),
-		  	  	  "ActiveProbing", BooleanValue (false));
+                  "Ssid", SsidValue (ssid),
+                  "ActiveProbing", BooleanValue (false));
   wifiStaDevices.Add(wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get(0)));
 
-  ssid = Ssid ("AP1");
-  wifiMac.SetType ("ns3::StaWifiMac",
-        	  	  "Ssid", SsidValue (ssid),
-  		  	  	  "ActiveProbing", BooleanValue (false));
-  wifiStaDevices.Add(wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get(1)));
 
   if (manager == 0)
     {
@@ -400,15 +423,19 @@ int main (int argc, char *argv[])
     }
   else if (manager == 3)
     {
-      wifi.SetRemoteStationManager ("ns3::RuleBasedWifiManager", "DefaultTxPowerLevel", UintegerValue(maxPower));
+	  wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+	  minPower = 17;
+	  powerLevels = 1;
     }
   else if (manager == 4)
     {
-      wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+	  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode",StringValue ("ErpOfdmRate6Mbps"));
+	  minPower = 17;
+	  powerLevels = 1;
     }
   else
     {
-      wifi.SetRemoteStationManager ("ns3::MinstrelWifiManager");
+
     }
 
   wifiPhy.Set("TxPowerStart", DoubleValue(minPower));
@@ -417,14 +444,8 @@ int main (int argc, char *argv[])
 
   ssid = Ssid ("AP0");
   wifiMac.SetType ("ns3::ApWifiMac",
-		  	  	  "Ssid", SsidValue (ssid));
+                  "Ssid", SsidValue (ssid));
   wifiApDevices.Add(wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get(0)));
-
-  ssid = Ssid ("AP1");
-  wifiMac.SetType ("ns3::ApWifiMac",
-  		  	  	  "Ssid", SsidValue (ssid),
-                  "BeaconInterval", TimeValue(MicroSeconds(103424))); //for avoiding collisions);
-  wifiApDevices.Add(wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get(1)));
 
   wifiDevices.Add(wifiStaDevices);
   wifiDevices.Add(wifiApDevices);
@@ -434,16 +455,12 @@ int main (int argc, char *argv[])
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   positionAlloc->Add (Vector (ap1_x, ap1_y, 0.0));
   positionAlloc->Add (Vector (sta1_x, sta1_y, 0.0));
-  positionAlloc->Add (Vector (ap2_x, ap2_y, 0.0));
-  positionAlloc->Add (Vector (sta2_x, sta2_y, 0.0));
   mobility.SetPositionAllocator (positionAlloc);
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (wifiApNodes.Get(0));
   mobility.Install (wifiStaNodes.Get(0));
-  mobility.Install (wifiApNodes.Get(1));
-  mobility.Install (wifiStaNodes.Get(1));
 
-  //Simulator::Schedule (Seconds (3.0), &AdvancePosition, wifiStaNodes.Get (0));
+  Simulator::Schedule (Seconds (stepsTime*2), &AdvancePosition, wifiStaNodes.Get (0), stepsSize, stepsTime);
 
   InternetStackHelper stack;
   stack.Install (wifiApNodes);
@@ -460,29 +477,25 @@ int main (int argc, char *argv[])
   PacketSinkHelper sink ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
   ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
 
-  Ipv4Address sinkAddress1 = i.GetAddress(1);
-
-  PacketSinkHelper sink1 ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress1, port));
-  apps_sink.Add(sink1.Install (wifiStaNodes.Get (1)));
-
   OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
   onoff.SetConstantRate (DataRate ("54Mb/s"), 1420);
   onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
-  onoff.SetAttribute ("StopTime", TimeValue (Seconds (100.0)));
+  onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   ApplicationContainer apps_source = onoff.Install (wifiApNodes.Get (0));
 
-  OnOffHelper onoff1 ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress1, port));
-  onoff1.SetConstantRate (DataRate ("54Mb/s"), 1420);
-  onoff1.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
-  onoff1.SetAttribute ("StopTime", TimeValue (Seconds (100.0)));
-  apps_source.Add(onoff1.Install (wifiApNodes.Get (1)));
-
   apps_sink.Start (Seconds (0.0));
-  apps_sink.Stop (Seconds (100.0));
+  apps_sink.Stop (Seconds (simuTime));
 
     //------------------------------------------------------------
     //-- Setup stats and data collection
     //--------------------------------------------
+
+  ThroughputCounter* throughputCounter = new ThroughputCounter();
+
+  Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
+    				MakeCallback (&ThroughputCounter::RxCallback, throughputCounter));
+
+  throughputCounter->CheckThroughput(stepsTime);
 
   Ptr<NetDevice> device = wifiApDevices.Get(0);
   Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
@@ -492,16 +505,16 @@ int main (int argc, char *argv[])
 
   if (manager == 0)
     {
-      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/PowerChange",
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/PowerChange",
                                     MakeCallback (&ThroughputCounter::PowerCallback, atmCounter));
-      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/RateChange",
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ParfWifiManager/RateChange",
                                     MakeCallback (&ThroughputCounter::RateCallback, atmCounter));
     }
   else if (manager == 1)
     {
-      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/PowerChange",
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/PowerChange",
                                     MakeCallback (&ThroughputCounter::PowerCallback, atmCounter));
-      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/RateChange",
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AparfWifiManager/RateChange",
                                     MakeCallback (&ThroughputCounter::RateCallback, atmCounter));
     }
   else if (manager == 2)
@@ -513,103 +526,38 @@ int main (int argc, char *argv[])
     }
   else if (manager == 3)
     {
-    }
-  else if (manager == 4)
-    {
       Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::AarfWifiManager/RateChange",
                                     MakeCallback (&ThroughputCounter::RateCallback, atmCounter));
     }
   else
     {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::MinstrelWifiManager/RateChange",
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::ConstantRateWifiManager/RateChange",
                                     MakeCallback (&ThroughputCounter::RateCallback, atmCounter));
     }
 
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
                     MakeCallback (&ThroughputCounter::PhyCallback, atmCounter));
 
-  atmCounter->CheckThroughput(0.1);
-
-  ThroughputCounter* throughputCounter = new ThroughputCounter();
-
-  Config::Connect ("/NodeList/2/ApplicationList/*/$ns3::PacketSink/Rx",
-                                MakeCallback (&ThroughputCounter::RxCallback, throughputCounter));
-
-  throughputCounter->CheckThroughput(0.1);
-
-  ThroughputCounter* throughputCounter2 = new ThroughputCounter();
-
-  Config::Connect ("/NodeList/3/ApplicationList/*/$ns3::PacketSink/Rx",
-    				MakeCallback (&ThroughputCounter::RxCallback, throughputCounter2));
-
-  throughputCounter2->CheckThroughput(0.1);
-
-  ThroughputCounter* stateCounter = new ThroughputCounter();
-
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/$ns3::YansWifiPhy/State/State",
-                    MakeCallback (&ThroughputCounter::StateCallback, stateCounter));
-
-  //stateCounter->CheckTime();
-
-  ThroughputCounter* stateCounter2 = new ThroughputCounter();
-
-  Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/$ns3::YansWifiPhy/State/State",
-                    MakeCallback (&ThroughputCounter::StateCallback, stateCounter2));
-
-//  stateCounter2->CheckTime();
-
-
-  // Calculate Throughput using Flowmonitor
-  //
-  FlowMonitorHelper flowmon;
-  Ptr<FlowMonitor> monitor = flowmon.InstallAll();
+  atmCounter->CheckThroughput(stepsTime);
 
   Simulator::Stop (Seconds (simuTime));
   Simulator::Run ();
 
-
-    //monitor->CheckForLostPackets ();
-
-  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
-  std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
-    {
-  	Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-      if ((t.sourceAddress=="10.1.1.3" && t.destinationAddress == "10.1.1.1"))
-        {
-    	  NS_LOG_UNCOND("Flow " << i->first  << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n");
-          NS_LOG_UNCOND("  Tx Bytes:   " << i->second.txBytes << "\n");
-          NS_LOG_UNCOND("  Rx Bytes:   " << i->second.rxBytes << "\n");
-          NS_LOG_UNCOND("  Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024  << " Mbps\n");
-		  NS_LOG_UNCOND("  Mean delay:   " << i->second.delaySum.GetSeconds() / i->second.rxPackets << "\n");
-		  NS_LOG_UNCOND("  Mean jitter:   " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1) << "\n");
-          NS_LOG_UNCOND("  Tx Opp: " << 1 - (stateCounter->GetBusyTime() / simuTime));
-        }
-      if ((t.sourceAddress=="10.1.1.4" && t.destinationAddress == "10.1.1.2"))
-		{
-		  NS_LOG_UNCOND("Flow " << i->first  << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n");
-		  NS_LOG_UNCOND("  Tx Bytes:   " << i->second.txBytes << "\n");
-		  NS_LOG_UNCOND("  Rx Bytes:   " << i->second.rxBytes << "\n");
-		  NS_LOG_UNCOND("  Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024  << " Mbps\n");
-		  NS_LOG_UNCOND("  Mean delay:   " << i->second.delaySum.GetSeconds() / i->second.rxPackets << "\n");
-		  NS_LOG_UNCOND("  Mean jitter:   " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1) << "\n");
-          NS_LOG_UNCOND("  Tx Opp: " << 1 - (stateCounter2->GetBusyTime() / simuTime));
-		}
-    }
-
-
-
-  std::ofstream outfile ("throughput.plt");
+  stringstream name;
+  name << "throughput-" << manager << "-" << RngSeedManager::GetRun () << "-" << sta1_x << ".txt";
+  std::ofstream outfile (name.str().c_str());
   Gnuplot gnuplot = Gnuplot("th-link1.eps", "Throughput");
   gnuplot.SetTerminal("post eps color enhanced");
   gnuplot.AddDataset (throughputCounter->GetDatafile());
   gnuplot.GenerateOutput (outfile);
 
-  std::ofstream outfile2 ("throughput2.plt");
-  gnuplot = Gnuplot("th-link2.eps", "Throughput");
-  gnuplot.SetTerminal("post eps enhanced");
-  gnuplot.AddDataset (throughputCounter2->GetDatafile());
-  gnuplot.GenerateOutput (outfile2);
+  stringstream name2;
+  name2 << "power-" << manager << "-" << RngSeedManager::GetRun () << "-" << sta1_x <<  ".txt";
+  std::ofstream outfilePower (name2.str().c_str());
+  gnuplot = Gnuplot("pow-link1.eps", "Average Transmit Power");
+  gnuplot.SetTerminal("post eps color enhanced");
+  gnuplot.AddDataset (atmCounter->GetPowerDatafile());
+  gnuplot.GenerateOutput (outfilePower);
 
   Simulator::Destroy ();
 

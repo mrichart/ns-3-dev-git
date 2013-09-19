@@ -242,7 +242,7 @@ int main (int argc, char *argv[])
   NetDeviceContainer wifiDevices;
 
   //wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode",StringValue ("ErpOfdmRate12Mbps"));
-  wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+  wifi.SetRemoteStationManager ("ns3::AarfWifiManager", "RtsCtsThreshold", UintegerValue(3000));
   wifiPhy.Set("TxPowerStart", DoubleValue(17));
   wifiPhy.Set("TxPowerEnd", DoubleValue(17));
 
@@ -258,7 +258,7 @@ int main (int argc, char *argv[])
   		  	  	  "ActiveProbing", BooleanValue (false));
   wifiStaDevices.Add(wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get(1)));
 
-      wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+      wifi.SetRemoteStationManager ("ns3::AarfWifiManager", "RtsCtsThreshold", UintegerValue(3000));
 
 
   wifiPhy.Set("TxPowerStart", DoubleValue(minPower1));
@@ -397,8 +397,8 @@ int main (int argc, char *argv[])
           NS_LOG_UNCOND("  Rx Bytes:   " << i->second.rxBytes << "\n");
           NS_LOG_UNCOND("  Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024  << " Mbps\n");
 		  NS_LOG_UNCOND("  Mean delay:   " << i->second.delaySum.GetSeconds() / i->second.rxPackets << "\n");
-		  NS_LOG_UNCOND("  Mean jitter:   " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1) << "\n");
-          NS_LOG_UNCOND("  Tx Opp: " << 1 - (stateCounter->GetBusyTime() / simuTime));*/
+		  NS_LOG_UNCOND("  Mean jitter:   " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1) << "\n");*/
+          NS_LOG_UNCOND("  Tx Opp: " << 1 - (stateCounter->GetBusyTime() / simuTime));
 		  NS_LOG_UNCOND(i->first << "," << maxPower1 << "," << maxPower2 << "," << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024);
 
         }
@@ -410,7 +410,7 @@ int main (int argc, char *argv[])
 		  NS_LOG_UNCOND(i->first << "," << maxPower1 << "," << maxPower2 << "," << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024);
 		  //NS_LOG_UNCOND("  Mean delay:   " << i->second.delaySum.GetSeconds() / i->second.rxPackets << "\n");
 		  //NS_LOG_UNCOND("  Mean jitter:   " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1) << "\n");
-          //NS_LOG_UNCOND("  Tx Opp: " << 1 - (stateCounter2->GetBusyTime() / simuTime));
+          NS_LOG_UNCOND("  Tx Opp: " << 1 - (stateCounter2->GetBusyTime() / simuTime));
 		}
     }
 
