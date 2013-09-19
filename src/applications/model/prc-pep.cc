@@ -226,8 +226,8 @@ PrcPep::ParseActionPacket(Ptr<Packet> p)
 {
     std::ostringstream msg;
     msg << p->PeekData() << "\n";
-    NS_LOG_INFO ("***PrcPep, parsing message***");
-    NS_LOG_INFO (msg.str());
+    //NS_LOG_INFO ("***PrcPep, parsing message***");
+    //NS_LOG_INFO (msg.str());
     size_t ini = msg.str().find("command=", 0);
     size_t end = msg.str().find("\n", ini);
     std::string action = "NULL";

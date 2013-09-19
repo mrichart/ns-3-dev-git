@@ -160,14 +160,29 @@ PrcMonitor::UpdateStats ()
 
       for (std::vector<Mac48Address>::const_iterator i = stations.begin (); i != stations.end (); i++)
         {
-          /*Send loss rate*/
-    	  uint32_t prob = wifiManager->GetStats(*i);
+          Ptr<Packet> p;
 
-    	  Ptr<Packet> p = CreateTrapPacket("loss", (1-prob), *i);
+          uint8_t power = wifiManager->GetCurrentPower(*i);
+
+                    p = CreateTrapPacket("power", power, *i);
+
+                    if ((m_socket->Send(p)) >= 0)
+                      {
+                        NS_LOG_INFO ("Power event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " power: " << (int)power << " station:" << *i);
+                      }
+                     else
+                      {
+                        NS_LOG_INFO ("Error while sending event to the RNR " << m_socket->GetErrno());
+                      }
+
+          /*Send loss rate*/
+    	  double loss = 1 - wifiManager->GetStats(*i);
+
+    	  p = CreateTrapPacket("loss", loss, *i);
 
     	  if ((m_socket->Send(p)) >= 0)
     	    {
-    	      NS_LOG_INFO ("Prob event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " loss: " << (1-prob) << " station:" << *i);
+    	      NS_LOG_INFO ("Prob event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " loss: " << loss << " station:" << *i);
     	    }
     	  else
     	    {
@@ -189,18 +204,7 @@ PrcMonitor::UpdateStats ()
             }*/
 
           /*Send current power*/
-          uint8_t power = wifiManager->GetCurrentPower(*i);
 
-          p = CreateTrapPacket("power", power, *i);
-
-          if ((m_socket->Send(p)) >= 0)
-            {
-              NS_LOG_INFO ("Power event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " power: " << (int)power << " station:" << *i);
-            }
-           else
-            {
-              NS_LOG_INFO ("Error while sending event to the RNR " << m_socket->GetErrno());
-            }
         }
     }
   else
@@ -226,7 +230,7 @@ PrcMonitor::ConnectionFailed (Ptr<Socket> socket)
 }
 
 Ptr<Packet>
-PrcMonitor::CreateTrapPacket(std::string mib, uint32_t value, Mac48Address address)
+PrcMonitor::CreateTrapPacket(std::string mib, double value, Mac48Address address)
 {
 	Ptr<UniformRandomVariable> urv = CreateObject<UniformRandomVariable> ();
 	uint32_t nid = urv->GetInteger(0, 999999);

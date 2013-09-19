@@ -289,7 +289,7 @@ RuleBasedWifiManager::IncreasePower (Mac48Address address, uint32_t levels)
     }
 }
 
-uint32_t
+double
 RuleBasedWifiManager::GetStats (Mac48Address address)
 {
   NS_LOG_DEBUG ("Updating stats=" << this);
@@ -297,11 +297,13 @@ RuleBasedWifiManager::GetStats (Mac48Address address)
   uint8_t tid = 0;
   RuleBasedWifiRemoteStation *station = (RuleBasedWifiRemoteStation *) GetStation (address, tid);
 
-  uint32_t prob = 0;
+  double prob = 0;
+
+  NS_LOG_DEBUG ("GET STATS=" << station->m_success << " " << station->m_attempt);
 
   if (station->m_attempt)
   {
-	  prob = station->m_success / station->m_attempt;
+	  prob = ((double)station->m_success) / ((double)station->m_attempt);
   }
   station->m_success = 0;
   station->m_attempt = 0;
