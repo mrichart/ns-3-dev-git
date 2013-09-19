@@ -163,11 +163,11 @@ PrcMonitor::UpdateStats ()
           /*Send loss rate*/
     	  uint32_t prob = wifiManager->GetStats(*i);
 
-    	  Ptr<Packet> p = CreateTrapPacket("loss", prob, *i);
+    	  Ptr<Packet> p = CreateTrapPacket("loss", (1-prob), *i);
 
     	  if ((m_socket->Send(p)) >= 0)
     	    {
-    	      NS_LOG_INFO ("Prob event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " loss: " << prob << " station:" << *i);
+    	      NS_LOG_INFO ("Prob event sent to RNR" << " Time: " << (Simulator::Now ()).GetSeconds () << " loss: " << (1-prob) << " station:" << *i);
     	    }
     	  else
     	    {
@@ -175,7 +175,7 @@ PrcMonitor::UpdateStats ()
     	    }
 
     	  /*Send current rate*/
-          uint32_t rate = wifiManager->GetCurrentRate(*i);
+          /*uint32_t rate = wifiManager->GetCurrentRate(*i);
 
           p = CreateTrapPacket("rate", rate, *i);
 
@@ -186,7 +186,7 @@ PrcMonitor::UpdateStats ()
            else
             {
               NS_LOG_INFO ("Error while sending event to the RNR " << m_socket->GetErrno());
-            }
+            }*/
 
           /*Send current power*/
           uint8_t power = wifiManager->GetCurrentPower(*i);
