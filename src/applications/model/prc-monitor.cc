@@ -70,7 +70,7 @@ PrcMonitor::GetTypeId (void)
 				  MakeUintegerAccessor (&PrcMonitor::m_myPort),
 				  MakeUintegerChecker<uint16_t> ())
    .AddAttribute ("UpdateTimer", "Time for updating stats in seconds",
-				  UintegerValue (1),
+				  UintegerValue (2),
 				  MakeUintegerAccessor (&PrcMonitor::m_updateTimer),
 				  MakeUintegerChecker<uint32_t> ())
     ;
