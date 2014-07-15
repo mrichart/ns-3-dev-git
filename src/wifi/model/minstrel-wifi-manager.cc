@@ -969,9 +969,9 @@ MinstrelWifiManager::PrintSampleTable (MinstrelWifiRemoteStation *station)
     {
       for (uint32_t j = 0; j < m_sampleCol; j++)
         {
-          std::cout << station->m_sampleTable[i][j] << "\t";
+          NS_LOG_DEBUG(station->m_sampleTable[i][j] << "\t");
         }
-      std::cout << std::endl;
+      NS_LOG_DEBUG("\n");
     }
 }
 
