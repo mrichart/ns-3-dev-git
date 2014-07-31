@@ -354,7 +354,7 @@ int main (int argc, char *argv[])
   wifiStaNodes.Create(2);
 
   WifiHelper wifi = WifiHelper::Default ();
-  wifi.SetStandard(WIFI_PHY_STANDARD_80211g);
+  wifi.SetStandard(WIFI_PHY_STANDARD_80211a);
   NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
@@ -457,38 +457,38 @@ int main (int argc, char *argv[])
   //--------------------------------------------
 
   //Statics counters
-  APStatics* staticsCounterAp0 = new APStatics(wifiApDevices, wifiStaDevices);
-  APStatics* staticsCounterAp1 = new APStatics(wifiApDevices, wifiStaDevices);
+  APStatics staticsCounterAp0 = APStatics(wifiApDevices, wifiStaDevices);
+  APStatics staticsCounterAp1 = APStatics(wifiApDevices, wifiStaDevices);
 
   //Register packet receptions to calculate throughput
   Config::Connect ("/NodeList/2/ApplicationList/*/$ns3::PacketSink/Rx",
-                   MakeCallback (&APStatics::RxCallback, staticsCounterAp0));
+                   MakeCallback (&APStatics::RxCallback, &staticsCounterAp0));
   Config::Connect ("/NodeList/3/ApplicationList/*/$ns3::PacketSink/Rx",
-                   MakeCallback (&APStatics::RxCallback, staticsCounterAp1));
+                   MakeCallback (&APStatics::RxCallback, &staticsCounterAp1));
 
   //Register power and rate changes to calculate the Average Transmit Power
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                   MakeCallback (&APStatics::PowerCallback, staticsCounterAp0));
+                   MakeCallback (&APStatics::PowerCallback, &staticsCounterAp0));
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                   MakeCallback (&APStatics::RateCallback, staticsCounterAp0));
+                   MakeCallback (&APStatics::RateCallback, &staticsCounterAp0));
   Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                   MakeCallback (&APStatics::PowerCallback, staticsCounterAp1));
+                   MakeCallback (&APStatics::PowerCallback, &staticsCounterAp1));
   Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                   MakeCallback (&APStatics::RateCallback, staticsCounterAp1));
+                   MakeCallback (&APStatics::RateCallback, &staticsCounterAp1));
 
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
-                   MakeCallback (&APStatics::PhyCallback, staticsCounterAp0));
+                   MakeCallback (&APStatics::PhyCallback, &staticsCounterAp0));
   Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
-                   MakeCallback (&APStatics::PhyCallback, staticsCounterAp1));
+                   MakeCallback (&APStatics::PhyCallback, &staticsCounterAp1));
 
   //Register States
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/$ns3::YansWifiPhy/State/State",
-                    MakeCallback (&APStatics::StateCallback, staticsCounterAp0));
+                    MakeCallback (&APStatics::StateCallback, &staticsCounterAp0));
   Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/$ns3::YansWifiPhy/State/State",
-                    MakeCallback (&APStatics::StateCallback, staticsCounterAp1));
+                    MakeCallback (&APStatics::StateCallback, &staticsCounterAp1));
 
-  staticsCounterAp0->CheckStatics(1);
-  staticsCounterAp1->CheckStatics(1);
+  staticsCounterAp0.CheckStatics(1);
+  staticsCounterAp1.CheckStatics(1);
 
   //Callbacks to print every change of power and rate
   Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
@@ -519,7 +519,7 @@ int main (int argc, char *argv[])
           NS_LOG_UNCOND("  Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024  << " Mbps\n");
           NS_LOG_INFO("  Mean delay:   " << i->second.delaySum.GetSeconds() / i->second.rxPackets << "\n");
           NS_LOG_INFO("  Mean jitter:   " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1) << "\n");
-          NS_LOG_INFO("  Tx Opp: " << 1 - (staticsCounterAp0->GetBusyTime() / simuTime));
+          NS_LOG_INFO("  Tx Opp: " << 1 - (staticsCounterAp0.GetBusyTime() / simuTime));
         }
       if ((t.sourceAddress=="10.1.1.4" && t.destinationAddress == "10.1.1.2"))
         {
@@ -529,7 +529,7 @@ int main (int argc, char *argv[])
           NS_LOG_UNCOND("  Throughput: " << i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024  << " Mbps\n");
           NS_LOG_INFO("  Mean delay:   " << i->second.delaySum.GetSeconds() / i->second.rxPackets << "\n");
           NS_LOG_INFO("  Mean jitter:   " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1) << "\n");
-          NS_LOG_INFO("  Tx Opp: " << 1 - (staticsCounterAp1->GetBusyTime() / simuTime));
+          NS_LOG_INFO("  Tx Opp: " << 1 - (staticsCounterAp1.GetBusyTime() / simuTime));
         }
   }
 
@@ -537,74 +537,74 @@ int main (int argc, char *argv[])
   std::ofstream outfileTh0 (("throughput-" + outputFileName + "-0.plt").c_str ());
   Gnuplot gnuplot = Gnuplot(("throughput-" + outputFileName + "-0.eps").c_str (), "Throughput");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp0->GetDatafile());
+  gnuplot.AddDataset (staticsCounterAp0.GetDatafile());
   gnuplot.GenerateOutput (outfileTh0);
 
   std::ofstream outfilePower0 (("power-" + outputFileName + "-0.plt").c_str ());
   gnuplot = Gnuplot(("power-" + outputFileName + "-0.eps").c_str (), "Average Transmit Power");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp0->GetPowerDatafile());
+  gnuplot.AddDataset (staticsCounterAp0.GetPowerDatafile());
   gnuplot.GenerateOutput (outfilePower0);
 
   std::ofstream outfileTx0 (("tx-" + outputFileName + "-0.plt").c_str ());
   gnuplot = Gnuplot(("tx-" + outputFileName + "-0.eps").c_str (), "Time in TX State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp0->GetTxDatafile());
+  gnuplot.AddDataset (staticsCounterAp0.GetTxDatafile());
   gnuplot.GenerateOutput (outfileTx0);
 
   std::ofstream outfileRx0 (("rx-" + outputFileName + "-0.plt").c_str ());
   gnuplot = Gnuplot(("rx-" + outputFileName + "-0.eps").c_str (), "Time in RX State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp0->GetRxDatafile());
+  gnuplot.AddDataset (staticsCounterAp0.GetRxDatafile());
   gnuplot.GenerateOutput (outfileRx0);
 
   std::ofstream outfileBusy0 (("busy-" + outputFileName + "-0.plt").c_str ());
   gnuplot = Gnuplot(("busy-" + outputFileName + "-0.eps").c_str (), "Time in Busy State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp0->GetBusyDatafile());
+  gnuplot.AddDataset (staticsCounterAp0.GetBusyDatafile());
   gnuplot.GenerateOutput (outfileBusy0);
 
   std::ofstream outfileIdle0 (("idle-" + outputFileName + "-0.plt").c_str ());
   gnuplot = Gnuplot(("idle-" + outputFileName + "-0.eps").c_str (), "Time in Idle State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp0->GetIdleDatafile());
+  gnuplot.AddDataset (staticsCounterAp0.GetIdleDatafile());
   gnuplot.GenerateOutput (outfileIdle0);
 
   //Plots for AP1
   std::ofstream outfileTh1 (("throughput-" + outputFileName + "-1.plt").c_str ());
   gnuplot = Gnuplot(("throughput-" + outputFileName + "-1.eps").c_str (), "Throughput");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp1->GetDatafile());
+  gnuplot.AddDataset (staticsCounterAp1.GetDatafile());
   gnuplot.GenerateOutput (outfileTh1);
 
   std::ofstream outfilePower1 (("power-" + outputFileName + "-1.plt").c_str ());
   gnuplot = Gnuplot(("power-" + outputFileName + "-1.eps").c_str (), "Average Transmit Power");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp1->GetPowerDatafile());
+  gnuplot.AddDataset (staticsCounterAp1.GetPowerDatafile());
   gnuplot.GenerateOutput (outfilePower1);
 
   std::ofstream outfileTx1 (("tx-" + outputFileName + "-1.plt").c_str ());
   gnuplot = Gnuplot(("tx-" + outputFileName + "-1.eps").c_str (), "Time in TX State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp1->GetTxDatafile());
+  gnuplot.AddDataset (staticsCounterAp1.GetTxDatafile());
   gnuplot.GenerateOutput (outfileTx1);
 
   std::ofstream outfileRx1 (("rx-" + outputFileName + "-1.plt").c_str ());
   gnuplot = Gnuplot(("rx-" + outputFileName + "-1.eps").c_str (), "Time in RX State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp1->GetRxDatafile());
+  gnuplot.AddDataset (staticsCounterAp1.GetRxDatafile());
   gnuplot.GenerateOutput (outfileRx1);
 
   std::ofstream outfileBusy1 (("busy-" + outputFileName + "-1.plt").c_str ());
   gnuplot = Gnuplot(("busy-" + outputFileName + "-1.eps").c_str (), "Time in Busy State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp1->GetBusyDatafile());
+  gnuplot.AddDataset (staticsCounterAp1.GetBusyDatafile());
   gnuplot.GenerateOutput (outfileBusy1);
 
   std::ofstream outfileIdle1 (("idle-" + outputFileName + "-1.plt").c_str ());
   gnuplot = Gnuplot(("idle-" + outputFileName + "-1.eps").c_str (), "Time in Idle State");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (staticsCounterAp1->GetIdleDatafile());
+  gnuplot.AddDataset (staticsCounterAp1.GetIdleDatafile());
   gnuplot.GenerateOutput (outfileIdle1);
 
   Simulator::Destroy ();

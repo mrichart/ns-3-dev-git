@@ -336,10 +336,10 @@ int main (int argc, char *argv[])
   mobility.Install (wifiStaNodes.Get(0));
 
   //Statics counter
-  APStatics* atpCounter = new APStatics(wifiApDevices, wifiStaDevices);
+  APStatics atpCounter = APStatics(wifiApDevices, wifiStaDevices);
 
   //Move the STA by stepsSize meters every stepsTime seconds
-  Simulator::Schedule (Seconds (0.5+stepsTime), &APStatics::AdvancePosition, atpCounter, wifiStaNodes.Get (0), stepsSize, stepsTime);
+  Simulator::Schedule (Seconds (0.5+stepsTime), &APStatics::AdvancePosition, &atpCounter, wifiStaNodes.Get (0), stepsSize, stepsTime);
 
   //Configure the IP stack
   InternetStackHelper stack;
@@ -370,16 +370,16 @@ int main (int argc, char *argv[])
 
    //Register packet receptions to calculate throughput
   Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
-		  	  	  	MakeCallback (&APStatics::RxCallback, atpCounter));
+		  	  	  	MakeCallback (&APStatics::RxCallback, &atpCounter));
 
   //Register power and rate changes to calculate the Average Transmit Power
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                    MakeCallback (&APStatics::PowerCallback, atpCounter));
+                    MakeCallback (&APStatics::PowerCallback, &atpCounter));
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                    MakeCallback (&APStatics::RateCallback, atpCounter));
+                    MakeCallback (&APStatics::RateCallback, &atpCounter));
 
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
-                    MakeCallback (&APStatics::PhyCallback, atpCounter));
+                    MakeCallback (&APStatics::PhyCallback, &atpCounter));
 
   //Callbacks to print every change of power and rate
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
@@ -393,13 +393,13 @@ int main (int argc, char *argv[])
   std::ofstream outfile (("throughput-" + outputFileName + ".plt").c_str ());
   Gnuplot gnuplot = Gnuplot(("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (atpCounter->GetDatafile());
+  gnuplot.AddDataset (atpCounter.GetDatafile());
   gnuplot.GenerateOutput (outfile);
 
   std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
   gnuplot = Gnuplot(("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");
   gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (atpCounter->GetPowerDatafile());
+  gnuplot.AddDataset (atpCounter.GetPowerDatafile());
   gnuplot.GenerateOutput (outfile2);
 
   Simulator::Destroy ();
