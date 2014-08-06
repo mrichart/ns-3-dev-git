@@ -57,3 +57,6 @@ def build(bld):
     
     obj = bld.create_ns3_program('power-adaptation-interf', ['core', 'mobility', 'wifi', 'applications', 'flow-monitor'])
     obj.source = 'power-adaptation-interf.cc'
+    
+    obj = bld.create_ns3_program('power-adaptation-grid', ['core', 'mobility', 'wifi', 'applications', 'flow-monitor', 'visualizer'])
+    obj.source = 'power-adaptation-grid.cc'
