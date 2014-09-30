@@ -70,7 +70,8 @@ def build(bld):
         'helper/nqos-wifi-mac-helper.cc',
         'helper/qos-wifi-mac-helper.cc',
         'model/parf-wifi-manager.cc',
-        'model/aparf-wifi-manager.cc'
+        'model/aparf-wifi-manager.cc',
+        'model/rrpaa-11a-wifi-manager.cc'
         ]
 
     obj_test = bld.create_ns3_module_test_library('wifi')
@@ -149,7 +150,8 @@ def build(bld):
         'helper/nqos-wifi-mac-helper.h',
         'helper/qos-wifi-mac-helper.h',
         'model/parf-wifi-manager.h',
-        'model/aparf-wifi-manager.h'
+        'model/aparf-wifi-manager.h',
+        'model/rrpaa-11a-wifi-manager.h'
         ]
 
     if bld.env['ENABLE_GSL']:
