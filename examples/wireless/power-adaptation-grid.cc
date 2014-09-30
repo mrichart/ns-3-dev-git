@@ -43,8 +43,12 @@
 * Example usage:
 * ./waf --run "power-adaptation-grid --manager=ns3::AparfWifiManager"
 *
-* Another example (changing STAs position):
+* Another example (changing APs position):
 * ./waf --run "power-adaptation-grid --manager=ns3::AparfWifiManager --scenarioSize=500 --gridDist=100"
+*
+* * Another example (controlling CBR rate, PathLoss exponent, APs positions, simulation time and random variable generator):
+* ./waf --run "power-adaptation-grid --manager=ns3::AparfWifiManager --longOutput=false --gridDist=50 --scenarioSize=200
+* --simuTime=100 --rate=20Mbps --exponent=4 --RngRun=2 >> output_aparf.log 2>&1
 *
 * To enable the log of rate and power changes:
 * export NS_LOG=PowerAdaptationGrid=level_info
@@ -93,6 +97,7 @@ public:
   Gnuplot2dDataset GetRxDatafile();
 
   double GetBusyTime();
+  double GetTotalPower();
 
 private:
   typedef std::vector<std::pair<Time,WifiMode> > TxTime;
@@ -103,6 +108,7 @@ private:
   std::map<Mac48Address, WifiMode> actualMode;
   uint32_t m_bytesTotal;
   double totalPower;
+  double simuTotalPower;
   double totalTime;
   double busyTime;
   double idleTime;
@@ -125,6 +131,7 @@ private:
 APStatics::APStatics()
 {
   totalPower = 0;
+  simuTotalPower = 0;
   totalTime = 0;
   busyTime = 0;
   idleTime = 0;
@@ -159,6 +166,7 @@ APStatics::APStatics(NetDeviceContainer aps, NetDeviceContainer stas)
     }
   actualMode[Mac48Address("ff:ff:ff:ff:ff:ff")] = phy->GetMode (0);
   totalPower = 0;
+  simuTotalPower = 0;
   totalTime = 0;
   busyTime = 0;
   idleTime = 0;
@@ -297,10 +305,11 @@ APStatics::CheckStatics(double time)
 {
   double mbs = ((m_bytesTotal * 8.0) / (1000000*time));
   m_bytesTotal = 0;
-  double atm = pow (10, ((totalPower / time) / 10));
+  double atp = pow (10, ((totalPower / time) / 10));
+  simuTotalPower += atp;
   totalPower = 0;
   totalTime = 0;
-  m_output_power.Add ((Simulator::Now ()).GetSeconds (), atm);
+  m_output_power.Add ((Simulator::Now ()).GetSeconds (), atp);
   m_output.Add ((Simulator::Now ()).GetSeconds (), mbs);
 
   m_output_idle.Add ((Simulator::Now ()).GetSeconds (), idleTime);
@@ -345,6 +354,13 @@ APStatics::GetBusyTime()
   return totalBusyTime + totalRxTime;
 }
 
+double
+APStatics::GetTotalPower()
+{
+  return simuTotalPower;
+}
+
+
 void PowerCallback (std::string path, uint8_t power, Mac48Address dest) {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " <<  (int)power);
   // end PowerCallback
@@ -363,6 +379,8 @@ int main (int argc, char *argv[])
 
   uint32_t rtsThreshold=2346;
   std::string manager="ns3::ParfWifiManager";
+  std::string rate="54Mbps";
+  double exponent = 3.0;
   int ap1_x = 0;
   int ap1_y = 0;
   int sta1_x = 10;
@@ -378,6 +396,8 @@ int main (int argc, char *argv[])
 
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager", manager);
+  cmd.AddValue ("rate", "Data Rate", rate);
+  cmd.AddValue ("exponent", "Loss Model Exponent", exponent);
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
   cmd.AddValue ("simuTime", "Total simulation time", simuTime);
   cmd.AddValue ("scenarioSize", "Size of the side of the square scenario", scenarioSize);
@@ -413,9 +433,9 @@ int main (int argc, char *argv[])
   wifi.SetStandard(WIFI_PHY_STANDARD_80211a);
   NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
-  YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
-//  wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-//  wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "Exponent", DoubleValue(5));
+  YansWifiChannelHelper wifiChannel;// = YansWifiChannelHelper::Default ();
+  wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+  wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "Exponent", DoubleValue(exponent));
 
   wifiPhy.SetChannel (wifiChannel.Create ());
 
@@ -483,18 +503,21 @@ int main (int argc, char *argv[])
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (wifiApNodes);
 
+  Ptr<UniformRandomVariable> rho = CreateObject<UniformRandomVariable> ();
+  rho->SetAttribute ("Min", DoubleValue (0.0));
+  rho->SetAttribute ("Max", DoubleValue (gridDist/4));
 
   for (uint32_t i=0;i<numStas;i++)
-    {
-      uint32_t x = (i%gridWidth)*gridDist;
-      uint32_t y = (i/gridWidth)*gridDist;
-      mobility.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-      	  "X", DoubleValue(x),
-      	  "Y", DoubleValue(y),
-          "Rho", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"));
-      mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-      mobility.Install(wifiStaNodes.Get(i));
-    }
+   {
+     uint32_t x = (i%gridWidth)*gridDist;
+     uint32_t y = (i/gridWidth)*gridDist;
+     mobility.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
+	"X", DoubleValue(x),
+	"Y", DoubleValue(y),
+	 "Rho", PointerValue(rho));
+     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+     mobility.Install(wifiStaNodes.Get(i));
+   }
 
   //Configure the IP stack
   InternetStackHelper stack;
@@ -516,7 +539,7 @@ int main (int argc, char *argv[])
       apps_sink.Add(sink.Install (wifiStaNodes.Get (i)));
 
       OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
-      onoff.SetConstantRate (DataRate ("54Mb/s"), 1420);
+      onoff.SetConstantRate (DataRate (rate), 1420);
       onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
       onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
       onoff.Install (wifiApNodes.Get (i));
@@ -545,6 +568,8 @@ int main (int argc, char *argv[])
       aps << i;
       Config::Connect ("/NodeList/"+aps.str()+"/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
                        MakeCallback (&APStatics::PowerCallback, &staticsCounter[i]));
+      Config::Connect ("/NodeList/"+aps.str()+"/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (&APStatics::RateCallback, &staticsCounter[i]));
       Config::Connect ("/NodeList/"+aps.str()+"/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
                        MakeCallback (&APStatics::PhyCallback, &staticsCounter[i]));
       //Register States
@@ -593,16 +618,22 @@ int main (int argc, char *argv[])
     {
       //Print a row with all the statistics.
       double totalTh = 0;
+      double totalPower = 0;
       for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
 	{
 	  double th = i->second.rxBytes * 8.0 / (i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds())/1024/1024;
-	  totalTh = totalTh + th;
+	  double power = staticsCounter[i->first-1].GetTotalPower();
+	  totalTh += th;
+	  totalPower += power;
 	  NS_LOG_UNCOND(manager << " " << RngSeedManager::GetRun () << " " << i->first
 	                << " " << th
 	                << " " << i->second.delaySum.GetSeconds() / i->second.rxPackets
 	                << " " << i->second.jitterSum.GetSeconds() / (i->second.rxPackets - 1)
-	                << " " << 1 - (staticsCounter[i->first-1].GetBusyTime() / simuTime));
+	                << " " << 1 - (staticsCounter[i->first-1].GetBusyTime() / simuTime)
+	                << " " << power/simuTime);
 	}
+      NS_LOG_UNCOND("  Total Throughput: " << totalTh  << " Mbps\n");
+      NS_LOG_UNCOND("  Average Power: " << totalPower/simuTime  << " dBm\n");
     }
 
   Simulator::Destroy ();
