@@ -418,6 +418,7 @@ DcaTxop::NotifyAccessGranted (void)
           return;
         }
       m_currentPacket = m_queue->Dequeue (&m_currentHdr);
+      m_stationManager->ReportTxInit(m_currentHdr.GetAddr1(), &m_currentHdr);
       NS_ASSERT (m_currentPacket != 0);
       uint16_t sequence = m_txMiddle->GetNextSequenceNumberfor (&m_currentHdr);
       m_currentHdr.SetSequenceNumber (sequence);

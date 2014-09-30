@@ -457,6 +457,14 @@ public:
   /**
    * \param address remote address
    * \param header MAC header
+   *
+   * Should be invoked whenever a transmission begins.
+   */
+  void ReportTxInit (Mac48Address address, const WifiMacHeader *header);
+
+  /**
+   * \param address remote address
+   * \param header MAC header
    * \param packet the packet to send
    * \return true if we want to use an RTS/CTS handshake for this
    *          packet before sending it, false otherwise.
@@ -845,6 +853,11 @@ private:
    */
   virtual void DoReportRxOk (WifiRemoteStation *station,
                              double rxSnr, WifiMode txMode) = 0;
+  /**
+   *
+   * \param station the station to which the transmission start
+   */
+  virtual void DoReportTxInit (WifiRemoteStation *station);
 
   /**
    * Return the state of the station associated with the given address.

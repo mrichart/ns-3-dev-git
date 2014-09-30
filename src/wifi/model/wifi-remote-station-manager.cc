@@ -695,6 +695,12 @@ WifiRemoteStationManager::ReportRxOk (Mac48Address address, const WifiMacHeader 
   WifiRemoteStation *station = Lookup (address, header);
   DoReportRxOk (station, rxSnr, txMode);
 }
+void
+WifiRemoteStationManager::ReportTxInit (Mac48Address address, const WifiMacHeader *header)
+{
+  WifiRemoteStation *station = Lookup (address, header);
+  DoReportTxInit (station);
+}
 bool
 WifiRemoteStationManager::NeedRts (Mac48Address address, const WifiMacHeader *header,
                                    Ptr<const Packet> packet)
@@ -1139,6 +1145,12 @@ WifiRemoteStationManager::GetInfo (Mac48Address address)
 {
   WifiRemoteStationState *state = LookupState (address);
   return state->m_info;
+}
+
+void
+WifiRemoteStationManager::DoReportTxInit (WifiRemoteStation *station)
+{
+
 }
 
 WifiRemoteStationState *
