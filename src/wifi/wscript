@@ -71,7 +71,9 @@ def build(bld):
         'helper/qos-wifi-mac-helper.cc',
         'model/parf-wifi-manager.cc',
         'model/aparf-wifi-manager.cc',
-        'model/rrpaa-11a-wifi-manager.cc'
+        'model/rrpaa-11a-wifi-manager.cc',
+        'model/prcs-11a-wifi-manager.cc',
+        'model/minstrel-piano-wifi-manager.cc'
         ]
 
     obj_test = bld.create_ns3_module_test_library('wifi')
@@ -151,7 +153,9 @@ def build(bld):
         'helper/qos-wifi-mac-helper.h',
         'model/parf-wifi-manager.h',
         'model/aparf-wifi-manager.h',
-        'model/rrpaa-11a-wifi-manager.h'
+        'model/rrpaa-11a-wifi-manager.h',
+        'model/prcs-11a-wifi-manager.h',
+        'model/minstrel-piano-wifi-manager.h'
         ]
 
     if bld.env['ENABLE_GSL']:
