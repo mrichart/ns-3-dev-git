@@ -446,6 +446,8 @@ MinstrelWifiManager::DoReportDataOk (WifiRemoteStation *st,
   //station->m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
   station->m_packetCount++;
 
+  UpdateStats (station);
+
   if (m_nsupported >= 1)
     {
       station->m_txrate = FindRate (station);
@@ -474,6 +476,8 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
                 ", attempt = " << station->m_minstrelTable[station->m_txrate].numRateAttempt <<
                 ", success = " << station->m_minstrelTable[station->m_txrate].numRateSuccess << " (after update).");
 
+  UpdateStats (station);
+
   if (m_nsupported >= 1)
     {
       station->m_txrate = FindRate (station);
@@ -500,7 +504,7 @@ MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
       /// start the rate at half way
       station->m_txrate = m_nsupported / 2;
     }
-  UpdateStats (station);
+
   return WifiTxVector (GetSupported (station, station->m_txrate),
                         GetDefaultTxPowerLevel (),
                         GetLongRetryCount (station),
