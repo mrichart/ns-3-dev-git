@@ -67,7 +67,7 @@ public:
 
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
-  void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
+  void PowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
   void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
@@ -157,7 +157,7 @@ APStatics::PhyCallback (std::string path, Ptr<const Packet> packet)
 }
 
 void
-APStatics::PowerCallback (std::string path, uint8_t power, Mac48Address dest)
+APStatics::PowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
 {
   double   txPowerBaseDbm = myPhy->GetTxPowerStart();
   double   txPowerEndDbm = myPhy->GetTxPowerEnd();
@@ -233,8 +233,8 @@ Gnuplot2dDataset
 APStatics::GetPowerDatafile()
 { return m_output_power; }
 
-void PowerCallback (std::string path, uint8_t power, Mac48Address dest) {
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " <<  (int)power);
+void PowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest) {
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << type << " " <<  (int)power);
   // end PowerCallback
 }
 
@@ -356,7 +356,7 @@ int main (int argc, char *argv[])
   ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
 
   OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
-  onoff.SetConstantRate (DataRate ("54Mb/s"), 1420);
+  onoff.SetConstantRate (DataRate ("10Mb/s"), 1420);
   onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   ApplicationContainer apps_source = onoff.Install (wifiApNodes.Get (0));
