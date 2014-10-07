@@ -423,20 +423,15 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
   double bploss = (double) station->m_failed / (double) thresholds.ewnd;
   double wploss = (double) (station->m_counter + station->m_failed) / (double) thresholds.ewnd;
   UniformVariable uv;
-
-  if (station->m_counter == 0)
+  double busyProb = station->m_countBusy/station->m_ett;
+  if (busyProb > (1.52*wploss))
     {
-      double busyProb = station->m_countBusy/station->m_ett;
-      //NS_LOG_UNCOND(Simulator::Now().GetSeconds() << " " << station->m_state->m_address << " " << busyProb << " " << bploss);
-      if (busyProb > (1.52*bploss))
-        {
-          station->m_cst +=2;
-          m_cstChange(station->m_cst, station->m_state->m_address);
-        }
-      station->m_ett = 0;
-      station->m_countBusy = 0;
-      station->m_countTx = 0;
+      station->m_cst +=2;
+      m_cstChange(station->m_cst, station->m_state->m_address);
     }
+  station->m_ett = 0;
+  station->m_countBusy = 0;
+  station->m_countTx = 0;
 
   if (bploss > thresholds.pmtl && station->m_power < m_nPower-1)
     {
@@ -651,7 +646,6 @@ Prcs11aWifiManager::DoReportTxInit (WifiRemoteStation *st)
   NS_LOG_FUNCTION (this << st);
   Time currtime = Simulator::Now();
   PrcsWifiRemoteStation *station = (PrcsWifiRemoteStation *) st;
-  NS_LOG_UNCOND(m_countBusy);
   if (m_prevTime > 0)
     {
       station->m_ett += (currtime.GetSeconds() - m_prevTime.GetSeconds());
