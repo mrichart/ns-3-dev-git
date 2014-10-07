@@ -148,9 +148,9 @@ AparfWifiManager::CheckInit (AparfWifiRemoteStation *station)
     {
       station->m_nsupported = GetNSupported (station);
       station->m_rate = station->m_nsupported - 1;
-	  station->m_power = m_nPower - 1;
-	  m_powerChange(station->m_power, station->m_state->m_address);
-	  m_rateChange(station->m_rate, station->m_state->m_address);
+      station->m_power = m_nPower - 1;
+      m_powerChange(station->m_power, station->m_state->m_address);
+      m_rateChange(station->m_rate, station->m_state->m_address);
       station->m_initialized = true;
     }
 }
@@ -284,9 +284,12 @@ AparfWifiManager::DoReportDataOk(WifiRemoteStation *st, double ackSnr,
                 }
               else
                 {
-                  station->m_power -= m_powerDec;
-                  m_powerChange(station->m_power, station->m_state->m_address);
-                  station->m_pCount++;
+                  if (station->m_power != 0)
+                    {
+		      station->m_power -= m_powerDec;
+		      m_powerChange(station->m_power, station->m_state->m_address);
+		      station->m_pCount++;
+                    }
                 }
             }
         }
