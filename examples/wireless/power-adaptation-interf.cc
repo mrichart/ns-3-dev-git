@@ -305,6 +305,11 @@ void RateCallback (std::string path, uint32_t rate, Mac48Address dest) {
   // end PowerCallback
 }
 
+void CstCallback (std::string path, double cst, Mac48Address dest) {
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Cst " <<  cst);
+  // end PowerCallback
+}
+
 int main (int argc, char *argv[])
 {
   //LogComponentEnable("ConstantRateWifiManager", LOG_LEVEL_FUNCTION);
@@ -495,6 +500,8 @@ int main (int argc, char *argv[])
                     MakeCallback (PowerCallback));
   Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
                     MakeCallback (RateCallback));
+  Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/CstChange",
+                    MakeCallback (CstCallback));
 
 
   // Calculate Throughput using Flowmonitor
