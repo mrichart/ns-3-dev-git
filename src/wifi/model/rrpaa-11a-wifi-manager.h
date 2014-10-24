@@ -37,6 +37,12 @@ struct RrpaaWifiRemoteStation;
  * "Robust rate adaptation for 802.11 wireless networks"
  * by "Starsky H. Y. Wong", "Hao Yang", "Songwu Lu", and,
  * "Vaduvur Bharghavan" published in Mobicom 06.
+ *
+ * RRPAAIS  described in
+ * "Self Management of Power, Rate and Carrier Sense Threshold
+ * for Interference Mitigation in IEEE 802.11 Netwroks"
+ * by "Matías Richart", "Jorge Visca", and,
+ * "Javier Baliosian" presented at CNSM 2014.
  */
 class Rrpaa11aWifiManager : public WifiRemoteStationManager
 {

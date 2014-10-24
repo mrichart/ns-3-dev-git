@@ -16,16 +16,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Duy Nguyen <duy@soe.ucsc.edu>
+ * Author: Matias Richart <mrichart@fing.edu.uy>
  *
- * Some Comments:
- *
- * 1) Segment Size is declared for completeness but not used  because it has
- *    to do more with the requirement of the specific hardware.
- *
- * 2) By default, Minstrel applies the multi-rate retry(the core of Minstrel
- *    algorithm). Otherwise, please use ConstantRateWifiManager instead.
- *
- * http://linuxwireless.org/en/developers/Documentation/mac80211/RateControl/minstrel
  */
 
 #include "minstrel-piano-wifi-manager.h"

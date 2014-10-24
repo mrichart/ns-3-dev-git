@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Duy Nguyen <duy@soe.ucsc.edu>
+ * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 
 
@@ -125,12 +126,12 @@ typedef std::vector<std::vector<uint32_t> > SampleRate;
 
 /**
  * \author Matias Richart
- * \brief Implementation of Minstrel Piano Rate and Power Control Algorithm
+ * \brief Implementation of Minstrel Blues Rate and Power Control Algorithm
  * \based on implementation of Duy Nguyen of Minstrel Rate Control Algorithm
  * \ingroup wifi
  *
- * Implementation of Huehn, Thomas, and Cigdem Sengul. "Practical Power and Rate Control for WiFi."
- * Computer Communications and Networks (ICCCN), 2012 21st International Conference on. IEEE, 2012.
+ * Minstrel-Blues is described in the Phd. Thesis "A Measurement-Based Joint
+ * Power and Rate Controller for IEEE 802.11 Networks" by Thomas Huehn.
  */
 class MinstrelBluesWifiManager : public WifiRemoteStationManager
 {
