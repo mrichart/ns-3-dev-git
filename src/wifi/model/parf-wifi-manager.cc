@@ -33,24 +33,27 @@ NS_LOG_COMPONENT_DEFINE ("ns3::ParfWifiManager");
 
 namespace ns3 {
 
+/**
+ * Hold per-remote-station state for PARF Wifi manager.
+ *
+ * This struct extends from WifiRemoteStation struct to hold additional
+ * information required by the PARF Wifi manager
+ */
 struct ParfWifiRemoteStation : public WifiRemoteStation
 {
-  uint32_t m_timer;
-  uint32_t m_success;
-  uint32_t m_failed;
-  bool m_recoveryRate;
-  bool m_recoveryPower;
-  uint32_t m_retry;
+  uint32_t m_nAttempt; //!< Number of transmission attempts.
+  uint32_t m_nSuccess; //!< Number of successful transmission attempts.
+  uint32_t m_nFail; //!< Number of failed transmission attempts.
+  bool m_usingRecoveryRate; //!< If using recovery rate.
+  bool m_usingRecoveryPower; //!< If using recovery power.
+  uint32_t m_nRetry; //!< Number of transmission retries.
 
-  uint32_t m_timerTimeout;
-  uint32_t m_successThreshold;
+  uint32_t m_currentRate; //!< Current rate used by the remote station.
 
-  uint32_t m_rate;
+  uint8_t m_currentPower; //!< Current power used by the remote station.
 
-  uint8_t m_power;
-
-  uint32_t m_nsupported;
-  bool m_initialized;
+  uint32_t m_nSupported; //!< Number of supported rates by the remote station.
+  bool m_initialized; //!< For initializing variables.
 };
 
 NS_OBJECT_ENSURE_REGISTERED (ParfWifiManager);
@@ -61,21 +64,24 @@ ParfWifiManager::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::ParfWifiManager")
     .SetParent<WifiRemoteStationManager> ()
     .AddConstructor<ParfWifiManager> ()
-    .AddAttribute ("TimerThreshold", "The 'timer' threshold in the ARF algorithm.",
+    .AddAttribute ("AttemptThreshold",
+    			   "The minimum number of transmission attempts to try a new power or rate.",
                    UintegerValue (15),
-                   MakeUintegerAccessor (&ParfWifiManager::m_timerThreshold),
+                   MakeUintegerAccessor (&ParfWifiManager::m_attemptThreshold),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("SuccessThreshold",
-                   "The minimum number of sucessfull transmissions to try a new rate.",
+                   "The minimum number of successful transmissions to try a new power or rate.",
                    UintegerValue (10),
                    MakeUintegerAccessor (&ParfWifiManager::m_successThreshold),
                    MakeUintegerChecker<uint32_t> ())
     .AddTraceSource ("PowerChange",
-                   "The transmission power has change",
-                    MakeTraceSourceAccessor (&ParfWifiManager::m_powerChange))
+    				 "The transmission power has change",
+                     MakeTraceSourceAccessor (&ParfWifiManager::m_powerChange),
+                     "ns3::ParfWifiManager::PowerChangeTracedCallback")
     .AddTraceSource ("RateChange",
-                   "The transmission rate has change",
-                    MakeTraceSourceAccessor (&ParfWifiManager::m_rateChange))
+                     "The transmission rate has change",
+                     MakeTraceSourceAccessor (&ParfWifiManager::m_rateChange),
+                     "ns3::ParfWifiManager::RateChangeTracedCallback")
   ;
   return tid;
 }
@@ -102,17 +108,16 @@ ParfWifiManager::DoCreateStation (void) const
   NS_LOG_FUNCTION (this);
   ParfWifiRemoteStation *station = new ParfWifiRemoteStation ();
 
-  station->m_successThreshold = m_successThreshold;
-  station->m_timerTimeout = m_timerThreshold;
-  station->m_success = 0;
-  station->m_failed = 0;
-  station->m_recoveryRate = false;
-  station->m_recoveryPower = false;
+  station->m_nSuccess = 0;
+  station->m_nFail = 0;
+  station->m_usingRecoveryRate = false;
+  station->m_usingRecoveryPower = false;
   station->m_initialized = false;
-  station->m_retry = 0;
-  station->m_timer = 0;
+  station->m_nRetry = 0;
+  station->m_nAttempt = 0;
 
-  NS_LOG_DEBUG ("create station=" << station << ", timer=" << station->m_timer << ", rate=" << station->m_rate << ", power=" << (int)station->m_power);
+  NS_LOG_DEBUG ("create station=" << station << ", timer=" << station->m_nAttempt << ", "
+		  	  	"rate=" << station->m_currentRate << ", power=" << (int)station->m_currentPower);
 
   return station;
 }
@@ -122,11 +127,11 @@ ParfWifiManager::CheckInit (ParfWifiRemoteStation *station)
 {
   if (!station->m_initialized)
     {
-      station->m_nsupported = GetNSupported (station);
-      station->m_rate = station->m_nsupported - 1;
-	  station->m_power = m_nPower - 1;
-	  m_powerChange(station->m_power, station->m_state->m_address);
-	  m_rateChange(station->m_rate, station->m_state->m_address);
+      station->m_nSupported = GetNSupported (station);
+      station->m_currentRate = station->m_nSupported - 1;
+      station->m_currentPower = m_nPower - 1;
+      m_powerChange(station->m_currentPower, station->m_state->m_address);
+      m_rateChange(station->m_currentRate, station->m_state->m_address);
       station->m_initialized = true;
     }
 }
@@ -136,7 +141,7 @@ ParfWifiManager::DoReportRtsFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
-/**
+/* \internal
  * It is important to realize that "recovery" mode starts after failure of
  * the first transmission after a rate increase and ends at the first successful
  * transmission. Specifically, recovery mode transcends retransmissions boundaries.
@@ -151,70 +156,70 @@ ParfWifiManager::DoReportDataFailed (WifiRemoteStation *st)
   NS_LOG_FUNCTION (this << st);
   ParfWifiRemoteStation *station = (ParfWifiRemoteStation *)st;
   CheckInit (station);
-  station->m_timer++;
-  station->m_failed++;
-  station->m_retry++;
-  station->m_success = 0;
+  station->m_nAttempt++;
+  station->m_nFail++;
+  station->m_nRetry++;
+  station->m_nSuccess = 0;
 
-  NS_LOG_DEBUG ("station=" << station << " data fail retry=" << station->m_retry << ", timer=" << station->m_timer
-		        << ", rate=" << station->m_rate << ", power=" << (int)station->m_power);
-  if (station->m_recoveryRate)
+  NS_LOG_DEBUG ("station=" << station << " data fail retry=" << station->m_nRetry << ", timer=" << station->m_nAttempt
+		        << ", rate=" << station->m_currentRate << ", power=" << (int)station->m_currentPower);
+  if (station->m_usingRecoveryRate)
     {
-      NS_ASSERT (station->m_retry >= 1);
-      if (station->m_retry == 1)
+      NS_ASSERT (station->m_nRetry >= 1);
+      if (station->m_nRetry == 1)
         {
           // need recovery fallback
-          if (station->m_rate != 0)
+          if (station->m_currentRate != 0)
             {
               NS_LOG_DEBUG ("station=" << station << " dec rate");
-              station->m_rate--;
-              m_rateChange(station->m_rate, station->m_state->m_address);
-              station->m_recoveryRate = false;
+              station->m_currentRate--;
+              m_rateChange(station->m_currentRate, station->m_state->m_address);
+              station->m_usingRecoveryRate = false;
             }
         }
-      station->m_timer = 0;
+      station->m_nAttempt = 0;
     }
-  else if (station->m_recoveryPower)
+  else if (station->m_usingRecoveryPower)
     {
-	  NS_ASSERT (station->m_retry >= 1);
-	    if (station->m_retry == 1)
+	  NS_ASSERT (station->m_nRetry >= 1);
+	    if (station->m_nRetry == 1)
 	      {
 	        // need recovery fallback
-	        if (station->m_power < m_nPower-1)
+	        if (station->m_currentPower < m_nPower-1)
 	          {
 	            NS_LOG_DEBUG ("station=" << station << " inc power");
-	            station->m_power++;
-	            m_powerChange(station->m_power, station->m_state->m_address);
-	            station->m_recoveryPower = false;
+	            station->m_currentPower++;
+	            m_powerChange(station->m_currentPower, station->m_state->m_address);
+	            station->m_usingRecoveryPower = false;
 	          }
 	      }
-	    station->m_timer = 0;
+	    station->m_nAttempt = 0;
 	}
   else
     {
-      NS_ASSERT (station->m_retry >= 1);
-      if (((station->m_retry - 1) % 2) == 1)
+      NS_ASSERT (station->m_nRetry >= 1);
+      if (((station->m_nRetry - 1) % 2) == 1)
         {
           // need normal fallback
-    	  if (station->m_power == m_nPower-1)
+    	  if (station->m_currentPower == m_nPower-1)
     	    {
-              if (station->m_rate != 0)
+              if (station->m_currentRate != 0)
                 {
                   NS_LOG_DEBUG ("station=" << station << " dec rate");
-                  station->m_rate--;
-                  m_rateChange(station->m_rate, station->m_state->m_address);
+                  station->m_currentRate--;
+                  m_rateChange(station->m_currentRate, station->m_state->m_address);
                 }
     	    }
     	  else
     	    {
     	      NS_LOG_DEBUG ("station=" << station << " inc power");
-    		  station->m_power++;
-	          m_powerChange(station->m_power, station->m_state->m_address);
+    		  station->m_currentPower++;
+	          m_powerChange(station->m_currentPower, station->m_state->m_address);
     	    }
         }
-      if (station->m_retry >= 2)
+      if (station->m_nRetry >= 2)
         {
-          station->m_timer = 0;
+          station->m_nAttempt = 0;
         }
     }
 }
@@ -236,36 +241,36 @@ void ParfWifiManager::DoReportDataOk (WifiRemoteStation *st,
   NS_LOG_FUNCTION (this << st << ackSnr << ackMode << dataSnr);
   ParfWifiRemoteStation *station = (ParfWifiRemoteStation *) st;
   CheckInit (station);
-  station->m_timer++;
-  station->m_success++;
-  station->m_failed = 0;
-  station->m_recoveryRate = false;
-  station->m_recoveryPower = false;
-  station->m_retry = 0;
-  NS_LOG_DEBUG ("station=" << station << " data ok success=" << station->m_success << ", timer=" << station->m_timer << ", rate=" << station->m_rate << ", power=" << (int)station->m_power);
-  if ((station->m_success == m_successThreshold
-       || station->m_timer == m_timerThreshold)
-      && (station->m_rate < (station->m_state->m_operationalRateSet.size () - 1)))
+  station->m_nAttempt++;
+  station->m_nSuccess++;
+  station->m_nFail = 0;
+  station->m_usingRecoveryRate = false;
+  station->m_usingRecoveryPower = false;
+  station->m_nRetry = 0;
+  NS_LOG_DEBUG ("station=" << station << " data ok success=" << station->m_nSuccess << ", timer=" << station->m_nAttempt << ", rate=" << station->m_currentRate << ", power=" << (int)station->m_currentPower);
+  if ((station->m_nSuccess == m_successThreshold
+       || station->m_nAttempt == m_attemptThreshold)
+      && (station->m_currentRate < (station->m_state->m_operationalRateSet.size () - 1)))
     {
       NS_LOG_DEBUG ("station=" << station << " inc rate");
-      station->m_rate++;
-      m_rateChange(station->m_rate, station->m_state->m_address);
-      station->m_timer = 0;
-      station->m_success = 0;
-      station->m_recoveryRate = true;
+      station->m_currentRate++;
+      m_rateChange(station->m_currentRate, station->m_state->m_address);
+      station->m_nAttempt = 0;
+      station->m_nSuccess = 0;
+      station->m_usingRecoveryRate = true;
     }
-  else if (station->m_success == m_successThreshold || station->m_timer == m_timerThreshold)
+  else if (station->m_nSuccess == m_successThreshold || station->m_nAttempt == m_attemptThreshold)
   {
 	  //we are at the maximum rate, we decrease power
-	  if (station->m_power != 0)
+	  if (station->m_currentPower != 0)
 	  {
 	    NS_LOG_DEBUG ("station=" << station << " dec power");
-            station->m_power--;
-            m_powerChange(station->m_power, station->m_state->m_address);
+            station->m_currentPower--;
+            m_powerChange(station->m_currentPower, station->m_state->m_address);
 	  }
-	  station->m_timer = 0;
-      station->m_success = 0;
-      station->m_recoveryPower = true;
+	  station->m_nAttempt = 0;
+      station->m_nSuccess = 0;
+      station->m_usingRecoveryPower = true;
   }
 }
 void
@@ -285,7 +290,7 @@ ParfWifiManager::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
   NS_LOG_FUNCTION (this << st << size);
   ParfWifiRemoteStation *station = (ParfWifiRemoteStation *) st;
   CheckInit (station);
-  return WifiTxVector (GetSupported (station, station->m_rate), station->m_power, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas()), GetNumberOfTransmitAntennas (station), GetStbc (station));
+  return WifiTxVector (GetSupported (station, station->m_currentRate), station->m_currentPower, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas()), GetNumberOfTransmitAntennas (station), GetStbc (station));
 }
 WifiTxVector
 ParfWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)

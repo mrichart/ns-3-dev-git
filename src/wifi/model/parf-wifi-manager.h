@@ -29,22 +29,45 @@ namespace ns3 {
 struct ParfWifiRemoteStation;
 /**
  * \ingroup wifi
- * \brief PARF Rate control algorithm
+ * PARF Rate control algorithm
  *
  * This class implements the PARF algorithm as described in
  * <i>Self-management in chaotic wireless deployments</i>, by
  * Akella, A.; Judd, G.; Seshan, S. & Steenkiste, P. in
  * Wireless Networks, Kluwer Academic Publishers, 2007, 13, 737-755
+ * http://dl.acm.org/ft_gateway.cfm?id=1080849&ftid=326992&dwn=1&CFID=618017405&CFTOKEN=94431066
  *
  */
 class ParfWifiManager : public WifiRemoteStationManager
 {
 public:
+  /**
+   * Register this type.
+   * \return The object TypeId.
+   */
   static TypeId GetTypeId (void);
   ParfWifiManager ();
   virtual ~ParfWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
+
+  /**
+   * TracedCallback signature for power change events.
+   *
+   * \param [in] power The new power.
+   * \param [in] address The remote station MAC address.
+   */
+  typedef void (* PowerChangeTracedCallback)
+	(const uint8_t power, const Mac48Address remoteAddress);
+
+  /**
+   * TracedCallback signature for rate change events.
+   *
+   * \param [in] rate The new rate.
+   * \param [in] address The remote station MAC address.
+   */
+  typedef void (* RateChangeTracedCallback)
+	(const uint32_t rate, const Mac48Address remoteAddress);
 
 private:
   // overriden from base class
@@ -63,19 +86,28 @@ private:
   virtual WifiTxVector DoGetRtsTxVector (WifiRemoteStation *station);
   virtual bool IsLowLatency (void) const;
 
+  /** Check for initializations.
+   *
+   * \param station The remote station.
+   */
   void CheckInit (ParfWifiRemoteStation *station);
 
 
-  uint32_t m_timerThreshold;
-  uint32_t m_successThreshold;
+  uint32_t m_attemptThreshold; //!< The minimum number of transmission attempts to try a new power or rate. The 'timer' threshold in the ARF algorithm.
+  uint32_t m_successThreshold; //!< The minimum number of successful transmissions to try a new power or rate.
+  /**
+   * Number of power levels.
+   * Differently form rate, power levels do not depend on the remote station.
+   * The levels depend only on the physical layer of the device.
+   */
   uint32_t m_nPower;
 
   /**
-   * The trace source fired when the transmission power change
+   * The trace source fired when the transmission power changes....
    */
   TracedCallback<uint8_t, Mac48Address> m_powerChange;
   /**
-   * The trace source fired when the transmission rate change
+   * The trace source fired when the transmission rate changes.
    */
   TracedCallback<uint32_t, Mac48Address> m_rateChange;
 

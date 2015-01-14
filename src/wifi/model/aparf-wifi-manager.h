@@ -29,7 +29,7 @@ struct AparfWifiRemoteStation;
 
 /**
  * \ingroup wifi
- * \brief APARF Power and rate control algorithm
+ * APARF Power and rate control algorithm
  *
  * This class implements the High Performance power and rate control algorithm
  * described in <i>Dynamic data rate and transmit power adjustment
@@ -41,12 +41,19 @@ struct AparfWifiRemoteStation;
 class AparfWifiManager : public WifiRemoteStationManager
 {
 public:
+  /**
+   * Register this type.
+   * \return The object TypeId.
+   */
   static TypeId GetTypeId (void);
   AparfWifiManager ();
   virtual ~AparfWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
+  /**
+   * Enumeration of the possible states of the channel.
+   */
   enum State
   {
     High,
@@ -71,18 +78,26 @@ private:
   virtual WifiTxVector DoGetRtsTxVector (WifiRemoteStation *station);
   virtual bool IsLowLatency (void) const;
 
+  /** Check for initializations.
+   *
+   * \param station The remote station.
+   */
   void CheckInit (AparfWifiRemoteStation *station);
 
-  uint32_t m_succesMax1;
-  uint32_t m_succesMax2;
-  uint32_t m_failMax;
-  uint32_t m_powerMax;
-  uint32_t m_powerInc;
-  uint32_t m_powerDec;
-  uint32_t m_rateInc;
-  uint32_t m_rateDec;
+  uint32_t m_succesMax1; //!< The minimum number of successful transmissions in \"High\" state to try a new power or rate.
+  uint32_t m_succesMax2; //!< The minimum number of successful transmissions in \"Low\" state to try a new power or rate.
+  uint32_t m_failMax; //!< The minimum number of failed transmissions to try a new power or rate.
+  uint32_t m_powerMax; //!< The maximum number of power changes.
+  uint32_t m_powerInc; //!< Step size for increment the power.
+  uint32_t m_powerDec; //!< Step size for decrement the power.
+  uint32_t m_rateInc; //!< Step size for increment the rate.
+  uint32_t m_rateDec; //!< Step size for decrement the rate.
+  /**
+   * Number of power levels.
+   * Differently form rate, power levels do not depend on the remote station.
+   * The levels depend only on the physical layer of the device.
+   */
   uint32_t m_nPower;
-  uint32_t m_nRate;
 
   /**
    * The trace source fired when the transmission power change
