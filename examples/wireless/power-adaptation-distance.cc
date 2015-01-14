@@ -235,12 +235,10 @@ APStatics::GetPowerDatafile()
 
 void PowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest) {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << type << " " <<  (int)power);
-  // end PowerCallback
 }
 
 void RateCallback (std::string path, uint32_t rate, Mac48Address dest) {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
-  // end PowerCallback
 }
 
 int main (int argc, char *argv[])
