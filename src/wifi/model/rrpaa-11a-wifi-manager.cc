@@ -29,6 +29,7 @@
 #include "ns3/uinteger.h"
 #include "ns3/simulator.h"
 #include "ns3/random-variable-stream.h"
+#include "ns3/rng-seed-manager.h"
 
 #define Min(a,b) ((a < b) ? a : b)
 
@@ -185,10 +186,12 @@ Rrpaa11aWifiManager::GetTypeId (void)
                    MakeDoubleChecker<double> ())
    .AddTraceSource("RateChange",
                    "The transmission rate has change",
-                   MakeTraceSourceAccessor(&Rrpaa11aWifiManager::m_rateChange))
+                   MakeTraceSourceAccessor(&Rrpaa11aWifiManager::m_rateChange),
+                   "ns3::Rrpaa11aWifiManager::RateChangeTracedCallback")
    .AddTraceSource ("PowerChange",
                   "The transmission power has change",
-                   MakeTraceSourceAccessor (&Rrpaa11aWifiManager::m_powerChange))
+                   MakeTraceSourceAccessor (&Rrpaa11aWifiManager::m_powerChange),
+                   "ns3::Rrpaa11aWifiManager::PowerChangeTracedCallback")
   ;
   return tid;
 }

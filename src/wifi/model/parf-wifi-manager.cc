@@ -75,7 +75,7 @@ ParfWifiManager::GetTypeId (void)
                    MakeUintegerAccessor (&ParfWifiManager::m_successThreshold),
                    MakeUintegerChecker<uint32_t> ())
     .AddTraceSource ("PowerChange",
-    				 "The transmission power has change",
+                     "The transmission power has change",
                      MakeTraceSourceAccessor (&ParfWifiManager::m_powerChange),
                      "ns3::ParfWifiManager::PowerChangeTracedCallback")
     .AddTraceSource ("RateChange",
