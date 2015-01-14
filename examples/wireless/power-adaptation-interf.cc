@@ -13,7 +13,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Matas Richart <mrichart@fing.edu.uy>
+ * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 
 /**
@@ -33,17 +33,17 @@
 *
 * Example usage:
 * \code{.sh}
-* ./waf --run "power-adaptation-interf --manager=ns3::AparfWifiManager --outputFileName=aparf"
+*   ./waf --run "power-adaptation-interf --manager=ns3::AparfWifiManager --outputFileName=aparf"
 * \endcode
 *
 * Another example (changing STAs position):
 * \code{.sh}
-* ./waf --run "power-adaptation-interf --manager=ns3::AparfWifiManager --outputFileName=aparf --STA1_x=5 --STA2_x=205"
+*   ./waf --run "power-adaptation-interf --manager=ns3::AparfWifiManager --outputFileName=aparf --STA1_x=5 --STA2_x=205"
 * \endcode
 *
 * To enable the log of rate and power changes:
 * \code{.sh}
-* export NS_LOG=PowerAdaptationInterf=level_info
+*   export NS_LOG=PowerAdaptationInterf=level_info
 * \endcode
 */
 

@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
- * Author: Matas Richart <mrichart@fing.edu.uy>
+ * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 
 #ifndef PARF_WIFI_MANAGER_H

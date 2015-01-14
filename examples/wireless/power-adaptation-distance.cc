@@ -13,7 +13,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Matas Richart <mrichart@fing.edu.uy>
+ * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 
 /**
@@ -34,12 +34,12 @@
 *
 * Another example (moving towards the AP):
 * \code{.sh}
-* ./waf --run "power-adaptation-distance --manager=ns3::AparfWifiManager --outputFileName=aparf --stepsSize=-1 --STA1_x=200"
+*   ./waf --run "power-adaptation-distance --manager=ns3::AparfWifiManager --outputFileName=aparf --stepsSize=-1 --STA1_x=200"
 * \endcode
 *
 * To enable the log of rate and power changes:
 * \code{.sh}
-* export NS_LOG=PowerAdaptationDistance=level_info
+*   export NS_LOG=PowerAdaptationDistance=level_info
 * \endcode
 */
 
@@ -73,7 +73,7 @@ public:
 
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
-  void PowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
+  void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
   void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
@@ -163,7 +163,7 @@ NodeStatistics::PhyCallback (std::string path, Ptr<const Packet> packet)
 }
 
 void
-NodeStatistics::PowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address dest)
 {
   double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
   double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
@@ -242,9 +242,9 @@ NodeStatistics::GetPowerDatafile ()
   return m_output_power;
 }
 
-void PowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
 {
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << type << " " <<  (int)power);
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << (int)power);
 }
 
 void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
