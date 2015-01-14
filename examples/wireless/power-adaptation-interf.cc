@@ -154,7 +154,7 @@ APStatics::SetupPhy (Ptr<WifiPhy> phy)
       WifiMode mode = phy->GetMode (i);
       WifiTxVector txVector;
       txVector.SetMode(mode);
-      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (1420, txVector, WIFI_PREAMBLE_LONG), mode));
+      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (1420, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency()), mode));
     }
 }
 

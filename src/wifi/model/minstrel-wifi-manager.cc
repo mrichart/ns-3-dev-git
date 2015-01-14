@@ -284,7 +284,6 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
   PrintTable (station);
 
   NS_LOG_DEBUG ("DoReportDataFailed " << station << " rate " << station->m_txrate << " longRetry " << station->m_longRetry);
-                " longRetry " << station->m_longRetry);
 
   /// for normal rate, we're not currently sampling random rates
   if (!station->m_isSampling)

@@ -28,7 +28,7 @@
 #include "ns3/double.h"
 #include "ns3/uinteger.h"
 #include "ns3/simulator.h"
-#include "ns3/random-variable.h"
+#include "ns3/random-variable-stream.h"
 
 #define Min(a,b) ((a < b) ? a : b)
 
@@ -362,10 +362,11 @@ Rrpaa11aWifiManager::CheckTimeout (RrpaaWifiRemoteStation *station)
 void
 Rrpaa11aWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
 {
+  RngSeedManager::SetSeed (static_cast<uint32_t> (time (0)));
   ThresholdsItem thresholds = GetThresholds (station, station->m_rate);
   double bploss = (double) station->m_failed / (double) thresholds.ewnd;
   double wploss = (double) (station->m_counter + station->m_failed) / (double) thresholds.ewnd;
-  UniformVariable uv;
+  Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
   if (bploss > thresholds.pmtl && station->m_power < m_nPower-1)
     {
       station->m_priTable[station->m_rate][station->m_power] /= 2;
@@ -390,7 +391,7 @@ Rrpaa11aWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
     	      station->m_priTable[i][station->m_power] = 1;
     	    }
         }
-      double rand = uv.GetValue(0,1);
+      double rand = uv->GetValue(0,1);
       if ((station->m_rate < station->m_nRate-1) && (rand < station->m_priTable[station->m_rate+1][station->m_power]) && station->m_power == m_nPower-1)
         {
           station->m_rate++;
@@ -406,7 +407,7 @@ Rrpaa11aWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
 		  station->m_priTable[station->m_rate][i] = 1;
 		}
             }
-    	  double rand = uv.GetValue(0,1);
+    	  double rand = uv->GetValue(0,1);
     	  if (rand < station->m_priTable[station->m_rate][station->m_power-1])
     	    {
     	      station->m_power--;
@@ -425,7 +426,7 @@ Rrpaa11aWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
               station->m_priTable[station->m_rate][i] = 1;
             }
         }
-      double rand = uv.GetValue(0,1);
+      double rand = uv->GetValue(0,1);
       if (rand < station->m_priTable[station->m_rate][station->m_power-1])
 	{
 	  station->m_power--;
