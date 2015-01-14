@@ -26,10 +26,9 @@
 #include "ns3/lte-pdcp-sap.h"
 #include "ns3/lte-pdcp-tag.h"
 
-NS_LOG_COMPONENT_DEFINE ("LtePdcp");
-
 namespace ns3 {
 
+NS_LOG_COMPONENT_DEFINE ("LtePdcp");
 
 class LtePdcpSpecificLteRlcSapUser : public LteRlcSapUser
 {
@@ -88,10 +87,12 @@ LtePdcp::GetTypeId (void)
     .SetParent<Object> ()
     .AddTraceSource ("TxPDU",
                      "PDU transmission notified to the RLC.",
-                     MakeTraceSourceAccessor (&LtePdcp::m_txPdu))
+                     MakeTraceSourceAccessor (&LtePdcp::m_txPdu),
+                     "ns3::LtePdcp::PduTxTracedCallback")
     .AddTraceSource ("RxPDU",
                      "PDU received.",
-                     MakeTraceSourceAccessor (&LtePdcp::m_rxPdu))
+                     MakeTraceSourceAccessor (&LtePdcp::m_rxPdu),
+                     "ns3::LtePdcp::PduRxTracedCallback")
     ;
   return tid;
 }

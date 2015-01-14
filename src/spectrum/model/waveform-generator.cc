@@ -28,9 +28,9 @@
 
 #include "waveform-generator.h"
 
-NS_LOG_COMPONENT_DEFINE ("WaveformGenerator");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("WaveformGenerator");
 
 NS_OBJECT_ENSURE_REGISTERED (WaveformGenerator);
 
@@ -81,10 +81,12 @@ WaveformGenerator::GetTypeId (void)
                    MakeDoubleChecker<double> ())
     .AddTraceSource ("TxStart",
                      "Trace fired when a new transmission is started",
-                     MakeTraceSourceAccessor (&WaveformGenerator::m_phyTxStartTrace))
+                     MakeTraceSourceAccessor (&WaveformGenerator::m_phyTxStartTrace),
+                     "ns3::Packet::TracedCallback")
     .AddTraceSource ("TxEnd",
                      "Trace fired when a previosuly started transmission is finished",
-                     MakeTraceSourceAccessor (&WaveformGenerator::m_phyTxEndTrace))
+                     MakeTraceSourceAccessor (&WaveformGenerator::m_phyTxEndTrace),
+                     "ns3::Packet::TracedCallback")
   ;
   return tid;
 }
@@ -194,7 +196,7 @@ WaveformGenerator::GenerateWaveform ()
   NS_LOG_FUNCTION (this);
 
   Ptr<SpectrumSignalParameters> txParams = Create<SpectrumSignalParameters> ();
-  txParams->duration = Time (m_period * m_dutyCycle);
+  txParams->duration = Time (m_period.GetTimeStep () * m_dutyCycle);
   txParams->psd = m_txPowerSpectralDensity;
   txParams->txPhy = GetObject<SpectrumPhy> ();
   txParams->txAntenna = m_antenna;

@@ -36,9 +36,9 @@
 #include <cmath>
 #include <iostream>
 
-NS_LOG_COMPONENT_DEFINE ("RandomVariableStream");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("RandomVariableStream");
 
 NS_OBJECT_ENSURE_REGISTERED (RandomVariableStream);
 
@@ -184,7 +184,7 @@ UniformRandomVariable::GetInteger (uint32_t min, uint32_t max)
 {
   NS_LOG_FUNCTION (this << min << max);
   NS_ASSERT (min <= max);
-  return static_cast<uint32_t> ( GetValue (min, max + 1) );
+  return static_cast<uint32_t> ( GetValue ((double) (min), (double) (max) + 1.0) );
 }
 
 double 
@@ -450,7 +450,7 @@ ParetoRandomVariable::GetTypeId (void)
 		  DoubleValue(2.0),
 		  MakeDoubleAccessor(&ParetoRandomVariable::m_shape),
 		  MakeDoubleChecker<double>())
-    .AddAttribute("Bound", "The upper bound on the values returned by this RNG stream.",
+    .AddAttribute("Bound", "The upper bound on the values returned by this RNG stream (if non-zero).",
 		  DoubleValue(0.0),
 		  MakeDoubleAccessor(&ParetoRandomVariable::m_bound),
 		  MakeDoubleChecker<double>())

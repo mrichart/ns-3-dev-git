@@ -42,36 +42,45 @@ class NetDevice;
 class UniformRandomVariable;
 
 /**
+ * \ingroup lr-wpan
+ *
  * Helper structure to manage the power measurement during ED.
  */
 typedef struct
 {
-  double averagePower;
-  Time lastUpdate;
-  Time measurementLength;
+  double averagePower;    //!< Average measured power
+  Time lastUpdate;        //!< Last update time
+  Time measurementLength; //!< Total measuremement period
 } LrWpanEdPower;
 
 /**
- * IEEE802.15.4-2006 Table 1 and 2 in section 6.1.1 and 6.1.2
+ * \ingroup lr-wpan
+ *
+ * This data structure provides the Bit rate and Symbol rate for a given channel
+ * See IEEE802.15.4-2006 Table 1 and 2 in section 6.1.1 and 6.1.2
  */
 typedef  struct
 {
-  double bitRate;
-  double symbolRate;
+  double bitRate;    //!< bit rate
+  double symbolRate; //!< symbol rate
 } LrWpanPhyDataAndSymbolRates;
 
 /**
- * IEEE802.15.4-2006 Figure 16, Table 19 and 20 in section 6.3
- * this data structure provides number of symbols for the PPDU headers: SHR and PHR
+ * \ingroup lr-wpan
+ *
+ * This data structure provides number of symbols for the PPDU headers: SHR and PHR
+ * See IEEE802.15.4-2006 Figure 16, Table 19 and 20 in section 6.3
  */
 typedef  struct
 {
-  double shrPreamble;
-  double shrSfd;
-  double phr;
+  double shrPreamble; //!< Number of symbols for the SHR preamble
+  double shrSfd;      //!< Number of symbols for the SHR SFD
+  double phr;         //!< Number of symbols for the PHR
 } LrWpanPhyPpduHeaderSymbolNumber;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This Phy option will be used to index various Tables in IEEE802.15.4-2006
  */
 typedef enum
@@ -87,6 +96,8 @@ typedef enum
 } LrWpanPhyOption;
 
 /**
+ * \ingroup lr-wpan
+ *
  * IEEE802.15.4-2006 PHY Emumerations Table 18
  * in section 6.2.3
  */
@@ -108,6 +119,8 @@ typedef enum
 } LrWpanPhyEnumeration;
 
 /**
+ * \ingroup lr-wpan
+ *
  * IEEE802.15.4-2006 PHY PIB Attribute Identifiers Table 23 in section 6.4.2
  */
 typedef enum
@@ -123,21 +136,25 @@ typedef enum
 } LrWpanPibAttributeIdentifier;
 
 /**
+ * \ingroup lr-wpan
+ *
  * IEEE802.15.4-2006 PHY PIB Attributes Table 23 in section 6.4.2
  */
 typedef struct
 {
-  uint8_t phyCurrentChannel;
-  uint32_t phyChannelsSupported[32];
-  uint8_t phyTransmitPower;
-  uint8_t phyCCAMode;
-  uint32_t phyCurrentPage;
-  uint32_t phyMaxFrameDuration;
-  uint32_t phySHRDuration;
-  double phySymbolsPerOctet;
+  uint8_t phyCurrentChannel;         //!< The RF channel to use
+  uint32_t phyChannelsSupported[32]; //!< BitField representing the available channels supported by a channel page.
+  uint8_t phyTransmitPower;          //!< Transmit power
+  uint8_t phyCCAMode;                //!< CCA mode
+  uint32_t phyCurrentPage;           //!< Current channel page
+  uint32_t phyMaxFrameDuration;      //!< The maximum number of symbols in a frame
+  uint32_t phySHRDuration;           //!< The duration of the synchronization header (SHR) in symbols
+  double phySymbolsPerOctet;         //!< The number of symbols per octet
 } LrWpanPhyPibAttributes;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This method implements the PD SAP: PdDataIndication
  *
  *  @param psduLength number of bytes in the PSDU
@@ -147,6 +164,8 @@ typedef struct
 typedef Callback< void, uint32_t, Ptr<Packet>, uint8_t > PdDataIndicationCallback;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This method implements the PD SAP: PdDataConfirm
  *
  * @param status the status to be transmitted
@@ -154,6 +173,8 @@ typedef Callback< void, uint32_t, Ptr<Packet>, uint8_t > PdDataIndicationCallbac
 typedef Callback< void, LrWpanPhyEnumeration > PdDataConfirmCallback;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This method implements the PD SAP: PlmeCcaConfirm
  *
  * @param status the status of CCA
@@ -161,6 +182,8 @@ typedef Callback< void, LrWpanPhyEnumeration > PdDataConfirmCallback;
 typedef Callback< void, LrWpanPhyEnumeration > PlmeCcaConfirmCallback;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This method implements the PD SAP: PlmeEdConfirm
  *
  * @param status the status of ED
@@ -169,6 +192,8 @@ typedef Callback< void, LrWpanPhyEnumeration > PlmeCcaConfirmCallback;
 typedef Callback< void, LrWpanPhyEnumeration,uint8_t > PlmeEdConfirmCallback;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This method implements the PD SAP: PlmeGetAttributeConfirm
  *
  * @param status the status of PlmeGetAttributeRequest
@@ -180,6 +205,8 @@ typedef Callback< void, LrWpanPhyEnumeration,
                   LrWpanPhyPibAttributes* > PlmeGetAttributeConfirmCallback;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This method implements the PD SAP: PlmeSetTRXStateConfirm
  *
  * @param status the status of PlmeSetTRXStateRequest
@@ -187,6 +214,8 @@ typedef Callback< void, LrWpanPhyEnumeration,
 typedef Callback< void, LrWpanPhyEnumeration > PlmeSetTRXStateConfirmCallback;
 
 /**
+ * \ingroup lr-wpan
+ *
  * This method implements the PD SAP: PlmeSetAttributeConfirm
  *
  * @param status the status of PlmeSetAttributeRequest
@@ -433,6 +462,26 @@ public:
    */
   int64_t AssignStreams (int64_t stream);
 
+  /**
+   * TracedCallback signature for Trx state change events.
+   *
+   * \param [in] time The time of the state change.
+   * \param [in] oldState The old state.
+   * \param [in] newState The new state.
+   */
+  typedef void (* StateTracedCallback)
+    (const Time time,
+     const LrWpanPhyEnumeration oldState, const LrWpanPhyEnumeration newState);
+
+  /**
+   * TracedCallback signature for end receive events.
+   *
+   * \param [in] packet The packet.
+   * \param [in] sinr The received SINR.
+   */
+  typedef void (* RxEndTracedCallback)
+    (const Ptr<const Packet> packet, const double sinr);
+    
 protected:
   /**
    * The data and symbol rates for the different PHY options.
@@ -647,6 +696,10 @@ private:
    * The error model describing the bit and packet error rates.
    */
   Ptr<LrWpanErrorModel> m_errorModel;
+
+  /**
+   * The current PHY PIB attributes.
+   */
   LrWpanPhyPibAttributes m_phyPIBAttributes;
 
   // State variables

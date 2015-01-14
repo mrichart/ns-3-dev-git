@@ -42,9 +42,9 @@
 #include "ns3/string.h"
 #include "ns3/pointer.h"
 
-NS_LOG_COMPONENT_DEFINE ("OnOffApplication");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("OnOffApplication");
 
 NS_OBJECT_ENSURE_REGISTERED (OnOffApplication);
 
@@ -86,7 +86,8 @@ OnOffApplication::GetTypeId (void)
                    MakeTypeIdAccessor (&OnOffApplication::m_tid),
                    MakeTypeIdChecker ())
     .AddTraceSource ("Tx", "A new packet is created and is sent",
-                     MakeTraceSourceAccessor (&OnOffApplication::m_txTrace))
+                     MakeTraceSourceAccessor (&OnOffApplication::m_txTrace),
+                     "ns3::Packet::TracedCallback")
   ;
   return tid;
 }

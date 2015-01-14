@@ -36,9 +36,10 @@
 #include "ns3/trace-source-accessor.h"
 #include "ie-dot11s-perr.h"
 
-NS_LOG_COMPONENT_DEFINE ("HwmpProtocol");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("HwmpProtocol");
+  
 namespace dot11s {
 
 NS_OBJECT_ENSURE_REGISTERED (HwmpProtocol);
@@ -163,7 +164,8 @@ HwmpProtocol::GetTypeId ()
     .AddTraceSource ( "RouteDiscoveryTime",
                       "The time of route discovery procedure",
                       MakeTraceSourceAccessor (
-                        &HwmpProtocol::m_routeDiscoveryTimeCallback)
+                        &HwmpProtocol::m_routeDiscoveryTimeCallback),
+                      "ns3::Time::TracedCallback"
                       )
   ;
   return tid;

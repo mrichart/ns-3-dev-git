@@ -23,12 +23,16 @@
 
 #include <cmath>
 
-NS_LOG_COMPONENT_DEFINE ("LrWpanSpectrumValueHelper");
-
 namespace ns3 {
 
-Ptr<SpectrumModel> g_LrWpanSpectrumModel;
+NS_LOG_COMPONENT_DEFINE ("LrWpanSpectrumValueHelper");
 
+Ptr<SpectrumModel> g_LrWpanSpectrumModel; //!< Global object used to initialize the LrWpan Spectrum Model
+
+/**
+ * \ingroup lr-wpan
+ * \brief Helper class used to automatically initialize the LrWpan Spectrum Model objects
+ */
 class LrWpanSpectrumModelInitializer
 {
 public:
@@ -50,7 +54,7 @@ public:
     g_LrWpanSpectrumModel = Create<SpectrumModel> (bands);
   }
 
-} g_LrWpanSpectrumModelInitializerInstance;
+} g_LrWpanSpectrumModelInitializerInstance;  //!< Global object used to initialize the LrWpan Spectrum Model
 
 LrWpanSpectrumValueHelper::LrWpanSpectrumValueHelper (void)
 {
@@ -69,7 +73,7 @@ LrWpanSpectrumValueHelper::CreateTxPowerSpectralDensity (double txPower, uint32_
   NS_LOG_FUNCTION (this);
   Ptr<SpectrumValue> txPsd = Create <SpectrumValue> (g_LrWpanSpectrumModel);
 
-  // txPower is expressed in dBm. We must convert it into natural unit.
+  // txPower is expressed in dBm. We must convert it into natural unit (W).
   txPower = pow (10., (txPower - 30) / 10);
 
   // The effective occupied bandwidth of the signal is modelled to be 2 MHz.

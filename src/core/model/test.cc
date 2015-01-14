@@ -181,12 +181,6 @@ TestCase::~TestCase ()
 }
 
 void
-TestCase::AddTestCase (TestCase *testCase)
-{
-  AddTestCase (testCase, TestCase::QUICK);
-}
-
-void
 TestCase::AddTestCase (TestCase *testCase, enum TestCase::TestDuration duration)
 {
   // Record this for use later when all test cases are run.
@@ -330,12 +324,6 @@ TestCase::CreateTempDirFilename (std::string filename)
       SystemPath::MakeDirectories (tempDir);
       return SystemPath::Append (tempDir, filename);
     }
-}
-bool 
-TestCase::GetErrorStatus (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return IsStatusFailure ();
 }
 bool 
 TestCase::IsStatusFailure (void) const
@@ -949,6 +937,11 @@ TestRunnerImpl::Run (int argc, char *argv[])
 
   // let's run our tests now.
   bool failed = false;
+  if (tests.size () == 0)
+    {
+      std::cerr << "Error:  no tests match the requested string" << std::endl;
+      return 1;
+    }
   for (std::list<TestCase *>::const_iterator i = tests.begin (); i != tests.end (); ++i)
     {
       TestCase *test = *i;

@@ -62,7 +62,7 @@ and running on the target system.
 
 The |ns3| code is available in Mercurial repositories on the server
 http://code.nsnam.org.  You can also download a tarball release at
-http://www.nsnam.org/releases/, or you can work with repositories
+http://www.nsnam.org/release/, or you can work with repositories
 using Mercurial.  We recommend using Mercurial unless there's a good reason
 not to.  See the end of this section for instructions on how to get a tarball
 release.
@@ -90,7 +90,7 @@ get a copy of a release by typing the following into your Linux shell
   $ cd
   $ mkdir workspace
   $ cd workspace
-  $ wget http://www.nsnam.org/releases/ns-allinone-3.20.tar.bz2
+  $ wget http://www.nsnam.org/release/ns-allinone-3.20.tar.bz2
   $ tar xjf ns-allinone-3.20.tar.bz2
 
 If you change into the directory ``ns-allinone-3.20`` you should see a
@@ -182,15 +182,20 @@ bake works by downloading source packages into a source directory,
 and installing libraries into a build directory.  bake can be run
 by referencing the binary, but if one chooses to run bake from
 outside of the directory it was downloaded into, it is advisable
-to put bake into your path, such as follows (Linux bash shell example)::
+to put bake into your path, such as follows (Linux bash shell example).
+First, change into the 'bake' directory, and then set the following
+environment variables
 
-  $ export BAKE_HOME=`pwd`/bake
-  $ export PATH=$PATH:$BAKE_HOME
-  $ export PYTHONPATH=$PYTHONPATH:$BAKE_HOME
+::
 
-However, setting environment variables is not strictly necessary to
-complete this tutorial, so we'll call bake directly by specifying the path 
-to it in our shell commands.
+  $ export BAKE_HOME=`pwd`
+  $ export PATH=$PATH:$BAKE_HOME:$BAKE_HOME/build/bin
+  $ export PYTHONPATH=$PYTHONPATH:$BAKE_HOME:$BAKE_HOME/build/lib
+
+This will put the bake.py program into the shell's path, and will allow
+other programs to find executables and libraries created by bake.  Although
+several bake use cases do not require setting PATH and PYTHONPATH as above,
+full builds of ns-3-allinone (with the optional packages) typically do.
 
 Step into the workspace directory and type the following into your shell::
 
@@ -478,6 +483,29 @@ the |ns3| programs by simply typing
 Okay, sorry, I made you build the |ns3| part of the system twice,
 but now you know how to change the configuration and build optimized code.
 
+The build.py script discussed above supports also the ``--enable-examples``
+and ``enable-tests`` arguments, but in general, does not directly support
+other waf options; for example, this will not work:
+
+::
+
+  $ ./build.py --disable-python
+
+will result in
+
+::
+
+  build.py: error: no such option: --disable-python
+
+However, the special operator ``--`` can be used to pass additional
+options through to waf, so instead of the above, the following will work:
+
+::
+
+  $ ./build.py -- --disable-python   
+
+as it generates the underlying command ``./waf configure --disable-python``.
+
 Here are a few more introductory tips about Waf.
 
 Configure vs. Build
@@ -572,6 +600,46 @@ More info on ``distcc`` and distributed compilation can be found on it's
 `project page
 <http://code.google.com/p/distcc/>`_
 under Documentation section.
+
+Install
+=======
+
+Waf may be used to install libraries in various places on the system.
+The default location where libraries and executables are built is
+in the ``build`` directory, and because Waf knows the location of these
+libraries and executables, it is not necessary to install the libraries
+elsewhere.
+
+If users choose to install things outside of the build directory, users
+may issue the ``./waf install`` command.  By default, the prefix for
+installation is ``/usr/local``, so ``./waf install`` will install programs
+into ``/usr/local/bin``, libraries into ``/usr/local/lib``, and headers
+into ``/usr/local/include``.  Superuser privileges are typically needed
+to install to the default prefix, so the typical command would be
+``sudo ./waf install``.  When running programs with Waf, Waf will
+first prefer to use shared libraries in the build directory, then 
+will look for libraries in the library path configured in the local
+environment.  So when installing libraries to the system, it is good
+practice to check that the intended libraries are being used.
+
+Users may choose to install to a different prefix by passing the ``--prefix``
+option at configure time, such as:
+
+::
+
+  ./waf configure --prefix=/opt/local
+
+If later after the build the user issues the ``./waf install`` command, the 
+prefix ``/opt/local`` will be used.
+
+The ``./waf clean`` command should be used prior to reconfiguring 
+the project if Waf will be used to install things at a different prefix.
+
+In summary, it is not necessary to call ``./waf install`` to use |ns3|.
+Most users will not need this command since Waf will pick up the
+current libraries from the ``build`` directory, but some users may find 
+it useful if their use case involves working with programs outside
+of the |ns3| directory.
 
 One Waf
 =======
@@ -725,17 +793,19 @@ using the provided command line template,
 inserting the program name for the ``%s`` placeholder.
 (I admit this is a bit awkward, but that's the way it is.  Patches welcome!)
 
-Another particularly useful example is to run the ``mytest`` test suite
-by itself.  Above, we used the ``./test.py`` script to run a whole slew of
+Another particularly useful example is to run a test suite by itself.
+Let's assume that a ``mytest`` test suite exists (it doesn't).
+Above, we used the ``./test.py`` script to run a whole slew of
 tests in parallel, by repeatedly invoking the real testing program,
 ``test-runner``.  To invoke ``test-runner`` directly for a single test::
 
-  $ ./waf --run test-runner --command-template="% --suite=mytest --verbose"
+  $ ./waf --run test-runner --command-template="%s --suite=mytest --verbose"
 
-This passes the arguments to the ``test-runner`` program.  To print the
-available ``test-runner`` options::
+This passes the arguments to the ``test-runner`` program.
+Since ``mytest`` does not exist, an error message will be generated.
+To print the available ``test-runner`` options::
 
-  $ ./waf --run test-runner --command-template="% --help"
+  $ ./waf --run test-runner --command-template="%s --help"
 
 Debugging
 +++++++++
@@ -744,7 +814,7 @@ To run |ns3| programs under the control of another utility, such as
 a debugger (*e.g.* ``gdb``) or memory checker (*e.g.* ``valgrind``),
 you use a similar ``--command-template="..."`` form.
 
-For example, to run your |ns3| program ``mysim`` with the arguments
+For example, to run your |ns3| program ``hello-simulator`` with the arguments
 ``<args>`` under the ``gdb`` debugger::
 
   $ ./waf --run=hello-simulator --command-template="gdb %s --args <args>"

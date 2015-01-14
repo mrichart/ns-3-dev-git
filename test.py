@@ -1162,6 +1162,11 @@ def run_tests():
         else:
             path_cmd = os.path.join("utils", test_runner_name + " --print-test-name-list --print-test-types")
         (rc, standard_out, standard_err, et) = run_job_synchronously(path_cmd, os.getcwd(), False, False)
+        if rc != 0:
+            # This is usually a sign that ns-3 crashed or exited uncleanly
+            print('test.py error:  test-runner return code returned {}'.format(rc))
+            print('To debug, try running {}\n'.format('\'./waf --run \"test-runner --print-test-name-list\"\''))
+            return
         list_items = standard_out.split('\n')
         list_items.sort()
         print "Test Type    Test Name"
@@ -1767,13 +1772,17 @@ def run_tests():
     # Repeat summary of skipped, failed, crashed, valgrind events 
     #
     if skipped_testnames:
-        print 'List of SKIPped tests: %s' % ' '.join(map(str, skipped_testnames))
+        skipped_testnames.sort()
+        print 'List of SKIPped tests: %s' % '\n    '.join(map(str, skipped_testnames))
     if failed_testnames:
-        print 'List of FAILed tests: %s' % ' '.join(map(str, failed_testnames))
+        failed_testnames.sort()
+        print 'List of FAILed tests: %s' % '\n    '.join(map(str, failed_testnames))
     if crashed_testnames:
-        print 'List of CRASHed tests: %s' % ' '.join(map(str, crashed_testnames))
+        crashed_testnames.sort()
+        print 'List of CRASHed tests: %s' % '\n    '.join(map(str, crashed_testnames))
     if valgrind_testnames:
-        print 'List of VALGR failures: %s' % ' '.join(map(str, valgrind_testnames))
+        valgrind_testnames.sort()
+        print 'List of VALGR failures: %s' % '\n    '.join(map(str, valgrind_testnames))
     #
     # The last things to do are to translate the XML results file to "human
     # readable form" if the user asked for it (or make an XML file somewhere)

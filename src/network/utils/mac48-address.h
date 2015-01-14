@@ -37,6 +37,8 @@ class Address;
  * \brief an EUI-48 address
  *
  * This class can contain 48 bit IEEE addresses.
+ *
+ * \see attribute_Mac48Address
  */
 class Mac48Address
 {
@@ -126,6 +128,14 @@ public:
    * \returns a multicast address.
    */
   static Mac48Address GetMulticast6Prefix (void);
+
+  /**
+   * TracedCallback signature for Mac48Address
+   *
+   * \param [in] value Current value of the Mac48Address
+   */
+  typedef void (* TracedCallback)(const Mac48Address value);
+  
 private:
   /**
    * \returns a new Address instance

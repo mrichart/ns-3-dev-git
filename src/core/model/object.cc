@@ -31,11 +31,15 @@
 #include <cstdlib>
 #include <cstring>
 
-
-
-NS_LOG_COMPONENT_DEFINE ("Object");
+/**
+ * \file
+ * \ingroup object
+ * ns3::Object class definition.
+ */
 
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("Object");
 
 /*********************************************************************
  *         The Object implementation
@@ -368,6 +372,7 @@ Object::CheckLoose (void) const
   for (uint32_t i = 0; i < n; i++)
     {
       Object *current = m_aggregates->buffer[i];
+      /// \todo Shortcircuit this loop.
       refcount += current->GetReferenceCount ();
     }
   return (refcount > 0);

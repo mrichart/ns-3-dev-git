@@ -38,9 +38,9 @@
 #include "ns3/boolean.h"
 #include <cmath>
 
-NS_LOG_COMPONENT_DEFINE ("YansWifiPhy");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("YansWifiPhy");
 
 NS_OBJECT_ENSURE_REGISTERED (YansWifiPhy);
 
@@ -131,7 +131,7 @@ YansWifiPhy::GetTypeId (void)
                    MakeUintegerAccessor (&YansWifiPhy::GetNumberOfTransmitAntennas,
                                         &YansWifiPhy::SetNumberOfTransmitAntennas),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("Recievers", "The number of recievers.",
+    .AddAttribute ("Receivers", "The number of receivers.",
                    UintegerValue (1),
                    MakeUintegerAccessor (&YansWifiPhy::GetNumberOfReceiveAntennas,
                                         &YansWifiPhy::SetNumberOfReceiveAntennas),
@@ -397,6 +397,9 @@ YansWifiPhy::SetChannelNumber (uint16_t nch)
     case YansWifiPhy::IDLE:
       goto switchChannel;
       break;
+    case YansWifiPhy::SLEEP:
+      NS_LOG_DEBUG ("channel switching ignored in sleep mode");
+      break;
     default:
       NS_ASSERT (false);
       break;
@@ -432,6 +435,59 @@ YansWifiPhy::GetChannelFrequencyMhz () const
 }
 
 void
+YansWifiPhy::SetSleepMode (void)
+{
+  NS_LOG_FUNCTION (this);
+  switch (m_state->GetState ())
+    {
+    case YansWifiPhy::TX:
+      NS_LOG_DEBUG ("setting sleep mode postponed until end of current transmission");
+      Simulator::Schedule (GetDelayUntilIdle (), &YansWifiPhy::SetSleepMode, this);
+      break;
+    case YansWifiPhy::RX:
+      NS_LOG_DEBUG ("setting sleep mode postponed until end of current reception");
+      Simulator::Schedule (GetDelayUntilIdle (), &YansWifiPhy::SetSleepMode, this);
+      break;
+    case YansWifiPhy::SWITCHING:
+      NS_LOG_DEBUG ("setting sleep mode postponed until end of channel switching");
+      Simulator::Schedule (GetDelayUntilIdle (), &YansWifiPhy::SetSleepMode, this);
+      break;
+    case YansWifiPhy::CCA_BUSY:
+    case YansWifiPhy::IDLE:
+      NS_LOG_DEBUG ("setting sleep mode");
+      m_state->SwitchToSleep ();
+      break;
+    case YansWifiPhy::SLEEP:
+      NS_LOG_DEBUG ("already in sleep mode");
+      break;
+    default:
+      NS_ASSERT (false);
+      break;
+    }
+}
+
+void
+YansWifiPhy::ResumeFromSleep (void)
+{
+  NS_LOG_FUNCTION (this);
+  switch (m_state->GetState ())
+    {
+    case YansWifiPhy::TX:
+    case YansWifiPhy::RX:
+    case YansWifiPhy::IDLE:
+    case YansWifiPhy::CCA_BUSY:
+    case YansWifiPhy::SWITCHING:
+      NS_LOG_DEBUG ("not in sleep mode, there is nothing to resume");
+      break;
+    case YansWifiPhy::SLEEP:
+      NS_LOG_DEBUG ("resuming from sleep mode");
+      Time delayUntilCcaEnd = m_interference.GetEnergyDuration (m_ccaMode1ThresholdW);
+      m_state->SwitchFromSleep (delayUntilCcaEnd);
+      break;
+    }
+}
+
+void
 YansWifiPhy::SetReceiveOkCallback (RxOkCallback callback)
 {
   m_state->SetReceiveOkCallback (callback);
@@ -450,7 +506,7 @@ YansWifiPhy::StartReceivePacket (Ptr<Packet> packet,
   NS_LOG_FUNCTION (this << packet << rxPowerDbm << txVector.GetMode()<< preamble);
   rxPowerDbm += m_rxGainDb;
   double rxPowerW = DbmToW (rxPowerDbm);
-  Time rxDuration = CalculateTxDuration (packet->GetSize (), txVector, preamble);
+  Time rxDuration = CalculateTxDuration (packet->GetSize (), txVector, preamble, GetFrequency());
   WifiMode txMode = txVector.GetMode();
   Time endRx = Simulator::Now () + rxDuration;
 
@@ -535,6 +591,10 @@ YansWifiPhy::StartReceivePacket (Ptr<Packet> packet,
           goto maybeCcaBusy;
         }
       break;
+    case YansWifiPhy::SLEEP:
+      NS_LOG_DEBUG ("drop packet because in sleep mode");
+      NotifyRxDrop (packet);
+      break;
     }
 
   return;
@@ -553,9 +613,9 @@ maybeCcaBusy:
 }
 
 void
-YansWifiPhy::SendPacket (Ptr<const Packet> packet, WifiMode txMode, WifiPreamble preamble, WifiTxVector txVector)
+YansWifiPhy::SendPacket (Ptr<const Packet> packet, WifiTxVector txVector, WifiPreamble preamble)
 {
-  NS_LOG_FUNCTION (this << packet << txMode << preamble << (uint32_t)txVector.GetTxPowerLevel());
+  NS_LOG_FUNCTION (this << packet << txVector.GetMode() << preamble << (uint32_t)txVector.GetTxPowerLevel());
   /* Transmission can happen if:
    *  - we are syncing on a packet. It is the responsability of the
    *    MAC layer to avoid doing this but the PHY does nothing to
@@ -564,17 +624,32 @@ YansWifiPhy::SendPacket (Ptr<const Packet> packet, WifiMode txMode, WifiPreamble
    */
   NS_ASSERT (!m_state->IsStateTx () && !m_state->IsStateSwitching ());
 
-  Time txDuration = CalculateTxDuration (packet->GetSize (), txVector, preamble);
+  if (m_state->IsStateSleep ())
+    {
+      NS_LOG_DEBUG ("Dropping packet because in sleep mode");
+      NotifyTxDrop (packet);
+      return;
+    }
+
+  Time txDuration = CalculateTxDuration (packet->GetSize (), txVector, preamble, GetFrequency());
   if (m_state->IsStateRx ())
     {
       m_endRxEvent.Cancel ();
       m_interference.NotifyRxEnd ();
     }
   NotifyTxBegin (packet);
-  uint32_t dataRate500KbpsUnits = txVector.GetMode().GetDataRate () * txVector.GetNss() / 500000;
+  uint32_t dataRate500KbpsUnits;
+  if (txVector.GetMode().GetModulationClass () == WIFI_MOD_CLASS_HT)
+    {
+      dataRate500KbpsUnits = 128 + WifiModeToMcs (txVector.GetMode());
+    }
+  else
+    {
+      dataRate500KbpsUnits = txVector.GetMode().GetDataRate () * txVector.GetNss() / 500000;
+    }
   bool isShortPreamble = (WIFI_PREAMBLE_SHORT == preamble);
   NotifyMonitorSniffTx (packet, (uint16_t)GetChannelFrequencyMhz (), GetChannelNumber (), dataRate500KbpsUnits, isShortPreamble, txVector.GetTxPowerLevel());
-  m_state->SwitchToTx (txDuration, packet, txVector.GetMode(), preamble,  txVector.GetTxPowerLevel());
+  m_state->SwitchToTx (txDuration, packet, GetPowerDbm (txVector.GetTxPowerLevel()), txVector, preamble);
   m_channel->Send (this, packet, GetPowerDbm ( txVector.GetTxPowerLevel()) + m_txGainDb, txVector, preamble);
 }
 
@@ -748,6 +823,11 @@ YansWifiPhy::IsStateSwitching (void)
 {
   return m_state->IsStateSwitching ();
 }
+bool
+YansWifiPhy::IsStateSleep (void)
+{
+  return m_state->IsStateSleep ();
+}
 
 Time
 YansWifiPhy::GetStateDuration (void)
@@ -832,7 +912,15 @@ YansWifiPhy::EndReceive (Ptr<Packet> packet, Ptr<InterferenceHelper::Event> even
   if (m_random->GetValue () > snrPer.per)
     {
       NotifyRxEnd (packet);
-      uint32_t dataRate500KbpsUnits = event->GetPayloadMode ().GetDataRate () * event->GetTxVector().GetNss()/ 500000;
+      uint32_t dataRate500KbpsUnits;
+      if ((event->GetPayloadMode ().GetModulationClass () == WIFI_MOD_CLASS_HT))
+        {
+          dataRate500KbpsUnits = 128 + WifiModeToMcs (event->GetPayloadMode ());
+        }
+      else
+        {
+          dataRate500KbpsUnits = event->GetPayloadMode ().GetDataRate () * event->GetTxVector().GetNss()/ 500000;
+        }
       bool isShortPreamble = (WIFI_PREAMBLE_SHORT == event->GetPreambleType ());
       double signalDbm = RatioToDb (event->GetRxPowerW ()) + 30;
       double noiseDbm = RatioToDb (event->GetRxPowerW () / snrPer.snr) - GetRxNoiseFigure () + 30;
@@ -950,13 +1038,22 @@ void
 YansWifiPhy::Configure80211n (void)
 {
   NS_LOG_FUNCTION (this);
-  m_deviceRateSet.push_back (WifiPhy::GetDsssRate1Mbps ());
-  m_deviceRateSet.push_back (WifiPhy::GetDsssRate2Mbps ());
-  m_deviceRateSet.push_back (WifiPhy::GetDsssRate5_5Mbps ());
-  m_deviceRateSet.push_back (WifiPhy::GetErpOfdmRate6Mbps ());
-  m_deviceRateSet.push_back (WifiPhy::GetDsssRate11Mbps ());
-  m_deviceRateSet.push_back (WifiPhy::GetErpOfdmRate12Mbps ());
-  m_deviceRateSet.push_back (WifiPhy::GetErpOfdmRate24Mbps ());
+  if (m_channelStartingFrequency>=2400 && m_channelStartingFrequency<=2500) //@ 2.4 GHz
+    {
+      m_deviceRateSet.push_back (WifiPhy::GetDsssRate1Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetDsssRate2Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetDsssRate5_5Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetErpOfdmRate6Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetDsssRate11Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetErpOfdmRate12Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetErpOfdmRate24Mbps ());
+    }
+  if (m_channelStartingFrequency>=5000 && m_channelStartingFrequency<=6000) //@ 5 GHz
+    {
+      m_deviceRateSet.push_back (WifiPhy::GetOfdmRate6Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetOfdmRate12Mbps ());
+      m_deviceRateSet.push_back (WifiPhy::GetOfdmRate24Mbps ());
+    }
   m_bssMembershipSelectorSet.push_back(HT_PHY);
   for (uint8_t i=0; i <8; i++)
     {

@@ -40,9 +40,9 @@
 #include "ipv4-interface.h"
 #include "ipv4-raw-socket-impl.h"
 
-NS_LOG_COMPONENT_DEFINE ("Ipv4L3Protocol");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("Ipv4L3Protocol");
 
 const uint16_t Ipv4L3Protocol::PROT_NUMBER = 0x0800;
 
@@ -54,36 +54,57 @@ Ipv4L3Protocol::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::Ipv4L3Protocol")
     .SetParent<Ipv4> ()
     .AddConstructor<Ipv4L3Protocol> ()
-    .AddAttribute ("DefaultTos", "The TOS value set by default on all outgoing packets generated on this node.",
+    .AddAttribute ("DefaultTos",
+                   "The TOS value set by default on "
+                   "all outgoing packets generated on this node.",
                    UintegerValue (0),
                    MakeUintegerAccessor (&Ipv4L3Protocol::m_defaultTos),
                    MakeUintegerChecker<uint8_t> ())
-    .AddAttribute ("DefaultTtl", "The TTL value set by default on all outgoing packets generated on this node.",
+    .AddAttribute ("DefaultTtl",
+                   "The TTL value set by default on "
+                   "all outgoing packets generated on this node.",
                    UintegerValue (64),
                    MakeUintegerAccessor (&Ipv4L3Protocol::m_defaultTtl),
                    MakeUintegerChecker<uint8_t> ())
     .AddAttribute ("FragmentExpirationTimeout",
-                   "When this timeout expires, the fragments will be cleared from the buffer.",
+                   "When this timeout expires, the fragments "
+                   "will be cleared from the buffer.",
                    TimeValue (Seconds (30)),
                    MakeTimeAccessor (&Ipv4L3Protocol::m_fragmentExpirationTimeout),
                    MakeTimeChecker ())
-    .AddTraceSource ("Tx", "Send ipv4 packet to outgoing interface.",
-                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_txTrace))
-    .AddTraceSource ("Rx", "Receive ipv4 packet from incoming interface.",
-                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_rxTrace))
-    .AddTraceSource ("Drop", "Drop ipv4 packet",
-                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_dropTrace))
-    .AddAttribute ("InterfaceList", "The set of Ipv4 interfaces associated to this Ipv4 stack.",
+    .AddTraceSource ("Tx",
+                     "Send ipv4 packet to outgoing interface.",
+                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_txTrace),
+                     "ns3::Ipv4L3Protocol::TxRxTracedCallback")
+    .AddTraceSource ("Rx",
+                     "Receive ipv4 packet from incoming interface.",
+                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_rxTrace),
+                     "ns3::Ipv4L3Protocol::TxRxTracedCallback")
+    .AddTraceSource ("Drop",
+                     "Drop ipv4 packet",
+                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_dropTrace),
+                     "ns3::Ipv4L3Protocol::DropTracedCallback")
+    .AddAttribute ("InterfaceList",
+                   "The set of Ipv4 interfaces associated to this Ipv4 stack.",
                    ObjectVectorValue (),
                    MakeObjectVectorAccessor (&Ipv4L3Protocol::m_interfaces),
                    MakeObjectVectorChecker<Ipv4Interface> ())
 
-    .AddTraceSource ("SendOutgoing", "A newly-generated packet by this node is about to be queued for transmission",
-                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_sendOutgoingTrace))
-    .AddTraceSource ("UnicastForward", "A unicast IPv4 packet was received by this node and is being forwarded to another node",
-                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_unicastForwardTrace))
-    .AddTraceSource ("LocalDeliver", "An IPv4 packet was received by/for this node, and it is being forward up the stack",
-                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_localDeliverTrace))
+    .AddTraceSource ("SendOutgoing",
+                     "A newly-generated packet by this node is "
+                     "about to be queued for transmission",
+                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_sendOutgoingTrace),
+                     "ns3::Ipv4L3Protocol::SentTracedCallback")
+    .AddTraceSource ("UnicastForward",
+                     "A unicast IPv4 packet was received by this node "
+                     "and is being forwarded to another node",
+                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_unicastForwardTrace),
+                     "ns3::Ipv4L3Protocol::SentTracedCallback")
+    .AddTraceSource ("LocalDeliver",
+                     "An IPv4 packet was received by/for this node, "
+                     "and it is being forward up the stack",
+                     MakeTraceSourceAccessor (&Ipv4L3Protocol::m_localDeliverTrace),
+                     "ns3::Ipv4L3Protocol::SentTracedCallback")
 
   ;
   return tid;
@@ -735,11 +756,17 @@ Ipv4L3Protocol::BuildHeader (
   ipHeader.SetPayloadSize (payloadSize);
   ipHeader.SetTtl (ttl);
   ipHeader.SetTos (tos);
+
+  uint64_t src = source.Get ();
+  uint64_t dst = destination.Get ();
+  uint64_t srcDst = dst | (src << 32);
+  std::pair<uint64_t, uint8_t> key = std::make_pair (srcDst, protocol);
+
   if (mayFragment == true)
     {
       ipHeader.SetMayFragment ();
-      ipHeader.SetIdentification (m_identification[protocol]);
-      m_identification[protocol]++;
+      ipHeader.SetIdentification (m_identification[key]);
+      m_identification[key]++;
     }
   else
     {
@@ -748,8 +775,8 @@ Ipv4L3Protocol::BuildHeader (
       // identification requirement:
       // >> Originating sources MAY set the IPv4 ID field of atomic datagrams
       //    to any value.
-      ipHeader.SetIdentification (m_identification[protocol]);
-      m_identification[protocol]++;
+      ipHeader.SetIdentification (m_identification[key]);
+      m_identification[key]++;
     }
   if (Node::ChecksumEnabled ())
     {
@@ -1524,5 +1551,4 @@ Ipv4L3Protocol::HandleFragmentsTimeout (std::pair<uint64_t, uint32_t> key, Ipv4H
   m_fragments.erase (key);
   m_fragmentsTimers.erase (key);
 }
-
 } // namespace ns3

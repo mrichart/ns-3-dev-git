@@ -30,9 +30,9 @@
 #include "uan-transducer.h"
 #include "ns3/log.h"
 
-NS_LOG_COMPONENT_DEFINE ("UanNetDevice");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("UanNetDevice");
 
 NS_OBJECT_ENSURE_REGISTERED (UanNetDevice);
 
@@ -110,9 +110,11 @@ UanNetDevice::GetTypeId ()
                                         &UanNetDevice::SetTransducer),
                    MakePointerChecker<UanTransducer> ())
     .AddTraceSource ("Rx", "Received payload from the MAC layer.",
-                     MakeTraceSourceAccessor (&UanNetDevice::m_rxLogger))
+                     MakeTraceSourceAccessor (&UanNetDevice::m_rxLogger),
+                     "ns3::UanNetDevice::RxTxTracedCallback")
     .AddTraceSource ("Tx", "Send payload to the MAC layer.",
-                     MakeTraceSourceAccessor (&UanNetDevice::m_txLogger))
+                     MakeTraceSourceAccessor (&UanNetDevice::m_txLogger),
+                     "ns3::UanNetDevice::RxTxTracedCallback")
   ;
   return tid;
 }

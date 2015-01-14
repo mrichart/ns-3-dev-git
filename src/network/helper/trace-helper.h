@@ -100,7 +100,7 @@ public:
    * @returns a smart pointer to the Pcap file
    */
   Ptr<PcapFileWrapper> CreateFile (std::string filename, std::ios::openmode filemode,
-                                   uint32_t dataLinkType,  uint32_t snapLen = 65535, int32_t tzCorrection = 0);
+                                   uint32_t dataLinkType,  uint32_t snapLen = std::numeric_limits<uint32_t>::max (), int32_t tzCorrection = 0);
   /**
    * @brief Hook a trace source to the default trace sink
    * 
@@ -544,7 +544,6 @@ public:
 
   /**
    * @brief Enable pcap output the indicated net device.
-   * @internal
    *
    * @param prefix Filename prefix to use for pcap files.
    * @param nd Net device for which you want to enable tracing.
@@ -634,7 +633,6 @@ public:
 
   /**
    * @brief Enable ascii trace output on the indicated net device.
-   * @internal
    *
    * The implementation is expected to use a provided Ptr<OutputStreamWrapper>
    * if it is non-null.  If the OutputStreamWrapper is null, the implementation
@@ -794,9 +792,7 @@ private:
    *               ascii tracing
    * @param explicitFilename Treat the prefix as an explicit filename if true
    */
-  /**
-   * @internal Avoid code duplication.
-   */
+
   void EnableAsciiImpl (Ptr<OutputStreamWrapper> stream, 
                         std::string prefix, 
                         uint32_t nodeid, 

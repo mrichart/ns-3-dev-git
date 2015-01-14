@@ -32,9 +32,9 @@
 #include "ns3/boolean.h"
 #include "ns3/simulator.h"
 
-NS_LOG_COMPONENT_DEFINE ("Node");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("Node");
 
 NS_OBJECT_ENSURE_REGISTERED (Node);
 
@@ -66,7 +66,7 @@ Node::GetTypeId (void)
                    MakeUintegerAccessor (&Node::m_id),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("SystemId", "The systemId of this node: a unique integer used for parallel simulations.",
-                   TypeId::ATTR_GET|TypeId::ATTR_SET,
+                   TypeId::ATTR_GET || TypeId::ATTR_SET,
                    UintegerValue (0),
                    MakeUintegerAccessor (&Node::m_sid),
                    MakeUintegerChecker<uint32_t> ())

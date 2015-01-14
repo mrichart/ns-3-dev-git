@@ -31,7 +31,7 @@
 #include "lte-spectrum-signal-parameters.h"
 #include "lte-net-device.h"
 #include "lte-radio-bearer-tag.h"
-#include "lte-sinr-chunk-processor.h"
+#include "lte-chunk-processor.h"
 #include "lte-phy-tag.h"
 #include <ns3/lte-mi-error-model.h>
 #include <ns3/lte-radio-bearer-tag.h>
@@ -39,10 +39,9 @@
 #include <ns3/double.h>
 #include <ns3/config.h>
 
-NS_LOG_COMPONENT_DEFINE ("LteSpectrumPhy");
-
 namespace ns3 {
 
+NS_LOG_COMPONENT_DEFINE ("LteSpectrumPhy");
 
 
 // duration of SRS portion of UL subframe  
@@ -190,19 +189,24 @@ LteSpectrumPhy::GetTypeId (void)
     .SetParent<SpectrumPhy> ()
     .AddTraceSource ("TxStart",
                      "Trace fired when a new transmission is started",
-                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyTxStartTrace))
+                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyTxStartTrace),
+                     "ns3::PacketBurst::TracedCallback")
     .AddTraceSource ("TxEnd",
                      "Trace fired when a previosuly started transmission is finished",
-                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyTxEndTrace))
+                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyTxEndTrace),
+                     "ns3::PacketBurst::TracedCallback")
     .AddTraceSource ("RxStart",
                      "Trace fired when the start of a signal is detected",
-                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyRxStartTrace))
+                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyRxStartTrace),
+                     "ns3::PacketBurst::TracedCallback")
     .AddTraceSource ("RxEndOk",
                      "Trace fired when a previosuly started RX terminates successfully",
-                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyRxEndOkTrace))
+                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyRxEndOkTrace),
+                     "ns3::Packet::TracedCallback")
     .AddTraceSource ("RxEndError",
                      "Trace fired when a previosuly started RX terminates with an error",
-                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyRxEndErrorTrace))
+                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_phyRxEndErrorTrace),
+                     "ns3::Packet::TracedCallback")
     .AddAttribute ("DataErrorModelEnabled",
                     "Activate/Deactivate the error model of data (TBs of PDSCH and PUSCH) [by default is active].",
                     BooleanValue (true),
@@ -215,10 +219,12 @@ LteSpectrumPhy::GetTypeId (void)
                     MakeBooleanChecker ())
     .AddTraceSource ("DlPhyReception",
                      "DL reception PHY layer statistics.",
-                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_dlPhyReception))
+                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_dlPhyReception),
+                     "ns3::PhyReceptionStatParameters::TracedCallback")
     .AddTraceSource ("UlPhyReception",
                      "DL reception PHY layer statistics.",
-                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_ulPhyReception))
+                     MakeTraceSourceAccessor (&LteSpectrumPhy::m_ulPhyReception),
+                     "ns3::PhyReceptionStatParameters::TracedCallback")
   ;
   return tid;
 }
@@ -1116,32 +1122,37 @@ LteSpectrumPhy::SetCellId (uint16_t cellId)
 
 
 void
-LteSpectrumPhy::AddRsPowerChunkProcessor (Ptr<LteSinrChunkProcessor> p)
+LteSpectrumPhy::AddRsPowerChunkProcessor (Ptr<LteChunkProcessor> p)
 {
   m_interferenceCtrl->AddRsPowerChunkProcessor (p);
 }
 
+void
+LteSpectrumPhy::AddDataPowerChunkProcessor (Ptr<LteChunkProcessor> p)
+{
+  m_interferenceData->AddRsPowerChunkProcessor (p);
+}
 
 void
-LteSpectrumPhy::AddDataSinrChunkProcessor (Ptr<LteSinrChunkProcessor> p)
+LteSpectrumPhy::AddDataSinrChunkProcessor (Ptr<LteChunkProcessor> p)
 {
   m_interferenceData->AddSinrChunkProcessor (p);
 }
 
 void
-LteSpectrumPhy::AddInterferenceCtrlChunkProcessor (Ptr<LteSinrChunkProcessor> p)
+LteSpectrumPhy::AddInterferenceCtrlChunkProcessor (Ptr<LteChunkProcessor> p)
 {
   m_interferenceCtrl->AddInterferenceChunkProcessor (p);
 }
 
 void
-LteSpectrumPhy::AddInterferenceDataChunkProcessor (Ptr<LteSinrChunkProcessor> p)
+LteSpectrumPhy::AddInterferenceDataChunkProcessor (Ptr<LteChunkProcessor> p)
 {
   m_interferenceData->AddInterferenceChunkProcessor (p);
 }
 
 void
-LteSpectrumPhy::AddCtrlSinrChunkProcessor (Ptr<LteSinrChunkProcessor> p)
+LteSpectrumPhy::AddCtrlSinrChunkProcessor (Ptr<LteChunkProcessor> p)
 {
   m_interferenceCtrl->AddSinrChunkProcessor (p);
 }

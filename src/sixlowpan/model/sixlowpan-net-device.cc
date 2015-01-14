@@ -29,7 +29,6 @@
 #include "ns3/uinteger.h"
 #include "ns3/icmpv6-header.h"
 #include "ns3/ipv6-header.h"
-#include "ns3/random-variable.h"
 #include "ns3/mac16-address.h"
 #include "ns3/mac48-address.h"
 #include "ns3/mac64-address.h"
@@ -85,12 +84,21 @@ TypeId SixLowPanNetDevice::GetTypeId (void)
                    UintegerValue (0xFFFF),
                    MakeUintegerAccessor (&SixLowPanNetDevice::m_etherType),
                    MakeUintegerChecker<uint16_t> ())
-    .AddTraceSource ("Tx", "Send - packet (including 6LoWPAN header), SixLoWPanNetDevice Ptr, interface index.",
-                     MakeTraceSourceAccessor (&SixLowPanNetDevice::m_txTrace))
-    .AddTraceSource ("Rx", "Receive - packet (including 6LoWPAN header), SixLoWPanNetDevice Ptr, interface index.",
-                     MakeTraceSourceAccessor (&SixLowPanNetDevice::m_rxTrace))
-    .AddTraceSource ("Drop", "Drop - DropReason, packet (including 6LoWPAN header), SixLoWPanNetDevice Ptr, interface index.",
-                     MakeTraceSourceAccessor (&SixLowPanNetDevice::m_dropTrace))
+    .AddTraceSource ("Tx",
+                     "Send - packet (including 6LoWPAN header), "
+                     "SixLoWPanNetDevice Ptr, interface index.",
+                     MakeTraceSourceAccessor (&SixLowPanNetDevice::m_txTrace),
+                     "ns3::SixLowPanNetDevice::RxTxTracedCallback")
+    .AddTraceSource ("Rx",
+                     "Receive - packet (including 6LoWPAN header), "
+                     "SixLoWPanNetDevice Ptr, interface index.",
+                     MakeTraceSourceAccessor (&SixLowPanNetDevice::m_rxTrace),
+                     "ns3::SixLowPanNetDevice::RxTxTracedCallback")
+    .AddTraceSource ("Drop",
+                     "Drop - DropReason, packet (including 6LoWPAN header), "
+                     "SixLoWPanNetDevice Ptr, interface index.",
+                     MakeTraceSourceAccessor (&SixLowPanNetDevice::m_dropTrace),
+                     "ns3::SixLowPanNetDevice::DropTracedCallback")
   ;
   return tid;
 }
@@ -944,14 +952,14 @@ SixLowPanNetDevice::CompressLowPanIphc (Ptr<Packet> packet, Address const &src, 
           // The address takes the form ffXX::00XX:XXXX.
           //                            ffXX:0000:0000:0000:0000:0000:00XX:XXXX.
           else if ( (addressBuf[0] == multicastAddrCheckerBuf[0])
-                    && (memcmp (addressBuf + 2, multicastAddrCheckerBuf + 2, 11) ) )
+                    && (memcmp (addressBuf + 2, multicastAddrCheckerBuf + 2, 11) == 0) )
             {
               iphcHeader.SetDam (SixLowPanIphc::HC_COMPR_16);
             }
           // The address takes the form ffXX::00XX:XXXX:XXXX.
           //                            ffXX:0000:0000:0000:0000:00XX:XXXX:XXXX.
           else if ( (addressBuf[0] == multicastAddrCheckerBuf[0])
-                    && (memcmp (addressBuf + 2, multicastAddrCheckerBuf + 2, 9) ) )
+                    && (memcmp (addressBuf + 2, multicastAddrCheckerBuf + 2, 9) == 0) )
             {
               iphcHeader.SetDam (SixLowPanIphc::HC_COMPR_64);
             }

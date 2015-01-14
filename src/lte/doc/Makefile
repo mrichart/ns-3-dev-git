@@ -39,8 +39,23 @@ IMAGES_DIA = \
 	$(FIGURES)/ue-meas-piecewise-a1-hys.dia \
 	$(FIGURES)/lte-cell-selection-timeline.dia \
 	$(FIGURES)/lte-cell-selection-scenario.dia \
-	$(FIGURES)/lte-handover-target-scenario.dia
-
+	$(FIGURES)/lte-handover-target-scenario.dia \
+	$(FIGURES)/lte-dl-power-control.dia \
+	$(FIGURES)/lte-ffr-scheduling.dia \
+	$(FIGURES)/fr-enhanced-fractional-frequency-reuse-scheme.dia \
+	$(FIGURES)/fr-full-frequency-reuse-scheme.dia \
+	$(FIGURES)/fr-hard-frequency-reuse-scheme.dia \
+	$(FIGURES)/fr-soft-fractional-frequency-reuse-scheme.dia \
+	$(FIGURES)/fr-soft-frequency-reuse-scheme-v1.dia \
+	$(FIGURES)/fr-soft-frequency-reuse-scheme-v2.dia \
+	$(FIGURES)/fr-strict-frequency-reuse-scheme.dia \
+	$(FIGURES)/ffr-distributed-scheme.dia \
+	$(FIGURES)/lte-rlc-implementation-model.dia \
+	$(FIGURES)/lte-rlc-data-txon-dl.dia \
+	$(FIGURES)/lte-rlc-data-retx-dl.dia \
+	$(FIGURES)/lte-rlc-data-txon-ul.dia \
+	$(FIGURES)/lte-rlc-data-retx-ul.dia \
+	$(FIGURES)/lte-epc-x2-entity-saps.dia
 
 # specify eps figures from which .png and .pdf figures need to be built
 
@@ -56,12 +71,6 @@ IMAGES_EPS = \
 	$(FIGURES)/epcSimulationTime.eps \
 	$(FIGURES)/epcEutranRunningTime.eps \
 	$(FIGURES)/profiling-memory.eps \
-	$(FIGURES)/lte-rlc-implementation-model.eps \
-	$(FIGURES)/lte-rlc-data-txon-dl.eps \
-	$(FIGURES)/lte-rlc-data-retx-dl.eps \
-	$(FIGURES)/lte-rlc-data-txon-ul.eps \
-	$(FIGURES)/lte-rlc-data-retx-ul.eps \
-	$(FIGURES)/lte-epc-x2-entity-saps.eps \
 	$(FIGURES)/lte-strongest-cell-handover-algorithm.eps
 
 # rescale pdf figures as necessary
@@ -130,6 +139,16 @@ IMAGES_NOBUILD = $(FIGURES)/fading_pedestrian.png \
 	$(FIGURES)/MCS_12_test.pdf \
 	$(FIGURES)/MCS_16_test.png \
 	$(FIGURES)/MCS_16_test.pdf \
+	$(FIGURES)/lte-fr-soft-1-rem.png \
+	$(FIGURES)/lte-fr-soft-1-rem.pdf \
+	$(FIGURES)/lte-ffr-soft-2-spectrum-trace.png \
+	$(FIGURES)/lte-ffr-soft-2-spectrum-trace.pdf \
+	$(FIGURES)/lte-fr-hard-1-rem.png \
+	$(FIGURES)/lte-fr-hard-1-rem.pdf \
+	$(FIGURES)/lte-fr-hard-2-rem.png \
+	$(FIGURES)/lte-fr-hard-2-rem.pdf \
+	$(FIGURES)/lte-fr-hard-3-rem.png \
+	$(FIGURES)/lte-fr-hard-3-rem.pdf \
 	$(FIGURES)/lte-phy-interference.png \
 	$(FIGURES)/lte-phy-interference.pdf \
 	$(FIGURES)/helpers.png \

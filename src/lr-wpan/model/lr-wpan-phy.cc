@@ -38,9 +38,9 @@
 #include <ns3/random-variable-stream.h>
 #include <ns3/double.h>
 
-NS_LOG_COMPONENT_DEFINE ("LrWpanPhy");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("LrWpanPhy");
 
 NS_OBJECT_ENSURE_REGISTERED (LrWpanPhy);
 
@@ -78,25 +78,39 @@ LrWpanPhy::GetTypeId (void)
     .AddConstructor<LrWpanPhy> ()
     .AddTraceSource ("TrxState",
                      "The state of the transceiver",
-                     MakeTraceSourceAccessor (&LrWpanPhy::m_trxStateLogger))
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_trxStateLogger),
+                     "ns3::LrWpanPhy::StateTracedCallback")
     .AddTraceSource ("PhyTxBegin",
-                     "Trace source indicating a packet has begun transmitting over the channel medium",
-                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyTxBeginTrace))
+                     "Trace source indicating a packet has "
+                     "begun transmitting over the channel medium",
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyTxBeginTrace),
+                     "ns3::Packet::TracedCallback")
     .AddTraceSource ("PhyTxEnd",
-                     "Trace source indicating a packet has been completely transmitted over the channel.",
-                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyTxEndTrace))
+                     "Trace source indicating a packet has been "
+                     "completely transmitted over the channel.",
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyTxEndTrace),
+                     "ns3::Packet::TracedCallback")
     .AddTraceSource ("PhyTxDrop",
-                     "Trace source indicating a packet has been dropped by the device during transmission",
-                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyTxDropTrace))
+                     "Trace source indicating a packet has been "
+                     "dropped by the device during transmission",
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyTxDropTrace),
+                     "ns3::Packet::TracedCallback")
     .AddTraceSource ("PhyRxBegin",
-                     "Trace source indicating a packet has begun being received from the channel medium by the device",
-                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxBeginTrace))
+                     "Trace source indicating a packet has begun "
+                     "being received from the channel medium by the device",
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxBeginTrace),
+                     "ns3::Packet::TracedCallback")
     .AddTraceSource ("PhyRxEnd",
-                     "Trace source indicating a packet has been completely received from the channel medium by the device",
-                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxEndTrace))
+                     "Trace source indicating a packet has been "
+                     "completely received from the channel medium "
+                     "by the device",
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxEndTrace),
+                     "ns3::LrWpanPhy::RxEndTracedCallback")
     .AddTraceSource ("PhyRxDrop",
-                     "Trace source indicating a packet has been dropped by the device during reception",
-                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxDropTrace))
+                     "Trace source indicating a packet has been "
+                     "dropped by the device during reception",
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxDropTrace),
+                     "ns3::Packet::TracedCallback")
   ;
   return tid;
 }
@@ -293,6 +307,7 @@ LrWpanPhy::StartRx (Ptr<SpectrumSignalParameters> spectrumRxParams)
 
       // Add any incoming packet to the current interference before checking the
       // SINR.
+      NS_LOG_DEBUG (this << " receiving packet with power: " << 10 * log10(LrWpanSpectrumValueHelper::TotalAvgPower (lrWpanRxParams->psd)) + 30 << "dBm");
       m_signal->AddSignal (lrWpanRxParams->psd);
       Ptr<SpectrumValue> interferenceAndNoise = m_signal->GetSignalPsd ();
       *interferenceAndNoise -= *lrWpanRxParams->psd;
@@ -1075,7 +1090,7 @@ LrWpanPhy::EndCca (void)
   else if (m_phyPIBAttributes.phyCCAMode == 1)
     { //sec 6.9.9 ED detection
       // -- ED threshold at most 10 dB above receiver sensitivity.
-      if (m_ccaPeakPower / m_rxSensitivity >= 10.0)
+      if (10 * log10 (m_ccaPeakPower / m_rxSensitivity) >= 10.0)
         {
           sensedChannelState = IEEE_802_15_4_PHY_BUSY;
         }
@@ -1103,7 +1118,7 @@ LrWpanPhy::EndCca (void)
     }
   else if (m_phyPIBAttributes.phyCCAMode == 3)
     { //sect 6.9.9 both
-      if ((m_ccaPeakPower / m_rxSensitivity >= 10.0)
+      if ((10 * log10 (m_ccaPeakPower / m_rxSensitivity) >= 10.0)
           && m_trxState == IEEE_802_15_4_PHY_BUSY_RX)
         {
           // Again, this code will never be reached, if we are already receiving

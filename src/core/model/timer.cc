@@ -22,9 +22,10 @@
 #include "simulation-singleton.h"
 #include "log.h"
 
-NS_LOG_COMPONENT_DEFINE ("Timer");
 
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("Timer");
 
 Timer::Timer ()
   : m_flags (CHECK_ON_DESTROY),

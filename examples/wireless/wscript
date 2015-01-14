@@ -46,11 +46,17 @@ def build(bld):
     obj = bld.create_ns3_program('ofdm-validation', ['core', 'mobility', 'wifi', 'config-store', 'stats'])
     obj.source = 'ofdm-validation.cc'
 
+    obj = bld.create_ns3_program('ofdm-ht-validation', ['core', 'mobility', 'wifi', 'config-store', 'stats'])
+    obj.source = 'ofdm-ht-validation.cc'
+
     obj = bld.create_ns3_program('wifi-hidden-terminal', ['internet', 'mobility', 'wifi', 'applications', 'propagation', 'flow-monitor'])
     obj.source = 'wifi-hidden-terminal.cc'
 
     obj = bld.create_ns3_program('ht-wifi-network', ['core','internet', 'mobility', 'wifi', 'applications', 'propagation'])
     obj.source = 'ht-wifi-network.cc'
+
+    obj = bld.create_ns3_program('wifi-sleep', ['core', 'network', 'internet', 'mobility', 'wifi', 'applications', 'energy', 'config-store'])
+    obj.source = 'wifi-sleep.cc'
     
     obj = bld.create_ns3_program('power-adaptation-distance', ['core', 'mobility', 'wifi', 'applications'])
     obj.source = 'power-adaptation-distance.cc'
