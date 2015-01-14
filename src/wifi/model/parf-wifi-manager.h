@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
- * Author: Matías Richart <mrichart@fing.edu.uy>
+ * Author: Matas Richart <mrichart@fing.edu.uy>
  */
 
 #ifndef PARF_WIFI_MANAGER_H
@@ -35,7 +35,7 @@ struct ParfWifiRemoteStation;
  * <i>Self-management in chaotic wireless deployments</i>, by
  * Akella, A.; Judd, G.; Seshan, S. & Steenkiste, P. in
  * Wireless Networks, Kluwer Academic Publishers, 2007, 13, 737-755
- * http://dl.acm.org/ft_gateway.cfm?id=1080849&ftid=326992&dwn=1&CFID=618017405&CFTOKEN=94431066
+ * http://www.cs.odu.edu/~nadeem/classes/cs795-WNS-S13/papers/enter-006.pdf
  *
  */
 class ParfWifiManager : public WifiRemoteStationManager
@@ -57,8 +57,8 @@ public:
    * \param [in] power The new power.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (* PowerChangeTracedCallback)
-	(const uint8_t power, const Mac48Address remoteAddress);
+  typedef void (*PowerChangeTracedCallback)
+    (const uint8_t power, const Mac48Address remoteAddress);
 
   /**
    * TracedCallback signature for rate change events.
@@ -66,8 +66,8 @@ public:
    * \param [in] rate The new rate.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (* RateChangeTracedCallback)
-	(const uint32_t rate, const Mac48Address remoteAddress);
+  typedef void (*RateChangeTracedCallback)
+    (const uint32_t rate, const Mac48Address remoteAddress);
 
 private:
   // overriden from base class
