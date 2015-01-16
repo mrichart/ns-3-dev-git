@@ -80,6 +80,7 @@ def build(bld):
         'test/dcf-manager-test.cc',
         'test/tx-duration-test.cc',
         'test/wifi-test.cc',
+        'test/power-rate-adaptation-test.cc',
         ]
 
     headers = bld(features='ns3header')
