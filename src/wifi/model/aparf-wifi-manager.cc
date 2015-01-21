@@ -159,6 +159,7 @@ AparfWifiManager::CheckInit (AparfWifiRemoteStation *station)
       station->m_nSupported = GetNSupported (station);
       station->m_rate = station->m_nSupported - 1;
       station->m_power = m_nPower - 1;
+      station->m_rateCrit = 0;
       m_powerChange (station->m_power, station->m_state->m_address);
       m_rateChange (station->m_rate, station->m_state->m_address);
       station->m_initialized = true;
@@ -195,7 +196,7 @@ void AparfWifiManager::DoReportDataFailed (WifiRemoteStation *st)
     {
       station->m_nFailed = 0;
       station->m_nSuccess = 0;
-      station->m_pCount--;
+      station->m_pCount = 0;
       if (station->m_power == (m_nPower - 1))
         {
           station->m_rateCrit = station->m_rate;
