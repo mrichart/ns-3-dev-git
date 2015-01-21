@@ -24,7 +24,7 @@
 #include "ns3/yans-wifi-channel.h"
 #include "ns3/adhoc-wifi-mac.h"
 #include "ns3/yans-wifi-phy.h"
-#include "ns3/arf-wifi-manager.h"
+#include "ns3/parf-wifi-manager.h"
 #include "ns3/propagation-delay-model.h"
 #include "ns3/propagation-loss-model.h"
 #include "ns3/error-rate-model.h"
@@ -52,10 +52,7 @@ public:
   virtual void DoRun (void);
 private:
   void TestParf ();
-
-  ObjectFactory m_manager;
-  ObjectFactory m_mac;
-  ObjectFactory m_propDelay;
+  Ptr<Node> ConfigureNode ();
 };
 
 PowerRateAdaptationTest::PowerRateAdaptationTest ()
@@ -63,63 +60,105 @@ PowerRateAdaptationTest::PowerRateAdaptationTest ()
 {
 }
 
-void
-PowerRateAdaptationTest::TestParf ()
+Ptr<Node>
+PowerRateAdaptationTest::ConfigureNode ()
 {
+  /*
+   * Create channel model. Is is necessary to configure correctly the phy layer.
+   */
   Ptr<YansWifiChannel> channel = CreateObject<YansWifiChannel> ();
-  Ptr<PropagationDelayModel> propDelay = m_propDelay.Create<PropagationDelayModel> ();
-  Ptr<PropagationLossModel> propLoss = CreateObject<RandomPropagationLossModel> ();
-  channel->SetPropagationDelayModel (propDelay);
-  channel->SetPropagationLossModel (propLoss);
 
   Ptr<Node> node = CreateObject<Node> ();
   Ptr<WifiNetDevice> dev = CreateObject<WifiNetDevice> ();
 
-  Ptr<WifiMac> mac = m_mac.Create<WifiMac> ();
+  /*
+   * Create mac layer. We use Adhoc because association is not needed to get supported rates.
+   */
+  Ptr<AdhocWifiMac> mac = CreateObject<AdhocWifiMac> ();
   mac->ConfigureStandard (WIFI_PHY_STANDARD_80211a);
+
+  /*
+   * Create mobility model. Is needed by the phy layer for transmission.
+   */
+
   Ptr<ConstantPositionMobilityModel> mobility = CreateObject<ConstantPositionMobilityModel> ();
+
+  /*
+   * Create and configure phy layer.
+   */
   Ptr<YansWifiPhy> phy = CreateObject<YansWifiPhy> ();
-  Ptr<ErrorRateModel> error = CreateObject<YansErrorRateModel> ();
-  phy->SetErrorRateModel (error);
   phy->SetChannel (channel);
   phy->SetDevice (dev);
-  phy->SetMobility (node);
+  phy->SetMobility (mobility);
   phy->ConfigureStandard (WIFI_PHY_STANDARD_80211a);
+
+  /*
+   * Configure power control parameters.
+   */
   phy->SetNTxPower(18);
   phy->SetTxPowerStart(0);
   phy->SetTxPowerEnd(17);
-  Ptr<WifiRemoteStationManager> manager = m_manager.Create<WifiRemoteStationManager> ();
+
+  /*
+   * Create manager. Configure thresholds for rate and power control.
+   */
+  Ptr<WifiRemoteStationManager> manager = CreateObject<ParfWifiManager> ();
   manager->SetAttribute("AttemptThreshold",UintegerValue (15));
   manager->SetAttribute("SuccessThreshold",UintegerValue(10));
 
-  node->AggregateObject (mobility);
+  /*
+   * Configure node. Add mac and phy layer and the manager.
+   */
   mac->SetAddress (Mac48Address::Allocate ());
   dev->SetMac (mac);
   dev->SetPhy (phy);
   dev->SetRemoteStationManager (manager);
   node->AddDevice (dev);
 
+  return node;
+}
+
+void
+PowerRateAdaptationTest::TestParf ()
+{
+  Ptr<Node> node = ConfigureNode();
+  Ptr<WifiNetDevice> dev = DynamicCast<WifiNetDevice> (node->GetDevice(0));
+  Ptr<WifiRemoteStationManager> manager = dev->GetRemoteStationManager();
+
+  /*
+   * Create a dummy packet to simulate transmission.
+   */
   Mac48Address remoteAddress = Mac48Address::Allocate ();
   WifiMacHeader packetHeader;
   packetHeader.SetTypeData ();
   packetHeader.SetQosTid (0);
   Ptr<Packet> packet = Create<Packet> (10);
+  WifiMode ackMode;
 
+  /*
+   * To initialize the manager we need to generate a transmission.
+   */
   Ptr<Packet> p = Create<Packet> ();
   dev->Send (p, remoteAddress, 1);
 
-  WifiMode ackMode;
+  //-----------------------------------------------------------------------------------------------------
 
-  //Ptr<ParfWifiManager> parfManager = DynamicCast<ParfWifiManager> (manager);
+  /*
+   * Parf initiates with maximal rate and power.
+   */
   WifiTxVector txVector = manager->GetDataTxVector(remoteAddress,&packetHeader,packet,packet->GetSize());
   WifiMode mode = txVector.GetMode();
   int power = (int) txVector.GetTxPowerLevel();
 
-  //Parf initiates with maximal rate and power
   NS_TEST_ASSERT_MSG_EQ (mode.GetDataRate(), 54000000, "Initial data rate wrong");
   NS_TEST_ASSERT_MSG_EQ (power, 17, "Initial power level wrong");
 
-  //After 10 consecutive successful transmissions parf increase rate or decrease power
+  //-----------------------------------------------------------------------------------------------------
+
+  /*
+   * After 10 consecutive successful transmissions parf increase rate or decrease power.
+   * As we are at maximal rate, the power should be decreased. recoveryPower=true.
+   */
   for(int i = 0; i<10; i++)
     {
       manager->ReportDataOk(remoteAddress, &packetHeader, 0, ackMode, 0);
@@ -128,20 +167,31 @@ PowerRateAdaptationTest::TestParf ()
   txVector = manager->GetDataTxVector(remoteAddress,&packetHeader,packet,packet->GetSize());
   mode = txVector.GetMode();
   power = (int) txVector.GetTxPowerLevel();
-  //As we are at maximal rate, the power should be decreased. recoveryPower=true
+
   NS_TEST_ASSERT_MSG_EQ (mode.GetDataRate(), 54000000, "Incorrect vale of data rate");
   NS_TEST_ASSERT_MSG_EQ (power, 16, "Incorrect value of power level");
 
+  //-----------------------------------------------------------------------------------------------------
+
+  /*
+   * As we are using recovery power, one failure make power increase.
+   *
+   */
   manager->ReportDataFailed(remoteAddress,&packetHeader);
 
   txVector = manager->GetDataTxVector(remoteAddress,&packetHeader,packet,packet->GetSize());
   mode = txVector.GetMode();
   power = (int) txVector.GetTxPowerLevel();
-  //As we are using recovery power, one failure make power increase
+
   NS_TEST_ASSERT_MSG_EQ (mode.GetDataRate(), 54000000, "Incorrect vale of data rate");
   NS_TEST_ASSERT_MSG_EQ (power, 17, "Incorrect value of power level");
 
-  //After 15 transmissions attempts parf increase rate or decrease power
+  //-----------------------------------------------------------------------------------------------------
+
+  /*
+   * After 15 transmissions attempts parf increase rate or decrease power.
+   * As we are at maximal rate, the power should be decreased. recoveryPower=true.
+   */
   for(int i = 0; i<7; i++)
     {
       manager->ReportDataOk(remoteAddress, &packetHeader, 0, ackMode, 0);
@@ -152,43 +202,53 @@ PowerRateAdaptationTest::TestParf ()
   txVector = manager->GetDataTxVector(remoteAddress,&packetHeader,packet,packet->GetSize());
   mode = txVector.GetMode();
   power = (int) txVector.GetTxPowerLevel();
-  //As we are at maximal rate, the power should be decreased. recoveryPower=true
+
   NS_TEST_ASSERT_MSG_EQ (mode.GetDataRate(), 54000000, "Incorrect vale of data rate");
   NS_TEST_ASSERT_MSG_EQ (power, 16, "Incorrect value of power level");
 
+  //-----------------------------------------------------------------------------------------------------
+
+  /*
+   * As we are using recovery power, one failure make power increase. recoveryPower=false.
+   */
+
   manager->ReportDataFailed(remoteAddress,&packetHeader);
 
   txVector = manager->GetDataTxVector(remoteAddress,&packetHeader,packet,packet->GetSize());
   mode = txVector.GetMode();
   power = (int) txVector.GetTxPowerLevel();
-  //As we are using recovery power, one failure make power increase. recoveryPower=false
+
   NS_TEST_ASSERT_MSG_EQ (mode.GetDataRate(), 54000000, "Incorrect vale of data rate");
   NS_TEST_ASSERT_MSG_EQ (power, 17, "Incorrect value of power level");
 
-  //After two consecutive fails the rate is decreased or the power increased
+  //-----------------------------------------------------------------------------------------------------
+
+  /*
+   * After two consecutive fails the rate is decreased or the power increased.
+   * As we are at maximal power, the rate should be decreased.
+   */
   manager->ReportDataFailed(remoteAddress,&packetHeader);
   manager->ReportDataFailed(remoteAddress,&packetHeader);
 
   txVector = manager->GetDataTxVector(remoteAddress,&packetHeader,packet,packet->GetSize());
   mode = txVector.GetMode();
   power = (int) txVector.GetTxPowerLevel();
-  //As we are at maximal power, the rate should be decreased.
+
   NS_TEST_ASSERT_MSG_EQ (mode.GetDataRate(), 48000000, "Incorrect vale of data rate");
   NS_TEST_ASSERT_MSG_EQ (power, 17, "Incorrect value of power level");
+
+
+  Simulator::Stop (Seconds (10.0));
+
+  Simulator::Run ();
+  Simulator::Destroy ();
 
 }
 
 void
 PowerRateAdaptationTest::DoRun (void)
 {
-  m_mac.SetTypeId ("ns3::AdhocWifiMac");
-  m_propDelay.SetTypeId ("ns3::ConstantSpeedPropagationDelayModel");
-  m_manager.SetTypeId ("ns3::ParfWifiManager");
   TestParf ();
-  Simulator::Stop (Seconds (10.0));
-
-  Simulator::Run ();
-  Simulator::Destroy ();
 }
 
 //-----------------------------------------------------------------------------
