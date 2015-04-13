@@ -110,10 +110,11 @@ NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas)
       Ptr<NetDevice> staDevice = stas.Get (j);
       Ptr<WifiNetDevice> wifiStaDevice = DynamicCast<WifiNetDevice> (staDevice);
       Mac48Address addr = wifiStaDevice->GetMac ()->GetAddress ();
-      actualPower[addr] = 17;
+      actualPower[addr] = phy->GetTxPowerEnd();
       actualMode[addr] = phy->GetMode (0);
     }
   actualMode[Mac48Address ("ff:ff:ff:ff:ff:ff")] = phy->GetMode (0);
+  actualPower[Mac48Address ("ff:ff:ff:ff:ff:ff")] = phy->GetTxPowerEnd();
   totalPower = 0;
   totalTime = 0;
   m_bytesTotal = 0;
@@ -155,11 +156,13 @@ NodeStatistics::PhyCallback (std::string path, Ptr<const Packet> packet)
   packet->PeekHeader (head);
   Mac48Address dest = head.GetAddr1 ();
 
-  //NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << node  << " " << dest << " " << actualMode[node][dest].GetDataRate()/1000000 << " " << (int)actualPower[node][dest]);
+  //NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << dest << " " << actualMode[dest].GetDataRate()/1000000 << " " << (int)actualPower[dest]);
 
-  totalPower += actualPower[dest] * GetCalcTxTime (actualMode[dest]).GetSeconds ();
-  totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
-
+  if (head.GetType() == WIFI_MAC_DATA)
+    {
+      totalPower += pow(10,actualPower[dest]/10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
+      totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
+    }
 }
 
 void
@@ -219,7 +222,7 @@ NodeStatistics::AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
   Vector pos = GetPosition (node);
   double mbs = ((m_bytesTotal * 8.0) / (1000000 * stepsTime));
   m_bytesTotal = 0;
-  double atm = pow (10, ((totalPower / stepsTime) / 10));
+  double atm = totalPower/stepsTime;
   totalPower = 0;
   totalTime = 0;
   m_output_power.Add (pos.x, atm);
@@ -286,7 +289,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
   cmd.Parse (argc, argv);
 
-  int simuTime = steps * stepsTime;
+  int simuTime = steps * stepsTime + stepsTime;
 
   // Define the APs
   NodeContainer wifiApNodes;
