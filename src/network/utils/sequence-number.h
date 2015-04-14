@@ -28,6 +28,7 @@
 namespace ns3 {
 
 /**
+ * \ingroup network
  * \brief Generic "sequence number" class
  *
  * This class can be used to handle sequence numbers.  In networking
@@ -465,11 +466,31 @@ std::istream & operator >> (std::istream &is, const SequenceNumber<NUMERIC_TYPE,
   return is;
 }
 
-/// 32 bit Sequence number
+/**
+ * \ingroup network
+ * 32 bit Sequence number.
+ */
 typedef SequenceNumber<uint32_t, int32_t> SequenceNumber32;
-/// 16 bit Sequence number
+/**
+ * \ingroup network
+ * 16 bit Sequence number.
+ */
 typedef SequenceNumber<uint16_t, int16_t> SequenceNumber16;
+/**
+ * \ingroup network
+ * 8 bit Sequence number.
+ */
 typedef SequenceNumber<uint8_t, int8_t> SequenceNumber8;
+
+/**
+ * \ingroup network
+ * TracedValue callback signature for SequenceNumber32
+ *
+ * \param [in] oldValue original value of the traced variable
+ * \param [in] newValue new value of the traced variable
+ */
+typedef void (* SequenceNumber32TracedValueCallback)(const SequenceNumber32 oldValue,
+                                                     const SequenceNumber32 newValue);
 
 } // namespace ns3
 

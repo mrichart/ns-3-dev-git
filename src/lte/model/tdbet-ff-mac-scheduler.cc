@@ -31,9 +31,9 @@
 #include <set>
 #include <cfloat>
 
-NS_LOG_COMPONENT_DEFINE ("TdBetFfMacScheduler");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("TdBetFfMacScheduler");
 
 static const int TdBetType0AllocationRbg[4] = {
   10,       // RGB size 1
@@ -249,6 +249,7 @@ TdBetFfMacScheduler::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::TdBetFfMacScheduler")
     .SetParent<FfMacScheduler> ()
+    .SetGroupName("Lte")
     .AddConstructor<TdBetFfMacScheduler> ()
     .AddAttribute ("CqiTimerThreshold",
                    "The number of TTIs a CQI is valid (default 1000 - 1 sec.)",
@@ -293,6 +294,18 @@ FfMacSchedSapProvider*
 TdBetFfMacScheduler::GetFfMacSchedSapProvider ()
 {
   return m_schedSapProvider;
+}
+
+void
+TdBetFfMacScheduler::SetLteFfrSapProvider (LteFfrSapProvider* s)
+{
+  m_ffrSapProvider = s;
+}
+
+LteFfrSapUser*
+TdBetFfMacScheduler::GetLteFfrSapUser ()
+{
+  return m_ffrSapUser;
 }
 
 void
@@ -696,7 +709,6 @@ TdBetFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sc
         {
           m_rachAllocationMap.at (i) = (*itRach).m_rnti;
         }
-      rbStart = rbStart + rbLen;
 
       if (m_harqOn == true)
         {
@@ -736,6 +748,7 @@ TdBetFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sc
           (*itDci).second.at (harqId) = uldci;
         }
 
+      rbStart = rbStart + rbLen;
       ret.m_buildRarList.push_back (newRar);
     }
   m_rachList.clear ();
@@ -881,7 +894,7 @@ TdBetFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sc
                       dciRbg.at (j) = rbgId;
                       j++;
                     }
-                  rbgId++;
+                  rbgId = (rbgId + 1) % rbgNum;
                 }
               if (j == dciRbg.size ())
                 {
@@ -899,7 +912,7 @@ TdBetFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sc
               else
                 {
                   // HARQ retx cannot be performed on this TTI -> store it
-                  dlInfoListUntxed.push_back (params.m_dlInfoList.at (i));
+                  dlInfoListUntxed.push_back (m_dlInfoListBuffered.at (i));
                   NS_LOG_INFO (this << " No resource for this retx -> buffer it");
                 }
             }
@@ -1162,6 +1175,8 @@ TdBetFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sc
           newDci.m_rv.push_back (0);
         }
 
+      newDci.m_tpc = 1; //1 is mapped to 0 in Accumulated Mode and to -1 in Absolute Mode
+
       newEl.m_dci = newDci;
 
       if (m_harqOn == true)
@@ -1242,7 +1257,7 @@ TdBetFfMacScheduler::DoSchedDlCqiInfoReq (const struct FfMacSchedSapProvider::Sc
     {
       if ( params.m_cqiList.at (i).m_cqiType == CqiListElement_s::P10 )
         {
-          // wideband CQI reporting
+          NS_LOG_LOGIC ("wideband CQI " <<  (uint32_t) params.m_cqiList.at (i).m_wbCqi.at (0) << " reported");
           std::map <uint16_t,uint8_t>::iterator it;
           uint16_t rnti = params.m_cqiList.at (i).m_rnti;
           it = m_p10CqiRxed.find (rnti);
@@ -1652,6 +1667,13 @@ TdBetFfMacScheduler::DoSchedUlTriggerReq (const struct FfMacSchedSapProvider::Sc
               NS_FATAL_ERROR ("Unable to find RNTI entry in UL DCI HARQ buffer for RNTI " << uldci.m_rnti);
             }
           (*itDci).second.at (harqId) = uldci;
+          // Update HARQ process status (RV 0)
+          std::map <uint16_t, UlHarqProcessesStatus_t>::iterator itStat = m_ulHarqProcessesStatus.find (uldci.m_rnti);
+          if (itStat == m_ulHarqProcessesStatus.end ())
+            {
+              NS_LOG_ERROR ("No info find in HARQ buffer for UE (might change eNB) " << uldci.m_rnti);
+            }
+          (*itStat).second.at (harqId) = 0;
         }
 
       NS_LOG_INFO (this << " UE Allocation RNTI " << (*it).first << " startPRB " << (uint32_t)uldci.m_rbStart << " nPRB " << (uint32_t)uldci.m_rbLen << " CQI " << cqi << " MCS " << (uint32_t)uldci.m_mcs << " TBsize " << uldci.m_tbSize << " RbAlloc " << rbAllocated << " harqId " << (uint16_t)harqId);

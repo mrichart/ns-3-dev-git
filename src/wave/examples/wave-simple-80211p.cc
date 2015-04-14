@@ -49,8 +49,9 @@
 #include "ns3/wifi-80211p-helper.h"
 #include "ns3/wave-mac-helper.h"
 
-NS_LOG_COMPONENT_DEFINE ("WifiSimpleOcb");
 using namespace ns3;
+
+NS_LOG_COMPONENT_DEFINE ("WifiSimpleOcb");
 
 /*
  * In WAVE module, there is no net device class named like "Wifi80211pNetDevice",
@@ -75,7 +76,10 @@ using namespace ns3;
 
 void ReceivePacket (Ptr<Socket> socket)
 {
-  NS_LOG_UNCOND ("Received one packet!");
+  while (socket->Recv ())
+    {
+      NS_LOG_UNCOND ("Received one packet!");
+    }
 }
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
@@ -123,7 +127,6 @@ int main (int argc, char *argv[])
   wifiPhy.SetChannel (channel);
   // ns-3 supports generate a pcap trace
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11);
-
   NqosWaveMacHelper wifi80211pMac = NqosWaveMacHelper::Default ();
   Wifi80211pHelper wifi80211p = Wifi80211pHelper::Default ();
   if (verbose)
@@ -135,6 +138,9 @@ int main (int argc, char *argv[])
                                       "DataMode",StringValue (phyMode),
                                       "ControlMode",StringValue (phyMode));
   NetDeviceContainer devices = wifi80211p.Install (wifiPhy, wifi80211pMac, c);
+
+  // Tracing
+  wifiPhy.EnablePcap ("wave-simple-80211p", devices);
 
   MobilityHelper mobility;
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();

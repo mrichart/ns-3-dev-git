@@ -135,12 +135,14 @@ public:
    * \param tid the given TID
    * \param type the given address type
    * \param addr the given destination
+   * \param timestamp
    * \return packet
    */
   Ptr<const Packet> PeekByTidAndAddress (WifiMacHeader *hdr,
                                          uint8_t tid,
                                          WifiMacHeader::AddressType type,
-                                         Mac48Address addr);
+                                         Mac48Address addr,
+                                         Time *timestamp);
   /**
    * If exists, removes <i>packet</i> from queue and returns true. Otherwise it
    * takes no effects and return false. Deletion of the packet is
@@ -205,34 +207,12 @@ public:
    * \return the current queue size
    */
   uint32_t GetSize (void);
+
 protected:
   /**
    * Clean up the queue by removing packets that exceeded the maximum delay.
    */
   virtual void Cleanup (void);
-
-  struct Item;
-
-  /**
-   * typedef for packet (struct Item) queue.
-   */
-  typedef std::list<struct Item> PacketQueue;
-  /**
-   * typedef for packet (struct Item) queue reverse iterator.
-   */
-  typedef std::list<struct Item>::reverse_iterator PacketQueueRI;
-  /**
-   * typedef for packet (struct Item) queue iterator.
-   */
-  typedef std::list<struct Item>::iterator PacketQueueI;
-  /**
-   * Return the appropriate address for the given packet (given by PacketQueue iterator).
-   *
-   * \param type
-   * \param it
-   * \return the address
-   */
-  Mac48Address GetAddressForPacket (enum WifiMacHeader::AddressType type, PacketQueueI it);
 
   /**
    * A struct that holds information about a packet for putting
@@ -254,6 +234,27 @@ protected:
     WifiMacHeader hdr; //!< Wifi MAC header associated with the packet
     Time tstamp; //!< timestamp when the packet arrived at the queue
   };
+
+  /**
+   * typedef for packet (struct Item) queue.
+   */
+  typedef std::list<struct Item> PacketQueue;
+  /**
+   * typedef for packet (struct Item) queue reverse iterator.
+   */
+  typedef std::list<struct Item>::reverse_iterator PacketQueueRI;
+  /**
+   * typedef for packet (struct Item) queue iterator.
+   */
+  typedef std::list<struct Item>::iterator PacketQueueI;
+  /**
+   * Return the appropriate address for the given packet (given by PacketQueue iterator).
+   *
+   * \param type
+   * \param it
+   * \return the address
+   */
+  Mac48Address GetAddressForPacket (enum WifiMacHeader::AddressType type, PacketQueueI it);
 
   PacketQueue m_queue; //!< Packet (struct Item) queue
   uint32_t m_size; //!< Current queue size

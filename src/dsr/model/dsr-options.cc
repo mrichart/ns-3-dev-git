@@ -60,9 +60,10 @@
 #include "dsr-options.h"
 #include "dsr-rcache.h"
 
-NS_LOG_COMPONENT_DEFINE ("DsrOptions");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("DsrOptions");
+  
 namespace dsr {
 
 NS_OBJECT_ENSURE_REGISTERED (DsrOptions);
@@ -75,8 +76,14 @@ TypeId DsrOptions::GetTypeId ()
                    UintegerValue (0),
                    MakeUintegerAccessor (&DsrOptions::GetOptionNumber),
                    MakeUintegerChecker<uint8_t> ())
-    .AddTraceSource ("Rx", "Receive DSR packet.",
-                     MakeTraceSourceAccessor (&DsrOptions::m_rxPacketTrace))
+    .AddTraceSource ("Drop",
+                     "Packet dropped.",
+                     MakeTraceSourceAccessor (&DsrOptions::m_dropTrace),
+                     "ns3::Packet::TracedCallback")
+    .AddTraceSource ("Rx",
+                     "Receive DSR packet.",
+                     MakeTraceSourceAccessor (&DsrOptions::m_rxPacketTrace),
+                     "ns3::Packet::TracedCallback")
   ;
   return tid;
 }

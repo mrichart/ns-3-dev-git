@@ -34,9 +34,9 @@
 #include <ns3/packet.h>
 
 
-NS_LOG_COMPONENT_DEFINE ("LrWpanNetDevice");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("LrWpanNetDevice");
 
 NS_OBJECT_ENSURE_REGISTERED (LrWpanNetDevice);
 
@@ -45,6 +45,7 @@ LrWpanNetDevice::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::LrWpanNetDevice")
     .SetParent<NetDevice> ()
+    .SetGroupName ("LrWpan")
     .AddConstructor<LrWpanNetDevice> ()
     .AddAttribute ("Channel", "The channel attached to this device",
                    PointerValue (),

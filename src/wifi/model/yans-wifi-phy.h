@@ -87,7 +87,11 @@ public:
    *
    * \return the current channel number
    */
-  uint16_t GetChannelNumber () const;
+  uint16_t GetChannelNumber (void) const;
+  /**
+   * \return the required time for channel switch operation of this WifiPhy
+   */
+  Time GetChannelSwitchDelay (void) const;
   /**
    * Return current center channel frequency in MHz.
    *
@@ -102,11 +106,15 @@ public:
    * \param rxPowerDbm the receive power in dBm
    * \param txVector the TXVECTOR of the arriving packet
    * \param preamble the preamble of the arriving packet
+   * \param packetType The type of the received packet (values: 0 not an A-MPDU, 1 corresponds to any packets in an A-MPDU except the last one, 2 is the last packet in an A-MPDU) 
+   * \param rxDuration the duration needed for the reception of the arriving packet
    */
   void StartReceivePacket (Ptr<Packet> packet,
                            double rxPowerDbm,
                            WifiTxVector txVector,
-                           WifiPreamble preamble);
+                           WifiPreamble preamble,
+                           uint8_t packetType,
+                           Time rxDuration);
 
   /**
    * Sets the RX loss (dB) in the Signal-to-Noise-Ratio due to non-idealities in the receiver.
@@ -247,14 +255,18 @@ public:
   virtual uint32_t GetNTxPower (void) const;
   virtual void SetReceiveOkCallback (WifiPhy::RxOkCallback callback);
   virtual void SetReceiveErrorCallback (WifiPhy::RxErrorCallback callback);
-  virtual void SendPacket (Ptr<const Packet> packet, WifiMode mode, enum WifiPreamble preamble, WifiTxVector txvector);
+  virtual void SendPacket (Ptr<const Packet> packet, WifiTxVector txvector, enum WifiPreamble preamble, uint8_t packetType);
   virtual void RegisterListener (WifiPhyListener *listener);
+  virtual void UnregisterListener (WifiPhyListener *listener);
+  virtual void SetSleepMode (void);
+  virtual void ResumeFromSleep (void);
   virtual bool IsStateCcaBusy (void);
   virtual bool IsStateIdle (void);
   virtual bool IsStateBusy (void);
   virtual bool IsStateRx (void);
   virtual bool IsStateTx (void);
   virtual bool IsStateSwitching (void);
+  virtual bool IsStateSleep (void);
   virtual Time GetStateDuration (void);
   virtual Time GetDelayUntilIdle (void);
   virtual Time GetLastRxStartTime (void) const;
@@ -455,6 +467,9 @@ private:
   void EndReceive (Ptr<Packet> packet, Ptr<InterferenceHelper::Event> event);
 
 private:
+  virtual void DoInitialize (void);
+
+  bool     m_initialized;         //!< Flag for runtime initialization
   double   m_edThresholdW;        //!< Energy detection threshold in watts
   double   m_ccaMode1ThresholdW;  //!< Clear channel assessment (CCA) threshold in watts
   double   m_txGainDb;            //!< Transmission gain (dB)
@@ -474,7 +489,7 @@ private:
   bool     m_stbc;                  //!< Flag if STBC is used      
   bool     m_greenfield;            //!< Flag if GreenField format is supported
   bool     m_guardInterval;         //!< Flag if short guard interval is used
-  bool     m_channelBonding;        //!< Flag if channel conding is used
+  bool     m_channelBonding;        //!< Flag if channel bonding is used
 
 
   /**
@@ -524,7 +539,7 @@ private:
   Ptr<WifiPhyStateHelper> m_state;      //!< Pointer to WifiPhyStateHelper
   InterferenceHelper m_interference;    //!< Pointer to InterferenceHelper
   Time m_channelSwitchDelay;            //!< Time required to switch between channel
-
+  uint16_t m_mpdusNum;                  //!< carries the number of expected mpdus that are part of an A-MPDU
 };
 
 } // namespace ns3

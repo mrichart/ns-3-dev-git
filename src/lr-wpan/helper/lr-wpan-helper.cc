@@ -25,13 +25,22 @@
 #include <ns3/lr-wpan-net-device.h>
 #include <ns3/mobility-model.h>
 #include <ns3/single-model-spectrum-channel.h>
+#include <ns3/multi-model-spectrum-channel.h>
 #include <ns3/propagation-loss-model.h>
+#include <ns3/propagation-delay-model.h>
 #include <ns3/log.h>
-
-NS_LOG_COMPONENT_DEFINE ("LrWpanHelper");
+#include "ns3/names.h"
 
 namespace ns3 {
 
+NS_LOG_COMPONENT_DEFINE ("LrWpanHelper");
+
+/**
+ * @brief Output an ascii line representing the Transmit event (with context)
+ * @param stream the output stream
+ * @param context the context
+ * @param p the packet
+ */
 static void
 AsciiLrWpanMacTransmitSinkWithContext (
   Ptr<OutputStreamWrapper> stream,
@@ -41,6 +50,11 @@ AsciiLrWpanMacTransmitSinkWithContext (
   *stream->GetStream () << "t " << Simulator::Now ().GetSeconds () << " " << context << " " << *p << std::endl;
 }
 
+/**
+ * @brief Output an ascii line representing the Transmit event (without context)
+ * @param stream the output stream
+ * @param p the packet
+ */
 static void
 AsciiLrWpanMacTransmitSinkWithoutContext (
   Ptr<OutputStreamWrapper> stream,
@@ -52,8 +66,29 @@ AsciiLrWpanMacTransmitSinkWithoutContext (
 LrWpanHelper::LrWpanHelper (void)
 {
   m_channel = CreateObject<SingleModelSpectrumChannel> ();
-  Ptr<LogDistancePropagationLossModel> model = CreateObject<LogDistancePropagationLossModel> ();
-  m_channel->AddPropagationLossModel (model);
+
+  Ptr<LogDistancePropagationLossModel> lossModel = CreateObject<LogDistancePropagationLossModel> ();
+  m_channel->AddPropagationLossModel (lossModel);
+
+  Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel> ();
+  m_channel->SetPropagationDelayModel (delayModel);
+}
+
+LrWpanHelper::LrWpanHelper (bool useMultiModelSpectrumChannel)
+{
+  if (useMultiModelSpectrumChannel)
+    {
+      m_channel = CreateObject<MultiModelSpectrumChannel> ();
+    }
+  else
+    {
+      m_channel = CreateObject<SingleModelSpectrumChannel> ();
+    }
+  Ptr<LogDistancePropagationLossModel> lossModel = CreateObject<LogDistancePropagationLossModel> ();
+  m_channel->AddPropagationLossModel (lossModel);
+
+  Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel> ();
+  m_channel->SetPropagationDelayModel (delayModel);
 }
 
 LrWpanHelper::~LrWpanHelper (void)
@@ -156,6 +191,27 @@ LrWpanHelper::Install (NodeContainer c)
   return devices;
 }
 
+
+Ptr<SpectrumChannel>
+LrWpanHelper::GetChannel (void)
+{
+  return m_channel;
+}
+
+void
+LrWpanHelper::SetChannel (Ptr<SpectrumChannel> channel)
+{
+  m_channel = channel;
+}
+
+void
+LrWpanHelper::SetChannel (std::string channelName)
+{
+  Ptr<SpectrumChannel> channel = Names::Find<SpectrumChannel> (channelName);
+  m_channel = channel;
+}
+
+
 int64_t
 LrWpanHelper::AssignStreams (NetDeviceContainer c, int64_t stream)
 {
@@ -198,6 +254,11 @@ LrWpanHelper::AssociateToPan (NetDeviceContainer c, uint16_t panId)
   return;
 }
 
+/**
+ * @brief Write a packet in a PCAP file
+ * @param file the output file
+ * @param packet the packet
+ */
 static void
 PcapSniffLrWpan (Ptr<PcapFileWrapper> file, Ptr<const Packet> packet)
 {

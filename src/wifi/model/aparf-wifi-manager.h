@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2005,2006 INRIA
+ * Copyright (c) 2014 Universidad de la República - Uruguay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,8 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
- * Author: Matías Richart <mrichart@fing.edu.uy>
+ * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 #ifndef APARF_WIFI_MANAGER_H
 #define APARF_WIFI_MANAGER_H
@@ -34,8 +33,9 @@ struct AparfWifiRemoteStation;
  * This class implements the High Performance power and rate control algorithm
  * described in <i>Dynamic data rate and transmit power adjustment
  * in IEEE 802.11 wireless LANs</i> by Chevillat, P.; Jelitto, J.
- * & Truong, H. L. in International Journal of Wireless Information
- * Networks, Springer, 2005, 12, 123-145
+ * and Truong, H. L. in International Journal of Wireless Information
+ * Networks, Springer, 2005, 12, 123-145.
+ * http://www.cs.mun.ca/~yzchen/papers/papers/rate_adaptation/80211_dynamic_rate_power_adjustment_chevillat_j2005.pdf
  *
  */
 class AparfWifiManager : public WifiRemoteStationManager
@@ -60,6 +60,22 @@ public:
     Low,
     Spread
   };
+
+  /**
+   * TracedCallback signature for power change events.
+   *
+   * \param [in] power The new power.
+   * \param [in] address The remote station MAC address.
+   */
+  typedef void (*PowerChangeTracedCallback)(const uint8_t power, const Mac48Address remoteAddress);
+
+  /**
+   * TracedCallback signature for rate change events.
+   *
+   * \param [in] rate The new rate.
+   * \param [in] address The remote station MAC address.
+   */
+  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
 
 private:
   // overriden from base class
@@ -93,11 +109,15 @@ private:
   uint32_t m_rateInc; //!< Step size for increment the rate.
   uint32_t m_rateDec; //!< Step size for decrement the rate.
   /**
-   * Number of power levels.
+   * Minimal power level.
    * Differently form rate, power levels do not depend on the remote station.
    * The levels depend only on the physical layer of the device.
    */
-  uint32_t m_nPower;
+  uint32_t m_minPower;
+  /**
+   * Maximal power level.
+   */
+  uint32_t m_maxPower;
 
   /**
    * The trace source fired when the transmission power change

@@ -28,9 +28,9 @@
 #include "ns3/abort.h"
 #include "ns3/node.h"
 
-NS_LOG_COMPONENT_DEFINE ("TcpTahoe");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("TcpTahoe");
 
 NS_OBJECT_ENSURE_REGISTERED (TcpTahoe);
 
@@ -39,6 +39,7 @@ TcpTahoe::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::TcpTahoe")
     .SetParent<TcpSocketBase> ()
+    .SetGroupName ("Internet")
     .AddConstructor<TcpTahoe> ()
     .AddAttribute ("ReTxThreshold", "Threshold for fast retransmit",
                     UintegerValue (3),
@@ -46,7 +47,12 @@ TcpTahoe::GetTypeId (void)
                     MakeUintegerChecker<uint32_t> ())
     .AddTraceSource ("CongestionWindow",
                      "The TCP connection's congestion window",
-                     MakeTraceSourceAccessor (&TcpTahoe::m_cWnd))
+                     MakeTraceSourceAccessor (&TcpTahoe::m_cWnd),
+                     "ns3::TracedValue::Uint32Callback")
+    .AddTraceSource ("SlowStartThreshold",
+                     "TCP slow start threshold (bytes)",
+                     MakeTraceSourceAccessor (&TcpTahoe::m_ssThresh),
+                     "ns3::TracedValue::Uint32Callback")
   ;
   return tid;
 }
@@ -61,6 +67,7 @@ TcpTahoe::TcpTahoe (const TcpTahoe& sock)
     m_cWnd (sock.m_cWnd),
     m_ssThresh (sock.m_ssThresh),
     m_initialCWnd (sock.m_initialCWnd),
+    m_initialSsThresh (sock.m_initialSsThresh),
     m_retxThresh (sock.m_retxThresh)
 {
   NS_LOG_FUNCTION (this);
@@ -108,7 +115,7 @@ void
 TcpTahoe::NewAck (SequenceNumber32 const& seq)
 {
   NS_LOG_FUNCTION (this << seq);
-  NS_LOG_LOGIC ("TcpTahoe receieved ACK for seq " << seq <<
+  NS_LOG_LOGIC ("TcpTahoe received ACK for seq " << seq <<
                 " cwnd " << m_cWnd <<
                 " ssthresh " << m_ssThresh);
   if (m_cWnd < m_ssThresh)
@@ -140,7 +147,7 @@ TcpTahoe::DupAck (const TcpHeader& t, uint32_t count)
       // (Fall & Floyd 1996, sec.1)
       m_ssThresh = std::max (static_cast<unsigned> (m_cWnd / 2), m_segmentSize * 2);  // Half ssthresh
       m_cWnd = m_segmentSize; // Run slow start again
-      m_nextTxSequence = m_txBuffer.HeadSequence (); // Restart from highest Ack
+      m_nextTxSequence = m_txBuffer->HeadSequence (); // Restart from highest Ack
       NS_LOG_INFO ("Triple Dup Ack: new ssthresh " << m_ssThresh << " cwnd " << m_cWnd);
       NS_LOG_LOGIC ("Triple Dup Ack: retransmit missing segment at " << Simulator::Now ().GetSeconds ());
       DoRetransmit ();
@@ -155,12 +162,11 @@ void TcpTahoe::Retransmit (void)
   // If erroneous timeout in closed/timed-wait state, just return
   if (m_state == CLOSED || m_state == TIME_WAIT) return;
   // If all data are received (non-closing socket and nothing to send), just return
-  if (m_state <= ESTABLISHED && m_txBuffer.HeadSequence () >= m_highTxMark) return;
+  if (m_state <= ESTABLISHED && m_txBuffer->HeadSequence () >= m_highTxMark) return;
 
   m_ssThresh = std::max (static_cast<unsigned> (m_cWnd / 2), m_segmentSize * 2);  // Half ssthresh
   m_cWnd = m_segmentSize;                   // Set cwnd to 1 segSize (RFC2001, sec.2)
-  m_nextTxSequence = m_txBuffer.HeadSequence (); // Restart from highest Ack
-  m_rtt->IncreaseMultiplier ();             // Double the next RTO
+  m_nextTxSequence = m_txBuffer->HeadSequence (); // Restart from highest Ack
   DoRetransmit ();                          // Retransmit the packet
 }
 
@@ -172,15 +178,16 @@ TcpTahoe::SetSegSize (uint32_t size)
 }
 
 void
-TcpTahoe::SetSSThresh (uint32_t threshold)
+TcpTahoe::SetInitialSSThresh (uint32_t threshold)
 {
-  m_ssThresh = threshold;
+  NS_ABORT_MSG_UNLESS (m_state == CLOSED, "TcpTahoe::SetSSThresh() cannot change initial ssThresh after connection started.");
+  m_initialSsThresh = threshold;
 }
 
 uint32_t
-TcpTahoe::GetSSThresh (void) const
+TcpTahoe::GetInitialSSThresh (void) const
 {
-  return m_ssThresh;
+  return m_initialSsThresh;
 }
 
 void
@@ -205,6 +212,7 @@ TcpTahoe::InitializeCwnd (void)
    * m_segmentSize are set by the attribute system in ns3::TcpSocket.
    */
   m_cWnd = m_initialCWnd * m_segmentSize;
+  m_ssThresh = m_initialSsThresh;
 }
 
 } // namespace ns3

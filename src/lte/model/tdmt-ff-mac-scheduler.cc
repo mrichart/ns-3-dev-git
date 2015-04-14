@@ -31,9 +31,9 @@
 #include <set>
 #include <cfloat>
 
-NS_LOG_COMPONENT_DEFINE ("TdMtFfMacScheduler");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("TdMtFfMacScheduler");
 
 static const int TdMtType0AllocationRbg[4] = {
   10,       // RGB size 1
@@ -248,6 +248,7 @@ TdMtFfMacScheduler::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::TdMtFfMacScheduler")
     .SetParent<FfMacScheduler> ()
+    .SetGroupName("Lte")
     .AddConstructor<TdMtFfMacScheduler> ()
     .AddAttribute ("CqiTimerThreshold",
                    "The number of TTIs a CQI is valid (default 1000 - 1 sec.)",
@@ -292,6 +293,18 @@ FfMacSchedSapProvider*
 TdMtFfMacScheduler::GetFfMacSchedSapProvider ()
 {
   return m_schedSapProvider;
+}
+
+void
+TdMtFfMacScheduler::SetLteFfrSapProvider (LteFfrSapProvider* s)
+{
+  m_ffrSapProvider = s;
+}
+
+LteFfrSapUser*
+TdMtFfMacScheduler::GetLteFfrSapUser ()
+{
+  return m_ffrSapUser;
 }
 
 void
@@ -685,7 +698,6 @@ TdMtFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sch
         {
           m_rachAllocationMap.at (i) = (*itRach).m_rnti;
         }
-      rbStart = rbStart + rbLen;
 
       if (m_harqOn == true)
         {
@@ -725,6 +737,7 @@ TdMtFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sch
           (*itDci).second.at (harqId) = uldci;
         }
 
+      rbStart = rbStart + rbLen;
       ret.m_buildRarList.push_back (newRar);
     }
   m_rachList.clear ();
@@ -870,7 +883,7 @@ TdMtFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sch
                       dciRbg.at (j) = rbgId;
                       j++;
                     }
-                  rbgId++;
+                  rbgId = (rbgId + 1) % rbgNum;
                 }
               if (j == dciRbg.size ())
                 {
@@ -888,7 +901,7 @@ TdMtFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sch
               else
                 {
                   // HARQ retx cannot be performed on this TTI -> store it
-                  dlInfoListUntxed.push_back (params.m_dlInfoList.at (i));
+                  dlInfoListUntxed.push_back (m_dlInfoListBuffered.at (i));
                   NS_LOG_INFO (this << " No resource for this retx -> buffer it");
                 }
             }
@@ -1186,6 +1199,8 @@ TdMtFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sch
           newDci.m_rv.push_back (0);
         }
 
+      newDci.m_tpc = 1; //1 is mapped to 0 in Accumulated Mode and to -1 in Absolute Mode
+
       newEl.m_dci = newDci;
 
       if (m_harqOn == true)
@@ -1239,7 +1254,7 @@ TdMtFfMacScheduler::DoSchedDlCqiInfoReq (const struct FfMacSchedSapProvider::Sch
     {
       if ( params.m_cqiList.at (i).m_cqiType == CqiListElement_s::P10 )
         {
-          // wideband CQI reporting
+          NS_LOG_LOGIC ("wideband CQI " <<  (uint32_t) params.m_cqiList.at (i).m_wbCqi.at (0) << " reported");
           std::map <uint16_t,uint8_t>::iterator it;
           uint16_t rnti = params.m_cqiList.at (i).m_rnti;
           it = m_p10CqiRxed.find (rnti);
@@ -1648,6 +1663,13 @@ TdMtFfMacScheduler::DoSchedUlTriggerReq (const struct FfMacSchedSapProvider::Sch
               NS_FATAL_ERROR ("Unable to find RNTI entry in UL DCI HARQ buffer for RNTI " << uldci.m_rnti);
             }
           (*itDci).second.at (harqId) = uldci;
+          // Update HARQ process status (RV 0)
+          std::map <uint16_t, UlHarqProcessesStatus_t>::iterator itStat = m_ulHarqProcessesStatus.find (uldci.m_rnti);
+          if (itStat == m_ulHarqProcessesStatus.end ())
+            {
+              NS_LOG_ERROR ("No info find in HARQ buffer for UE (might change eNB) " << uldci.m_rnti);
+            }
+          (*itStat).second.at (harqId) = 0;
         }
 
       NS_LOG_INFO (this << " UE Allocation RNTI " << (*it).first << " startPRB " << (uint32_t)uldci.m_rbStart << " nPRB " << (uint32_t)uldci.m_rbLen << " CQI " << cqi << " MCS " << (uint32_t)uldci.m_mcs << " TBsize " << uldci.m_tbSize << " RbAlloc " << rbAllocated << " harqId " << (uint16_t)harqId);

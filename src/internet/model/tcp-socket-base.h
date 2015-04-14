@@ -47,6 +47,35 @@ class TcpL4Protocol;
 class TcpHeader;
 
 /**
+ * \ingroup tcp
+ *
+ * \brief Helper class to store RTT measurements
+ */
+class RttHistory {
+public:
+  /**
+   * \brief Constructor - builds an RttHistory with the given parameters
+   * \param s First sequence number in packet sent
+   * \param c Number of bytes sent
+   * \param t Time this one was sent
+   */
+  RttHistory (SequenceNumber32 s, uint32_t c, Time t);
+  /**
+   * \brief Copy constructor
+   * \param h the object to copy
+   */
+  RttHistory (const RttHistory& h); // Copy constructor
+public:
+  SequenceNumber32  seq;  //!< First sequence number in packet sent
+  uint32_t        count;  //!< Number of bytes sent
+  Time            time;   //!< Time this one was sent
+  bool            retx;   //!< True if this has been retransmitted
+};
+
+/// Container for RttHistory objects
+typedef std::deque<RttHistory> RttHistory_t;
+
+/**
  * \ingroup socket
  * \ingroup tcp
  *
@@ -101,6 +130,43 @@ public:
    */
   virtual void SetRtt (Ptr<RttEstimator> rtt);
 
+  /**
+   * \brief Sets the Minimum RTO.
+   * \param minRto The minimum RTO.
+   */
+  void SetMinRto (Time minRto);
+
+  /**
+   * \brief Get the Minimum RTO.
+   * \return The minimum RTO.
+   */
+  Time GetMinRto (void) const;
+
+  /**
+   * \brief Sets the Clock Granularity (used in RTO calcs).
+   * \param clockGranularity The Clock Granularity
+   */
+  void SetClockGranularity (Time clockGranularity);
+
+  /**
+   * \brief Get the Clock Granularity (used in RTO calcs).
+   * \return The Clock Granularity.
+   */
+  Time GetClockGranularity (void) const;
+
+  /**
+   * \brief Get a pointer to the Tx buffer
+   * \return a pointer to the tx buffer
+   */
+  Ptr<TcpTxBuffer> GetTxBuffer (void) const;
+
+  /**
+   * \brief Get a pointer to the Rx buffer
+   * \return a pointer to the rx buffer
+   */
+  Ptr<TcpRxBuffer> GetRxBuffer (void) const;
+
+
   // Necessary implementations of null functions from ns3::Socket
   virtual enum SocketErrno GetErrno (void) const;    // returns m_errno
   virtual enum SocketType GetSocketType (void) const; // returns socket type
@@ -132,8 +198,8 @@ protected:
   virtual uint32_t GetRcvBufSize (void) const;
   virtual void     SetSegSize (uint32_t size);
   virtual uint32_t GetSegSize (void) const;
-  virtual void     SetSSThresh (uint32_t threshold) = 0;
-  virtual uint32_t GetSSThresh (void) const = 0;
+  virtual void     SetInitialSSThresh (uint32_t threshold) = 0;
+  virtual uint32_t GetInitialSSThresh (void) const = 0;
   virtual void     SetInitialCwnd (uint32_t cwnd) = 0;
   virtual uint32_t GetInitialCwnd (void) const = 0;
   virtual void     SetConnTimeout (Time timeout);
@@ -539,16 +605,75 @@ protected:
   virtual void DoRetransmit (void);
 
   /**
-   * \brief Read option from incoming packets
+   * \brief Read TCP options from incoming packets
+   *  
+   * This method sequentially checks each kind of option, and if it
+   * is present in the header, starts its processing.
+   *
+   * To deal with hosts which don't have the option enabled (or
+   * implemented) we disable all options, and then re-enable them
+   * if in the packet there is the option itself.
+   *
    * \param tcpHeader the packet's TCP header
    */
   virtual void ReadOptions (const TcpHeader& tcpHeader);
 
-  /**
-   * \brief Add option to outgoing packets
-   * \param tcpHeader the packet's TCP header
+  /** \brief Add options to TcpHeader
+   *
+   * Test each option, and if it is enabled on our side, add it
+   * to the header
+   *
+   * \param tcpHeader TcpHeader to add options to
    */
   virtual void AddOptions (TcpHeader& tcpHeader);
+
+  /**
+   * \brief Read and parse the Window scale option
+   *
+   * Read the window scale option (encoded logarithmically) and save it.
+   * Per RFC 1323, the value can't exceed 14.
+   *
+   * \param option Window scale option read from the header
+   */
+  void ProcessOptionWScale (const Ptr<const TcpOption> option);
+  /**
+   * \brief Add the window scale option to the header
+   *
+   * Calculate our factor from the rxBuffer max size, and add it
+   * to the header.
+   *
+   * \param header TcpHeader where the method should add the window scale option
+   */
+  void AddOptionWScale (TcpHeader& header);
+
+  /**
+   * \brief Calculate window scale value based on receive buffer space
+   *
+   * Calculate our factor from the rxBuffer max size
+   *
+   * \returns the Window Scale factor
+   */
+  uint8_t CalculateWScale () const;
+
+  /** \brief Process the timestamp option from other side
+   *
+   * Get the timestamp and the echo, then save timestamp (which will
+   * be the echo value in our out-packets) and save the echoed timestamp,
+   * to utilize later to calculate RTT.
+   *
+   * \see EstimateRtt
+   * \param option Option from the packet
+   */
+  void ProcessOptionTimestamp (const Ptr<const TcpOption> option);
+  /**
+   * \brief Add the timestamp option to the header
+   *
+   * Set the timestamp as the lower bits of the Simulator::Now time,
+   * and the echo value as the last seen timestamp from the other part.
+   *
+   * \param header TcpHeader to which add the option to
+   */
+  void AddOptionTimestamp (TcpHeader& header);
 
 
 protected:
@@ -565,10 +690,13 @@ protected:
   uint32_t          m_cnCount;         //!< Count of remaining connection retries
   uint32_t          m_cnRetries;       //!< Number of connection retries before giving up
   TracedValue<Time> m_rto;             //!< Retransmit timeout
+  Time              m_minRto;          //!< minimum value of the Retransmit timeout
+  Time              m_clockGranularity; //!< Clock Granularity used in RTO calcs
   TracedValue<Time> m_lastRtt;         //!< Last RTT sample collected
   Time              m_delAckTimeout;   //!< Time to delay an ACK
   Time              m_persistTimeout;  //!< Time between sending 1-byte probes
   Time              m_cnTimeout;       //!< Timeout for connection retry
+  RttHistory_t      m_history;         //!< List of sent packet
 
   // Connections to other layers of TCP/IP
   Ipv4EndPoint*       m_endPoint;   //!< the IPv4 endpoint
@@ -583,8 +711,8 @@ protected:
   // Rx and Tx buffer management
   TracedValue<SequenceNumber32> m_nextTxSequence; //!< Next seqnum to be sent (SND.NXT), ReTx pushes it back
   TracedValue<SequenceNumber32> m_highTxMark;     //!< Highest seqno ever sent, regardless of ReTx
-  TcpRxBuffer                   m_rxBuffer;       //!< Rx buffer (reordering buffer)
-  TcpTxBuffer                   m_txBuffer;       //!< Tx buffer
+  Ptr<TcpRxBuffer>              m_rxBuffer;       //!< Rx buffer (reordering buffer)
+  Ptr<TcpTxBuffer>              m_txBuffer;       //!< Tx buffer
 
   // State-related attributes
   TracedValue<TcpStates_t> m_state;         //!< TCP state
@@ -600,6 +728,14 @@ protected:
   uint32_t              m_segmentSize; //!< Segment size
   uint16_t              m_maxWinSize;  //!< Maximum window size to advertise
   TracedValue<uint32_t> m_rWnd;        //!< Flow control window at remote side
+
+  // Options
+  bool    m_winScalingEnabled;    //!< Window Scale option enabled
+  uint8_t m_sndScaleFactor;       //!< Sent Window Scale (i.e., the one of the node)
+  uint8_t m_rcvScaleFactor;       //!< Received Window Scale (i.e., the one of the peer)
+
+  bool     m_timestampEnabled;    //!< Timestamp option enabled
+  uint32_t m_timestampToEcho;     //!< Timestamp to echo
 };
 
 } // namespace ns3

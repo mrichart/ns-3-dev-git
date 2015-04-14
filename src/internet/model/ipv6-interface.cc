@@ -42,6 +42,7 @@ TypeId Ipv6Interface::GetTypeId ()
 {
   static TypeId tid = TypeId ("ns3::Ipv6Interface")
     .SetParent<Object> ()
+    .SetGroupName ("Internet")
   ;
   return tid;
 }
@@ -503,6 +504,12 @@ void Ipv6Interface::SetNsDadUid (Ipv6Address address, uint32_t uid)
         }
     }
   /* not found, maybe address has expired */
+}
+
+Ptr<NdiscCache> Ipv6Interface::GetNdiscCache () const
+{
+  NS_LOG_FUNCTION (this);
+  return m_ndCache;
 }
 
 } /* namespace ns3 */

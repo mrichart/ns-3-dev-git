@@ -237,6 +237,42 @@ public:
    */
   bool IsUnicast (Ipv4Address ad) const;
 
+  /**
+   * TracedCallback signature for packet send, forward, or local deliver events.
+   *
+   * \param [in] header The Ipv6Header.
+   * \param [in] packet The packet.
+   * \param [in] interface
+   */
+  typedef void (* SentTracedCallback)
+    (const Ipv4Header & header, const Ptr<const Packet> packet,
+     const uint32_t interface);
+   
+  /**
+   * TracedCallback signature for packet transmission or reception events.
+   *
+   * \param [in] packet The packet.
+   * \param [in] ipv4
+   * \param [in] interface
+   */
+  typedef void (* TxRxTracedCallback)
+    (const Ptr<const Packet> packet, const Ptr<const Ipv4> ipv4, 
+     const uint32_t interface);
+
+  /**
+   * TracedCallback signature for packet drop events.
+   *
+   * \param [in] header The Ipv4Header.
+   * \param [in] packet The packet.
+   * \param [in] reason The reason the packet was dropped.
+   * \param [in] ipv4
+   * \param [in] interface
+   */
+  typedef void (* DropTracedCallback)
+    (const Ipv4Header & header, const Ptr<const Packet> packet,
+     const DropReason reason, const Ptr<const Ipv4> ipv4,
+     const uint32_t interface);
+   
 protected:
 
   virtual void DoDispose (void);
@@ -315,7 +351,7 @@ private:
    * \brief Forward a multicast packet.
    * \param mrtentry route
    * \param p packet to forward
-   * \param header IPv6 header to add to the packet
+   * \param header IPv4 header to add to the packet
    */
   void
   IpMulticastForward (Ptr<Ipv4MulticastRoute> mrtentry, 
@@ -388,7 +424,7 @@ private:
    * \param iif Input Interface
    */
   void HandleFragmentsTimeout ( std::pair<uint64_t, uint32_t> key, Ipv4Header & ipHeader, uint32_t iif);
-
+  
   /**
    * \brief Container of the IPv4 Interfaces.
    */
@@ -408,7 +444,7 @@ private:
   Ipv4InterfaceList m_interfaces; //!< List of IPv4 interfaces.
   uint8_t m_defaultTos;  //!< Default TOS
   uint8_t m_defaultTtl;  //!< Default TTL
-  std::map<uint8_t, uint16_t> m_identification; //!< Identification (for each protocol)
+  std::map<std::pair<uint64_t, uint8_t>, uint16_t> m_identification; //!< Identification (for each {src, dst, proto} tuple)
   Ptr<Node> m_node; //!< Node attached to stack.
 
   /// Trace of sent packets

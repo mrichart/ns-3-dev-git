@@ -162,6 +162,40 @@ RandomVariableStreamUniformTestCase::DoRun (void)
       NS_TEST_ASSERT_MSG_LT (value, max, "Value greater than or equal to maximum.");
     }
 
+  // Boundary checking on GetInteger; should be [min,max]; from bug 1964
+  static const uint32_t UNIFORM_INTEGER_MIN = 0;
+  static const uint32_t UNIFORM_INTEGER_MAX = 4294967295U;
+  // [0,0] should return 0
+  uint32_t intValue;
+  intValue = x->GetInteger (UNIFORM_INTEGER_MIN, UNIFORM_INTEGER_MIN);
+  NS_TEST_ASSERT_MSG_EQ (intValue, UNIFORM_INTEGER_MIN, "Uniform RV GetInteger boundary testing");
+  // [UNIFORM_INTEGER_MAX, UNIFORM_INTEGER_MAX] should return UNIFORM_INTEGER_MAX
+  intValue = x->GetInteger (UNIFORM_INTEGER_MAX, UNIFORM_INTEGER_MAX);
+  NS_TEST_ASSERT_MSG_EQ (intValue, UNIFORM_INTEGER_MAX, "Uniform RV GetInteger boundary testing");
+  // [0,1] should return mix of 0 or 1
+  intValue = 0;
+  for (int i = 0; i < 20; i++)
+    {
+      intValue += x->GetInteger (UNIFORM_INTEGER_MIN, UNIFORM_INTEGER_MIN + 1);
+    }
+  NS_TEST_ASSERT_MSG_GT (intValue, 0, "Uniform RV GetInteger boundary testing");
+  NS_TEST_ASSERT_MSG_LT (intValue, 20, "Uniform RV GetInteger boundary testing");
+  // [MAX-1,MAX] should return mix of MAX-1 or MAX
+  uint32_t count = 0;
+  for (int i = 0; i < 20; i++)
+    {
+      intValue = x->GetInteger (UNIFORM_INTEGER_MAX - 1, UNIFORM_INTEGER_MAX);
+      if (intValue == UNIFORM_INTEGER_MAX)
+        {
+          count++;
+        }
+    }
+  NS_TEST_ASSERT_MSG_GT (count, 0, "Uniform RV GetInteger boundary testing");
+  NS_TEST_ASSERT_MSG_LT (count, 20, "Uniform RV GetInteger boundary testing");
+  // multiple [0,UNIFORM_INTEGER_MAX] should return non-zero
+  intValue = x->GetInteger (UNIFORM_INTEGER_MIN, UNIFORM_INTEGER_MAX);
+  uint32_t intValue2 = x->GetInteger (UNIFORM_INTEGER_MIN, UNIFORM_INTEGER_MAX);
+  NS_TEST_ASSERT_MSG_GT (intValue + intValue2, 0, "Uniform RV GetInteger boundary testing");
 
 }
 
@@ -2720,6 +2754,13 @@ RandomVariableStreamEmpiricalTestCase::DoRun (void)
   // Test that values have approximately the right mean value.
   double TOLERANCE = expectedMean * 1e-2;
   NS_TEST_ASSERT_MSG_EQ_TOL (valueMean, expectedMean, TOLERANCE, "Wrong mean value."); 
+
+  // Bug 2082: Create the RNG with a uniform distribution between -1 and 1.
+  Ptr<EmpiricalRandomVariable> y = CreateObject<EmpiricalRandomVariable> ();
+  y->CDF (-1.0,  0.0);
+  y->CDF (0.0,  0.5);
+  y->CDF (1.0,  1.0);
+  NS_TEST_ASSERT_MSG_LT (y->GetValue (), 2, "Empirical variable with negative domain");
 }
 
 // ===========================================================================

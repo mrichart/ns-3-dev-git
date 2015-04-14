@@ -308,6 +308,7 @@ def configure(conf):
         env.append_value('CXXFLAGS', '-fprofile-arcs')
         env.append_value('CXXFLAGS', '-ftest-coverage')
         env.append_value('LINKFLAGS', '-lgcov')
+        env.append_value('LINKFLAGS', '-coverage')
 
     if Options.options.build_profile == 'debug':
         env.append_value('DEFINES', 'NS3_ASSERT_ENABLE')
@@ -535,7 +536,7 @@ def configure(conf):
                              Options.options.build_profile, Logs.colors('NORMAL'))
     bld = wutils.bld
     print "%-30s: %s%s%s" % ("Build directory", Logs.colors('GREEN'),
-                             Context.out_dir, Logs.colors('NORMAL'))
+                             Options.options.out, Logs.colors('NORMAL'))
     
     
     for (name, caption, was_enabled, reason_not_enabled) in conf.env['NS3_OPTIONAL_FEATURES']:
@@ -806,6 +807,11 @@ def build(bld):
                 if ("ns3-%s" % obj.module) not in modules:
                     obj.mode = 'remove' # tell it to remove headers instead of installing 
 
+            # disable the ns3privateheader_taskgen
+            if 'ns3privateheader' in getattr(obj, "features", []):
+                if ("ns3-%s" % obj.module) not in modules:
+                    obj.mode = 'remove' # tell it to remove headers instead of installing 
+
             # disable pcfile taskgens for disabled modules
             if 'ns3pcfile' in getattr(obj, "features", []):
                 if obj.module not in bld.env.NS3_ENABLED_MODULES:
@@ -854,7 +860,7 @@ def build(bld):
             program_obj = wutils.find_program(program_name, bld.env)
             program_obj.use.append('ns3-visualizer')
         for gen in bld.all_task_gen:
-            if type(gen).__name__ in ['ns3header_taskgen', 'ns3moduleheader_taskgen']:
+            if type(gen).__name__ in ['ns3header_taskgen', 'ns3privateheader_taskgen', 'ns3moduleheader_taskgen']:
                 gen.post()
         bld.env['PRINT_BUILT_MODULES_AT_END'] = False 
 

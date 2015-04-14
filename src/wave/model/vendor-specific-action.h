@@ -45,6 +45,8 @@ class VendorSpecificContentManager;
  * Normally the value is assigned by IEEE and the length of field is
  * either 24 bits or 36 bits.
  * For more, see IEEE802.11p-2010 section 7.3.1.31 and 7.4.5
+ *
+ * \see attribute_OrganizationIdentifier
  */
 class OrganizationIdentifier
 {
@@ -69,9 +71,14 @@ public:
    * \returns whether current OrganizationIdentifier is initial state
    */
   bool IsNull (void) const;
-
+  /**
+   * \param type set the type of current OrganizationIdentifier
+   */
   void SetType (enum OrganizationIdentifierType type);
-  enum OrganizationIdentifierType GetType () const;
+  /**
+   * \returns whether this OrganizationIdentifier is OUI24 or OUI36.
+   */
+  enum OrganizationIdentifierType GetType (void) const;
 
   // below methods will be called by VendorSpecificActionHeader
   uint32_t GetSerializedSize (void) const;
@@ -139,7 +146,7 @@ public:
   /**
    * the category field shall be CATEGORY_OF_VSA
    */
-  uint8_t GetCategory () const;
+  uint8_t GetCategory (void) const;
 
   static TypeId GetTypeId (void);
   virtual TypeId GetInstanceTypeId (void) const;
@@ -174,7 +181,20 @@ public:
    * \param cb the receive callback when oi related management packets are received
    */
   void RegisterVscCallback (OrganizationIdentifier oi, VscCallback cb);
+  /**
+   * \param oi the specific OrganizationIdentifier when receive management information
+   * by VendorSpecificAction management frame.
+   */
   void DeregisterVscCallback (OrganizationIdentifier &oi);
+  /**
+   * \param oi the specific OrganizationIdentifier when receive management information
+   * by VendorSpecificAction management frame.
+   */
+  bool IsVscCallbackRegistered (OrganizationIdentifier &oi);
+  /**
+   * \param oi the specific OrganizationIdentifier when receive management information
+   * by VendorSpecificAction management frame.
+   */
   VscCallback FindVscCallback (OrganizationIdentifier &oi);
 
 private:
@@ -182,7 +202,6 @@ private:
   typedef std::map<OrganizationIdentifier,VscCallback>::iterator VscCallbacksI;
 
   VscCallbacks m_callbacks;
-  friend class OrganizationIdentifier;
 };
 
 static std::vector<OrganizationIdentifier> OrganizationIdentifiers;

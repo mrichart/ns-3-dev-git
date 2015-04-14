@@ -276,6 +276,14 @@ public:
    * \param mode the WifiMode supports by the station
    */
   void AddSupportedMode (Mac48Address address, WifiMode mode);
+  /**
+   * Invoked in a STA or AP to store all of the modes supported 
+   * by a destination which is also supported locally.
+   * The set of supported modes includes the BSSBasicRateSet.
+   *
+   * \param address the address of the station being recorded
+   */
+  void AddAllSupportedModes (Mac48Address address);
   //void  AddBssMembershipParameters(Mac48Address address, uint32_t selector);
 
   /**
@@ -646,6 +654,13 @@ public:
    */
   uint32_t GetNumberOfTransmitAntennas (const WifiRemoteStation *station) const;
   /**
+   * \returns the number of Ness the station has.
+   *
+   * \param station the station being queried
+   * \return the number of Ness the station has
+   */
+  uint32_t GetNess (const WifiRemoteStation *station) const;
+  /**
    * Return the long retry limit of the given station.
    *
    * \param station the station being queried
@@ -659,6 +674,7 @@ public:
    * \return the short retry limit of the the station
    */
   uint32_t GetShortRetryCount (const WifiRemoteStation *station) const;
+
   /**
    * Return the WifiPhy.
    *
@@ -1009,8 +1025,9 @@ struct WifiRemoteStationState
   Mac48Address m_address;  //!< Mac48Address of the remote station
   WifiRemoteStationInfo m_info;
   bool m_shortGuardInterval;  //!< Flag if short guard interval is supported by the remote station
-  uint32_t m_rx;  //!< Number of RX antennae of the remote station
-  uint32_t m_tx;  //!< Number of TX antennae of the remote station
+  uint32_t m_rx;  //!< Number of RX antennas of the remote station
+  uint32_t m_tx;  //!< Number of TX antennas of the remote station
+  uint32_t m_ness;  //!< Number of streams in beamforming of the remote station
   bool m_stbc;  //!< Flag if STBC is used by the remote station
   bool m_greenfield;  //!< Flag if green field is used by the remote station
 
@@ -1023,9 +1040,13 @@ struct WifiRemoteStationState
  * of association status if we are in an infrastructure
  * network and to perform the selection of tx parameters
  * on a per-packet basis.
+ *
+ * This class is typically subclassed and extended by 
+ * rate control implementations
  */
 struct WifiRemoteStation
 {
+  virtual ~WifiRemoteStation ();
   WifiRemoteStationState *m_state; //!< Remote station state
   uint32_t m_ssrc; //!< STA short retry count
   uint32_t m_slrc; //!< STA long retry count

@@ -35,7 +35,7 @@
 #include <ns3/lte-enb-phy.h>
 #include <ns3/lte-ue-phy.h>
 #include <ns3/lte-spectrum-phy.h>
-#include <ns3/lte-sinr-chunk-processor.h>
+#include <ns3/lte-chunk-processor.h>
 #include <ns3/multi-model-spectrum-channel.h>
 #include <ns3/friis-spectrum-propagation-loss.h>
 #include <ns3/trace-fading-loss-model.h>
@@ -43,6 +43,7 @@
 #include <ns3/lte-enb-net-device.h>
 #include <ns3/lte-ue-net-device.h>
 #include <ns3/ff-mac-scheduler.h>
+#include <ns3/lte-ffr-algorithm.h>
 #include <ns3/lte-handover-algorithm.h>
 #include <ns3/lte-anr.h>
 #include <ns3/lte-rlc.h>
@@ -61,9 +62,9 @@
 #include <ns3/lte-spectrum-value-helper.h>
 #include <ns3/epc-x2.h>
 
-NS_LOG_COMPONENT_DEFINE ("LteHelper");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("LteHelper");
 
 NS_OBJECT_ENSURE_REGISTERED (LteHelper);
 
@@ -151,10 +152,18 @@ TypeId LteHelper::GetTypeId (void)
                    MakeStringAccessor (&LteHelper::SetSchedulerType,
                                        &LteHelper::GetSchedulerType),
                    MakeStringChecker ())
+    .AddAttribute ("FfrAlgorithm",
+                   "The type of FFR algorithm to be used for eNBs. "
+                   "The allowed values for this attributes are the type names "
+                   "of any class inheriting from ns3::LteFfrAlgorithm.",
+                   StringValue ("ns3::LteFrNoOpAlgorithm"),
+                   MakeStringAccessor (&LteHelper::SetFfrAlgorithmType,
+                                       &LteHelper::GetFfrAlgorithmType),
+                   MakeStringChecker ())
     .AddAttribute ("HandoverAlgorithm",
                    "The type of handover algorithm to be used for eNBs. "
                    "The allowed values for this attributes are the type names "
-                   "of any class inheriting from ns3::HandoverAlgorithm.",
+                   "of any class inheriting from ns3::LteHandoverAlgorithm.",
                    StringValue ("ns3::NoOpHandoverAlgorithm"),
                    MakeStringAccessor (&LteHelper::SetHandoverAlgorithmType,
                                        &LteHelper::GetHandoverAlgorithmType),
@@ -184,6 +193,12 @@ TypeId LteHelper::GetTypeId (void)
                    "Activate or deactivate Automatic Neighbour Relation function",
                    BooleanValue (true),
                    MakeBooleanAccessor (&LteHelper::m_isAnrEnabled),
+                   MakeBooleanChecker ())
+    .AddAttribute ("UsePdschForCqiGeneration",
+                   "If true, DL-CQI will be calculated from PDCCH as signal and PDSCH as interference "
+                   "If false, DL-CQI will be calculated from PDCCH as signal and PDCCH as interference  ",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&LteHelper::m_usePdschForCqiGeneration),
                    MakeBooleanChecker ())
   ;
   return tid;
@@ -225,6 +240,27 @@ LteHelper::SetSchedulerAttribute (std::string n, const AttributeValue &v)
 {
   NS_LOG_FUNCTION (this << n);
   m_schedulerFactory.Set (n, v);
+}
+
+std::string
+LteHelper::GetFfrAlgorithmType () const
+{
+  return m_ffrAlgorithmFactory.GetTypeId ().GetName ();
+}
+
+void
+LteHelper::SetFfrAlgorithmType (std::string type)
+{
+  NS_LOG_FUNCTION (this << type);
+  m_ffrAlgorithmFactory = ObjectFactory ();
+  m_ffrAlgorithmFactory.SetTypeId (type);
+}
+
+void
+LteHelper::SetFfrAlgorithmAttribute (std::string n, const AttributeValue &v)
+{
+  NS_LOG_FUNCTION (this << n);
+  m_ffrAlgorithmFactory.Set (n, v);
 }
 
 std::string
@@ -389,13 +425,17 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   ulPhy->SetHarqPhyModule (harq);
   phy->SetHarqPhyModule (harq);
 
-  Ptr<LteCtrlSinrChunkProcessor> pCtrl = Create<LteCtrlSinrChunkProcessor> (phy->GetObject<LtePhy> ());
+  Ptr<LteChunkProcessor> pCtrl = Create<LteChunkProcessor> ();
+  pCtrl->AddCallback (MakeCallback (&LteEnbPhy::GenerateCtrlCqiReport, phy));
   ulPhy->AddCtrlSinrChunkProcessor (pCtrl); // for evaluating SRS UL-CQI
 
-  Ptr<LteDataSinrChunkProcessor> pData = Create<LteDataSinrChunkProcessor> (ulPhy, phy);
+  Ptr<LteChunkProcessor> pData = Create<LteChunkProcessor> ();
+  pData->AddCallback (MakeCallback (&LteEnbPhy::GenerateDataCqiReport, phy));
+  pData->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, ulPhy));
   ulPhy->AddDataSinrChunkProcessor (pData); // for evaluating PUSCH UL-CQI
 
-  Ptr<LteInterferencePowerChunkProcessor> pInterf = Create<LteInterferencePowerChunkProcessor> (phy);
+  Ptr<LteChunkProcessor> pInterf = Create<LteChunkProcessor> ();
+  pInterf->AddCallback (MakeCallback (&LteEnbPhy::ReportInterference, phy));
   ulPhy->AddInterferenceDataChunkProcessor (pInterf); // for interference power tracing
 
   dlPhy->SetChannel (m_downlinkChannel);
@@ -413,6 +453,7 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
 
   Ptr<LteEnbMac> mac = CreateObject<LteEnbMac> ();
   Ptr<FfMacScheduler> sched = m_schedulerFactory.Create<FfMacScheduler> ();
+  Ptr<LteFfrAlgorithm> ffrAlgorithm = m_ffrAlgorithmFactory.Create<LteFfrAlgorithm> ();
   Ptr<LteHandoverAlgorithm> handoverAlgorithm = m_handoverAlgorithmFactory.Create<LteHandoverAlgorithm> ();
   Ptr<LteEnbRrc> rrc = CreateObject<LteEnbRrc> ();
 
@@ -463,6 +504,14 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   phy->SetLteEnbCphySapUser (rrc->GetLteEnbCphySapUser ());
   rrc->SetLteEnbCphySapProvider (phy->GetLteEnbCphySapProvider ());
 
+  //FFR SAP
+  sched->SetLteFfrSapProvider (ffrAlgorithm->GetLteFfrSapProvider ());
+  ffrAlgorithm->SetLteFfrSapUser (sched->GetLteFfrSapUser ());
+
+  rrc->SetLteFfrRrcSapProvider (ffrAlgorithm->GetLteFfrRrcSapProvider ());
+  ffrAlgorithm->SetLteFfrRrcSapUser (rrc->GetLteFfrRrcSapUser ());
+  //FFR SAP END
+
   Ptr<LteEnbNetDevice> dev = m_enbNetDeviceFactory.Create<LteEnbNetDevice> ();
   dev->SetNode (n);
   dev->SetAttribute ("CellId", UintegerValue (cellId)); 
@@ -471,6 +520,7 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   dev->SetAttribute ("FfMacScheduler", PointerValue (sched));
   dev->SetAttribute ("LteEnbRrc", PointerValue (rrc)); 
   dev->SetAttribute ("LteHandoverAlgorithm", PointerValue (handoverAlgorithm));
+  dev->SetAttribute ("LteFfrAlgorithm", PointerValue (ffrAlgorithm));
 
   if (m_isAnrEnabled)
     {
@@ -544,17 +594,37 @@ LteHelper::InstallSingleUeDevice (Ptr<Node> n)
   ulPhy->SetHarqPhyModule (harq);
   phy->SetHarqPhyModule (harq);
 
-  Ptr<LteRsReceivedPowerChunkProcessor> pRs = Create<LteRsReceivedPowerChunkProcessor> (phy->GetObject<LtePhy> ());
+  Ptr<LteChunkProcessor> pRs = Create<LteChunkProcessor> ();
+  pRs->AddCallback (MakeCallback (&LteUePhy::ReportRsReceivedPower, phy));
   dlPhy->AddRsPowerChunkProcessor (pRs);
 
-  Ptr<LteInterferencePowerChunkProcessor> pInterf = Create<LteInterferencePowerChunkProcessor> (phy);
+  Ptr<LteChunkProcessor> pInterf = Create<LteChunkProcessor> ();
+  pInterf->AddCallback (MakeCallback (&LteUePhy::ReportInterference, phy));
   dlPhy->AddInterferenceCtrlChunkProcessor (pInterf); // for RSRQ evaluation of UE Measurements
 
-  Ptr<LteCtrlSinrChunkProcessor> pCtrl = Create<LteCtrlSinrChunkProcessor> (phy->GetObject<LtePhy> (), dlPhy);
+  Ptr<LteChunkProcessor> pCtrl = Create<LteChunkProcessor> ();
+  pCtrl->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, dlPhy));
   dlPhy->AddCtrlSinrChunkProcessor (pCtrl);
 
-  Ptr<LteDataSinrChunkProcessor> pData = Create<LteDataSinrChunkProcessor> (dlPhy);
+  Ptr<LteChunkProcessor> pData = Create<LteChunkProcessor> ();
+  pData->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, dlPhy));
   dlPhy->AddDataSinrChunkProcessor (pData);
+
+  if (m_usePdschForCqiGeneration)
+    {
+      // CQI calculation based on PDCCH for signal and PDSCH for interference
+      pCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateMixedCqiReport, phy));
+      Ptr<LteChunkProcessor> pDataInterf = Create<LteChunkProcessor> ();      
+      pDataInterf->AddCallback (MakeCallback (&LteUePhy::ReportDataInterference, phy));
+      dlPhy->AddInterferenceDataChunkProcessor (pDataInterf);
+    }
+  else
+    {
+      // CQI calculation based on PDCCH for both signal and interference
+      pCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateCtrlCqiReport, phy));
+    }
+
+
 
   dlPhy->SetChannel (m_downlinkChannel);
   ulPhy->SetChannel (m_uplinkChannel);
@@ -750,18 +820,20 @@ LteHelper::AttachToClosestEnb (Ptr<NetDevice> ueDevice, NetDeviceContainer enbDe
   Attach (ueDevice, closestEnbDevice);
 }
 
-void
+uint8_t
 LteHelper::ActivateDedicatedEpsBearer (NetDeviceContainer ueDevices, EpsBearer bearer, Ptr<EpcTft> tft)
 {
   NS_LOG_FUNCTION (this);
   for (NetDeviceContainer::Iterator i = ueDevices.Begin (); i != ueDevices.End (); ++i)
     {
-      ActivateDedicatedEpsBearer (*i, bearer, tft);
+      uint8_t bearerId = ActivateDedicatedEpsBearer (*i, bearer, tft);
+      return bearerId;
     }
+  return 0;
 }
 
 
-void
+uint8_t
 LteHelper::ActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice, EpsBearer bearer, Ptr<EpcTft> tft)
 {
   NS_LOG_FUNCTION (this);
@@ -769,19 +841,71 @@ LteHelper::ActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice, EpsBearer bearer
   NS_ASSERT_MSG (m_epcHelper != 0, "dedicated EPS bearers cannot be set up when the EPC is not used");
 
   uint64_t imsi = ueDevice->GetObject<LteUeNetDevice> ()->GetImsi ();
-  m_epcHelper->ActivateEpsBearer (ueDevice, imsi, tft, bearer);
+  uint8_t bearerId = m_epcHelper->ActivateEpsBearer (ueDevice, imsi, tft, bearer);
+  return bearerId;
 }
 
+/**
+ * \ingroup lte
+ *
+ * DrbActivatior allows user to activate bearers for UEs
+ * when EPC is not used. Activation function is hooked to
+ * the Enb RRC Connection Estabilished trace source. When
+ * UE change its RRC state to CONNECTED_NORMALLY, activation
+ * function is called and bearer is activated.
+*/
 class DrbActivator : public SimpleRefCount<DrbActivator>
 {
 public:
+  /**
+  * DrbActivator Constructor
+  *
+  * \param ueDevice the UeNetDevice for which bearer will be activated
+  * \param bearer the bearer configuration
+  */
   DrbActivator (Ptr<NetDevice> ueDevice, EpsBearer bearer);
+
+  /**
+   * Function hooked to the Enb RRC Connection Established trace source
+   * Fired upon successful RRC connection establishment.
+   *
+   * \param a DrbActivator object
+   * \param context
+   * \param imsi
+   * \param cellId
+   * \param rnti
+   */
   static void ActivateCallback (Ptr<DrbActivator> a, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti);
+
+  /**
+   * Procedure firstly checks if bearer was not activated, if IMSI
+   * from trace source equals configured one and if UE is really
+   * in RRC connected state. If all requirements are met, it performs
+   * bearer activation.
+   *
+   * \param imsi
+   * \param cellId
+   * \param rnti
+   */
   void ActivateDrb (uint64_t imsi, uint16_t cellId, uint16_t rnti);
 private:
+  /**
+   * Bearer can be activated only once. This value stores state of
+   * bearer. Initially is set to false and changed to true during
+   * bearer activation.
+   */
   bool m_active;
+  /**
+   * UeNetDevice for which bearer will be activated
+   */
   Ptr<NetDevice> m_ueDevice;
+  /**
+   * Configuration of bearer which will be activated
+   */
   EpsBearer m_bearer;
+  /**
+   * imsi the unique UE identifier
+   */
   uint64_t m_imsi;
 };
 
@@ -813,8 +937,8 @@ DrbActivator::ActivateDrb (uint64_t imsi, uint16_t cellId, uint16_t rnti)
       Ptr<LteEnbRrc> enbRrc = enbLteDevice->GetObject<LteEnbNetDevice> ()->GetRrc ();
       NS_ASSERT (ueRrc->GetCellId () == enbLteDevice->GetCellId ());
       Ptr<UeManager> ueManager = enbRrc->GetUeManager (rnti);
-      NS_ASSERT (ueManager->GetState () == UeManager::CONNECTED_NORMALLY ||
-                 ueManager->GetState () == UeManager::CONNECTION_RECONFIGURATION);
+      NS_ASSERT (ueManager->GetState () == UeManager::CONNECTED_NORMALLY
+                 || ueManager->GetState () == UeManager::CONNECTION_RECONFIGURATION);
       EpcEnbS1SapUser::DataRadioBearerSetupRequestParameters params;
       params.rnti = rnti;
       params.bearer = m_bearer;
@@ -892,8 +1016,30 @@ LteHelper::DoHandoverRequest (Ptr<NetDevice> ueDev, Ptr<NetDevice> sourceEnbDev,
   sourceRrc->SendHandoverRequest (rnti, targetCellId);
 }
 
+void
+LteHelper::DeActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice,Ptr<NetDevice> enbDevice, uint8_t bearerId)
+{
+  NS_LOG_FUNCTION (this << ueDevice << bearerId);
+  NS_ASSERT_MSG (m_epcHelper != 0, "Dedicated EPS bearers cannot be de-activated when the EPC is not used");
+  NS_ASSERT_MSG (bearerId != 1, "Default bearer cannot be de-activated until and unless and UE is released");
+
+  DoDeActivateDedicatedEpsBearer (ueDevice, enbDevice, bearerId);
+}
+
+void
+LteHelper::DoDeActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice, Ptr<NetDevice> enbDevice, uint8_t bearerId)
+{
+  NS_LOG_FUNCTION (this << ueDevice << bearerId);
+
+  //Extract IMSI and rnti
+  uint64_t imsi = ueDevice->GetObject<LteUeNetDevice> ()->GetImsi ();
+  uint16_t rnti = ueDevice->GetObject<LteUeNetDevice> ()->GetRrc ()->GetRnti ();
 
 
+  Ptr<LteEnbRrc> enbRrc = enbDevice->GetObject<LteEnbNetDevice> ()->GetRrc ();
+
+  enbRrc->DoSendReleaseDataRadioBearer (imsi,rnti,bearerId);
+}
 
 
 void 
@@ -926,7 +1072,7 @@ LteHelper::EnableLogComponents (void)
   LogComponentEnable ("LteSpectrumValueHelper", LOG_LEVEL_ALL);
   LogComponentEnable ("LteSpectrumPhy", LOG_LEVEL_ALL);
   LogComponentEnable ("LteInterference", LOG_LEVEL_ALL);
-  LogComponentEnable ("LteSinrChunkProcessor", LOG_LEVEL_ALL);
+  LogComponentEnable ("LteChunkProcessor", LOG_LEVEL_ALL);
 
   std::string propModelStr = m_dlPathlossModelFactory.GetTypeId ().GetName ().erase (0,5).c_str ();
   LogComponentEnable ("LteNetDevice", LOG_LEVEL_ALL);

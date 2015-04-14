@@ -22,9 +22,9 @@
 
 #include "ns3/lte-rlc-am-header.h"
 
-NS_LOG_COMPONENT_DEFINE ("LteRlcAmHeader");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("LteRlcAmHeader");
 
 NS_OBJECT_ENSURE_REGISTERED (LteRlcAmHeader);
 
@@ -226,6 +226,7 @@ LteRlcAmHeader::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::LteRlcAmHeader")
     .SetParent<Header> ()
+    .SetGroupName("Lte")
     .AddConstructor<LteRlcAmHeader> ()
   ;
   return tid;

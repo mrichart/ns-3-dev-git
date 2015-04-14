@@ -28,6 +28,7 @@
 #include "ns3/ptr.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/double.h"
+#include "ns3/string.h"
 #include "ns3/log.h"
 #include "ns3/uan-tx-mode.h"
 #include "ns3/node.h"
@@ -36,9 +37,9 @@
 #include "ns3/acoustic-modem-energy-model.h"
 
 
-NS_LOG_COMPONENT_DEFINE ("UanPhyGen");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("UanPhyGen");
 
 NS_OBJECT_ENSURE_REGISTERED (UanPhyGen);
 NS_OBJECT_ENSURE_REGISTERED (UanPhyPerGenDefault);
@@ -458,23 +459,26 @@ UanPhyGen::GetTypeId (void)
                    MakeUanModesListChecker () )
     .AddAttribute ("PerModel",
                    "Functor to calculate PER based on SINR and TxMode.",
-                   PointerValue (CreateObject<UanPhyPerGenDefault> ()),
+                   StringValue ("ns3::UanPhyPerGenDefault"),
                    MakePointerAccessor (&UanPhyGen::m_per),
                    MakePointerChecker<UanPhyPer> ())
     .AddAttribute ("SinrModel",
                    "Functor to calculate SINR based on pkt arrivals and modes.",
-                   PointerValue (CreateObject<UanPhyCalcSinrDefault> ()),
+                   StringValue ("ns3::UanPhyCalcSinrDefault"),
                    MakePointerAccessor (&UanPhyGen::m_sinr),
                    MakePointerChecker<UanPhyCalcSinr> ())
     .AddTraceSource ("RxOk",
                      "A packet was received successfully.",
-                     MakeTraceSourceAccessor (&UanPhyGen::m_rxOkLogger))
+                     MakeTraceSourceAccessor (&UanPhyGen::m_rxOkLogger),
+                     "ns3::UanPhy::TracedCallback")
     .AddTraceSource ("RxError",
                      "A packet was received unsuccessfully.",
-                     MakeTraceSourceAccessor (&UanPhyGen::m_rxErrLogger))
+                     MakeTraceSourceAccessor (&UanPhyGen::m_rxErrLogger),
+                     "ns3::UanPhy::TracedCallback")
     .AddTraceSource ("Tx",
                      "Packet transmission beginning.",
-                     MakeTraceSourceAccessor (&UanPhyGen::m_txLogger))
+                     MakeTraceSourceAccessor (&UanPhyGen::m_txLogger),
+                     "ns3::UanPhy::TracedCallback")
   ;
   return tid;
 

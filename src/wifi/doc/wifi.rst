@@ -18,7 +18,8 @@ on the IEEE 802.11 standard [ieee80211]_. We will go into more detail below but 
 |ns3| provides models for these aspects of 802.11:
 
 * basic 802.11 DCF with **infrastructure** and **adhoc** modes
-* **802.11a**, **802.11b** and **802.11g** physical layers
+* **802.11a**, **802.11b**, **802.11g** and **802.11n** (both 2.4 and 5 GHz bands) physical layers
+* **MSDU aggregation** and **MPDU aggregation** extensions of 802.11n
 * QoS-based EDCA and queueing extensions of **802.11e**
 * the ability to use different propagation loss models and propagation delay models,
   please see the chapter on :ref:`Propagation` for more detail
@@ -28,7 +29,7 @@ on the IEEE 802.11 standard [ieee80211]_. We will go into more detail below but 
 
 The set of 802.11 models provided in |ns3| attempts to provide an accurate
 MAC-level implementation of the 802.11 specification and to provide a
-not-so-slow PHY-level model of the 802.11a specification.
+not-so-slow PHY-level model of the 802.11a specification and a not-so-slow PHY-level model of the 802.11a/b/g/n specifications.
 
 In |ns3|, nodes can have multiple WifiNetDevices on separate channels, and the
 WifiNetDevice can coexist with other device types; this removes an architectural
@@ -71,7 +72,7 @@ beacons, and that accepts every attempt to associate.
 These three MAC high models share a common parent in
 ``ns3::RegularWifiMac``, which exposes, among other MAC
 configuration, an attribute ``QosSupported`` that allows
-configuration of 802.11e/WMM-style QoS support and an attribute ``HtSupported`` that allows configuration og 802.11n High Throughput style support.
+configuration of 802.11e/WMM-style QoS support and an attribute ``HtSupported`` that allows configuration of 802.11n High Throughput style support.
 
 MAC low layer
 ==============
@@ -87,7 +88,7 @@ The **MAC low layer** is split into three components:
    and for transmission of frames (e.g., of type Management)
    that the standard says should access the medium using the DCF. 
    ``ns3::EdcaTxopN`` is is used by QoS-enabled high MACs and also
-   performs QoS operations like 802.11n-style MSDU aggregation.
+   performs 802.11n-style MSDU aggregation.
 
 Rate control algorithms
 =======================
@@ -148,10 +149,9 @@ To create a WifiNetDevice, users need to configure mainly five steps:
   configuration of WifiPhy is the error rate model, which is the one that actually 
   calculates the probability of successfully decoding the frame based on the signal.
 * Configure WifiMac: this step is more on related to the architecture and device level.
-  The users configure the wifi architecture (i.e. ad-hoc or ap-sta) and whether QoS
-  is supported or not.
+  The users configure the wifi architecture (i.e. ad-hoc or ap-sta) and whether QoS (802.11e) and/or HT (802.11n) features are supported or not.
 * Create WifiDevice: at this step, users configure the desired wifi standard
-  (e.g. **802.11b**, **802.11g**, or **802.11a**) and rate control algorithm
+  (e.g. **802.11b**, **802.11g**, **802.11a** or **802.11n**) and rate control algorithm
 * Configure mobility: finally, mobility model is (usually) required before WifiNetDevice
   can be used.
 
@@ -171,11 +171,11 @@ Users will typically type code such as::
 
 to get the defaults.  Specifically, the default is a channel model with a
 propagation delay equal to a constant, the speed of light (``ns3::ConstantSpeedPropagationDelayModel``),
-and a propagation loss based on a default log distance model (``ns3::LogDistancePropagationLossModel``).
+and a propagation loss based on a default log distance model (``ns3::LogDistancePropagationLossModel``)), using a default exponent of 3.
 Please note that the default log distance model is configured with a reference
 loss of 46.6777 dB at reference distance of 1m.  The reference loss of 46.6777 dB
 was calculated using Friis propagation loss model at 5.15 GHz.  The reference loss
-must be changed if **802.11b** or **802.11g** are used since they operate at 2.4 Ghz.
+must be changed if **802.11b**, **802.11g** or **802.11n** (at 2.4 GHz) are used since they operate at 2.4 Ghz.
 
 Note the distinction above in creating a helper object vs. an actual simulation
 object.  In |ns3|, helper objects (used at the helper API only) are created on
@@ -220,9 +220,13 @@ Note that we haven't actually created any WifiPhy objects yet; we've just
 prepared the YansWifiPhyHelper by telling it which channel it is connected to.
 The Phy objects are created in the next step.
 
-To enable 802.11n High Throughput style parameters the following line of code could be used::
+802.11n PHY layer can use either 20 or 40 MHz channel width, and either long (800 ns) or short (400 ns) OFDM guard intervals. To configure those parameters, the following lines of code could be used (in this example, it configures a 40 MHz channel width with a short guard interval)::
 
+ wifiPhyHelper.Set (« ChannelBonding,BooleanValue(true));
  wifiPhyHelper.Set ("ShortGuardEnabled",BooleanValue(true));
+
+Furthermore, 802.11n provides an optional mode (GreenField mode) to reduce preamble durations and which is only compatible with 802.11n devices. This mode is enabled as follows::
+
  wifiPhyHelper.Set ("GreenfieldEnabled",BooleanValue(true));
 
 WifiMacHelper
@@ -231,7 +235,7 @@ WifiMacHelper
 The next step is to configure the MAC model.
 We use WifiMacHelper to accomplish this.
 WifiMacHelper takes care of both the MAC low model and MAC high model.
-A user must decide if 802.11/WMM-style QoS support is required.
+A user must decide if 802.11/WMM-style QoS and/or 802.11n-style High throughput (HT) support is required.
 
 NqosWifiMacHelper and QosWifiMacHelper
 ++++++++++++++++++++++++++++++++++++++
@@ -241,9 +245,9 @@ object factory to create instances of a ``ns3::WifiMac``. They are used to
 configure MAC parameters like type of MAC.  
 
 The former, ``ns3::NqosWifiMacHelper``, supports creation of MAC
-instances that do not have 802.11e/WMM-style QoS support enabled. 
+instances that do not have 802.11e/WMM-style QoS nor 802.11n-style High throughput (HT) support enabled. 
 
-For example the following user code configures a non-QoS MAC that
+For example the following user code configures a non-QoS and non-HT MAC that
 will be a non-AP STA in an infrastructure network where the AP has
 SSID ``ns-3-ssid``::
 
@@ -255,25 +259,16 @@ SSID ``ns-3-ssid``::
 
 To create MAC instances with QoS support enabled,
 ``ns3::QosWifiMacHelper`` is used in place of
-``ns3::NqosWifiMacHelper``.  This object can be also used to set:
-
-* an MSDU aggregator for a particular Access Category (AC) in order to use 
-  802.11n MSDU aggregation feature;
-* block ack parameters like threshold (number of packets for which block ack
-  mechanism should be used) and inactivity timeout.
+``ns3::NqosWifiMacHelper``.
 
 The following code shows an example use of ``ns3::QosWifiMacHelper`` to 
-create an AP with QoS enabled, aggregation on AC_VO, and Block Ack on AC_BE::
+create an AP with QoS enabled::
 
   QosWifiMacHelper wifiMacHelper = QosWifiMacHelper::Default ();
   wifiMacHelper.SetType ("ns3::ApWifiMac",
                          "Ssid", SsidValue (ssid),
                          "BeaconGeneration", BooleanValue (true),
                          "BeaconInterval", TimeValue (Seconds (2.5)));
-  wifiMacHelper.SetMsduAggregatorForAc (AC_VO, "ns3::MsduStandardAggregator",
-                                        "MaxAmsduSize", UintegerValue (3839));
-  wifiMacHelper.SetBlockAckThresholdForAc (AC_BE, 10);
-  wifiMacHelper.SetBlockAckInactivityTimeoutForAc (AC_BE, 5);
 
 With QoS-enabled MAC models it is possible to work with traffic belonging to
 four different Access Categories (ACs): **AC_VO** for voice traffic,
@@ -291,10 +286,15 @@ HtWifiMacHelper
 
 The ``ns3::HtWifiMacHelper`` configures an
 object factory to create instances of a ``ns3::WifiMac``. It is used to
-supports creation of MAC instances that have 802.11n-style High throughput (Ht) and QoS support enabled.  
+supports creation of MAC instances that have 802.11n-style High throughput (HT) and QoS support enabled. In particular, this object can be also used to set:
+
+* an MSDU aggregator for a particular Access Category (AC) in order to use 
+  802.11n MSDU aggregation feature;
+* block ack parameters like threshold (number of packets for which block ack
+  mechanism should be used) and inactivity timeout.
 
 For example the following user code configures a HT MAC that
-will be a non-AP STA in an infrastructure network where the AP has
+will be a non-AP STA with QoS enabled, aggregation on AC_VO, and Block Ack on AC_BE, in an infrastructure network where the AP has
 SSID ``ns-3-ssid``::
 
     HtWifiMacHelper wifiMacHelper = HtWifiMacHelper::Default ();
@@ -302,6 +302,11 @@ SSID ``ns-3-ssid``::
     wifiMacHelper.SetType ("ns3::StaWifiMac",
                           "Ssid", SsidValue (ssid),
                           "ActiveProbing", BooleanValue (false));
+
+    wifiMacHelper.SetMsduAggregatorForAc (AC_VO, "ns3::MsduStandardAggregator",
+                                          "MaxAmsduSize", UintegerValue (3839));
+    wifiMacHelper.SetBlockAckThresholdForAc (AC_BE, 10);
+    wifiMacHelper.SetBlockAckInactivityTimeoutForAc (AC_BE, 5);
 
 This object can be also used to set in the same way as ``ns3::QosWifiMacHelper``.
 
@@ -325,6 +330,38 @@ on a set of nodes in a NodeContainer "c"::
 
 This creates the WifiNetDevice which includes also a WifiRemoteStationManager, a
 WifiMac, and a WifiPhy (connected to the matching WifiChannel).
+
+The ``WifiHelper::SetStandard`` method set various default timing parameters as defined in the selected standard version, overwriting values that may exist or have been previously configured.
+In order to change parameters that are overwritten by ``WifiHelper::SetStandard``, this should be done post-install using ``Config::Set``::
+
+  WifiHelper wifi = WifiHelper::Default ();
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_2_4GHZ);
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode", StringValue("OfdmRate65MbpsBW20MHz"), "ControlMode", StringValue("OfdmRate6_5MbpsBW20MHz"));
+  HtWifiMacHelper mac = HtWifiMacHelper::Default ();
+
+  //Install PHY and MAC
+  Ssid ssid = Ssid ("ns3-wifi");
+  mac.SetType ("ns3::StaWifiMac",
+  "Ssid", SsidValue (ssid),
+  "ActiveProbing", BooleanValue (false));
+
+  NetDeviceContainer staDevice;
+  staDevice = wifi.Install (phy, mac, wifiStaNode);
+
+  mac.SetType ("ns3::ApWifiMac",
+  "Ssid", SsidValue (ssid));
+
+  NetDeviceContainer apDevice;
+  apDevice = wifi.Install (phy, mac, wifiApNode);
+
+  //Once install is done, we overwrite the standard timing values
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Slot", TimeValue (MicroSeconds (slot)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Sifs", TimeValue (MicroSeconds (sifs)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/AckTimeout", TimeValue (MicroSeconds (ackTimeout)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/CtsTimeout", TimeValue (MicroSeconds (ctsTimeout)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Rifs", TimeValue (MicroSeconds (rifs)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BasicBlockAckTimeout", TimeValue (MicroSeconds (basicBlockAckTimeout)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/CompressedBlockAckTimeout", TimeValue (MicroSeconds (compressedBlockAckTimeout)));
 
 There are many |ns3| attributes that can be set on the above helpers to
 deviate from the default behavior; the example scripts show how to do some of
@@ -472,23 +509,25 @@ and describes the algorithm we implemented to decide whether or not a packet can
 be successfully received. See `"Yet Another Network Simulator"
 <http://cutebugs.net/files/wns2-yans.pdf>`_ for more details.
 
-The PHY layer can be in one of three states:
+The PHY layer can be in one of five states:
 
 #. TX: the PHY is currently transmitting a signal on behalf of its associated
    MAC
 #. RX: the PHY is synchronized on a signal and is waiting until it has received
    its last bit to forward it to the MAC.
-#. IDLE: the PHY is not in the TX or RX states.
+#. IDLE: the PHY is not in the TX, RX, or CCA BUSY states.
+#. CCA Busy: the PHY is not in TX or RX state but the measured energy is higher than the energy detection threshold.
+#. SLEEP: the PHY is in a power save mode and cannot send nor receive frames.
 
 When the first bit of a new packet is received while the PHY is not IDLE (that
 is, it is already synchronized on the reception of another earlier packet or it
 is sending data itself), the received packet is dropped. Otherwise, if the PHY
-is IDLE, we calculate the received energy of the first bit of this new signal
+is IDLE or CCA Busy, we calculate the received energy of the first bit of this new signal
 and compare it against our Energy Detection threshold (as defined by the Clear
 Channel Assessment function mode 1). If the energy of the packet k is higher,
 then the PHY moves to RX state and schedules an event when the last bit of the
-packet is expected to be received. Otherwise, the PHY stays in IDLE state and
-drops the packet.
+packet is expected to be received. Otherwise, the PHY stays in IDLE 
+or CCA Busy state and drops the packet.
 
 The energy of the received signal is assumed to be zero outside of the reception
 interval of packet k and is calculated from the transmission power with a
@@ -514,9 +553,7 @@ SNIR function.
    *SNIR function over time.*
 
 From the SNIR function we can derive the Bit Error Rate (BER) and Packet Error Rate (PER) for
-the modulation and coding scheme being used for the transmission.  Please refer to [pei80211ofdm]_, [pei80211b]_ 
-and [lacage2006yans]_ for a detailed description of the available BER/PER models.
-
+the modulation and coding scheme being used for the transmission.  Please refer to [pei80211ofdm]_, [pei80211b]_, [lacage2006yans]_, [Haccoun]_ and [Frenger]_ for a detailed description of the available BER/PER models.
 
 WifiChannel configuration
 =========================
@@ -593,6 +630,8 @@ Algorithms in literature:
 * ``CaraWifiManager`` [kim2006cara]_
 * ``RraaWifiManager`` [wong2006rraa]_
 * ``AarfcdWifiManager`` [maguolo2008aarfcd]_
+* ``ParfWifiManager`` [akella2007parf]_
+* ``AparfWifiManager`` [chevillat2005aparf]_
 
 ConstantRateWifiManager
 =======================
@@ -692,6 +731,10 @@ Note on the current implementation
 
 * 802.11g does not support 9 microseconds slot
 * PHY_RXSTART is not supported
+* 802.11e TXOP is not supported
+* 802.11n MIMO is not supported
+* hybrid aggregation is not supported
+
 
 Wifi Tracing
 ************
@@ -710,6 +753,10 @@ References
 
 .. [lacage2006yans] \M. Lacage and T. Henderson, `Yet another Network Simulator <http://cutebugs.net/files/wns2-yans.pdf>`__ 
 
+.. [Haccoun] \D. Haccoun and G. Begin, *High-Rate Punctured Convolutional Codes for Viterbi Sequential Decoding*, IEEE Transactions on Communications, Vol. 32, Issue 3, pp.315-319.
+
+.. [Frenger] \Pâl Frenger et al., "Multi-rate Convolutional Codes".
+
 .. [ji2004sslswn] \Z. Ji, J. Zhou, M. Takai and R. Bagrodia, *Scalable simulation of large-scale wireless networks with bounded inaccuracies*, in Proc. of the Seventh ACM Symposium on Modeling, Analysis and Simulation of Wireless and Mobile Systems, October 2004.
 
 .. [linuxminstrel] `minstrel linux wireless <http://wireless.kernel.org/en/developers/Documentation/mac80211/RateControl/minstrel>`_
@@ -721,3 +768,7 @@ References
 .. [wong2006rraa] \ S. Wong, H. Yang, S. Lu, and V. Bharghavan, *Robust Rate Adaptation for 802.11 Wireless Networks*, in Proc. 12th Annual International Conference on Mobile Computing and Networking, 2006
 
 .. [maguolo2008aarfcd] \ F. Maguolo, M. Lacage, and T. Turletti, *Efficient collision detection for auto rate fallback algorithm*, in IEEE Symposium on Computers and Communications, 2008
+
+.. [akella2007parf] \ A. Akella, G. Judd, S. Seshan, and P. Steenkiste, 'Self-management in chaotic wireless deployments', in Wireless Networks, Kluwer Academic Publishers, 2007, 13, 737-755.  `<http://www.cs.odu.edu/~nadeem/classes/cs795-WNS-S13/papers/enter-006.pdf>`__
+
+.. [chevillat2005aparf] \  Chevillat, P.; Jelitto, J., and Truong, H. L., 'Dynamic data rate and transmit power adjustment in IEEE 802.11 wireless LANs', in International Journal of Wireless Information Networks, Springer, 2005, 12, 123-145.  `<http://www.cs.mun.ca/~yzchen/papers/papers/rate_adaptation/80211_dynamic_rate_power_adjustment_chevillat_j2005.pdf>`__

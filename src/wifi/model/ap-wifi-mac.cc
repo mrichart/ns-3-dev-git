@@ -38,9 +38,9 @@
 #include "amsdu-subframe-header.h"
 #include "msdu-aggregator.h"
 
-NS_LOG_COMPONENT_DEFINE ("ApWifiMac");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("ApWifiMac");
 
 NS_OBJECT_ENSURE_REGISTERED (ApWifiMac);
 
@@ -49,6 +49,7 @@ ApWifiMac::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::ApWifiMac")
     .SetParent<RegularWifiMac> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<ApWifiMac> ()
     .AddAttribute ("BeaconInterval", "Delay between two beacons",
                    TimeValue (MicroSeconds (102400)),

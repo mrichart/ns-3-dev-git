@@ -37,8 +37,9 @@
 
 
 
-NS_LOG_COMPONENT_DEFINE ("UanMacRc");
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("UanMacRc");
 
 NS_OBJECT_ENSURE_REGISTERED (UanMacRc);
 
@@ -251,13 +252,16 @@ UanMacRc::GetTypeId (void)
                    MakeTimeChecker ())
     .AddTraceSource ("Enqueue",
                      "A  (data) packet arrived at MAC for transmission.",
-                     MakeTraceSourceAccessor (&UanMacRc::m_enqueueLogger))
+                     MakeTraceSourceAccessor (&UanMacRc::m_enqueueLogger),
+                     "ns3::UanMac::PacketModeTracedCallback")
     .AddTraceSource ("Dequeue",
                      "A  (data) packet was passed down to PHY from MAC.",
-                     MakeTraceSourceAccessor (&UanMacRc::m_dequeueLogger))
+                     MakeTraceSourceAccessor (&UanMacRc::m_dequeueLogger),
+                     "ns3::UanMac::PacketModeTracedCallback")
     .AddTraceSource ("RX",
                      "A packet was destined for and received at this MAC layer.",
-                     MakeTraceSourceAccessor (&UanMacRc::m_rxLogger))
+                     MakeTraceSourceAccessor (&UanMacRc::m_rxLogger),
+                     "ns3::UanMac::PacketModeTracedCallback")
   ;
   return tid;
 }

@@ -162,7 +162,7 @@ public:
    */
   enum State
   {
-    IDLE, TX, RX_DATA, RX_CTRL
+    IDLE, TX_DL_CTRL, TX_DATA, TX_UL_SRS, RX_DL_CTRL, RX_DATA, RX_UL_SRS
   };
 
   // inherited from Object
@@ -179,7 +179,8 @@ public:
   Ptr<AntennaModel> GetRxAntenna ();
   void StartRx (Ptr<SpectrumSignalParameters> params);
   void StartRxData (Ptr<LteSpectrumSignalParametersDataFrame> params);
-  void StartRxCtrl (Ptr<SpectrumSignalParameters> params);
+  void StartRxDlCtrl (Ptr<LteSpectrumSignalParametersDlCtrlFrame> lteDlCtrlRxParams);
+  void StartRxUlSrs (Ptr<LteSpectrumSignalParametersUlSrsFrame> lteUlSrsRxParams);
 
   void SetHarqPhyModule (Ptr<LteHarqPhy> harq);
 
@@ -326,41 +327,49 @@ public:
   /**
   *
   *
-  * \param p the new LteSinrChunkProcessor to be added to the RS power 
+  * \param p the new LteChunkProcessor to be added to the RS power
   *          processing chain
   */
-  void AddRsPowerChunkProcessor (Ptr<LteSinrChunkProcessor> p);
+  void AddRsPowerChunkProcessor (Ptr<LteChunkProcessor> p);
   
+  /**
+  *
+  *
+  * \param p the new LteChunkProcessor to be added to the Data Channel power
+  *          processing chain
+  */
+  void AddDataPowerChunkProcessor (Ptr<LteChunkProcessor> p);
+
   /** 
   * 
   * 
-  * \param p the new LteSinrChunkProcessor to be added to the data processing chain
+  * \param p the new LteChunkProcessor to be added to the data processing chain
   */
-  void AddDataSinrChunkProcessor (Ptr<LteSinrChunkProcessor> p);
+  void AddDataSinrChunkProcessor (Ptr<LteChunkProcessor> p);
 
   /**
-  *  LteSinrChunkProcessor devoted to evaluate interference + noise power
+  *  LteChunkProcessor devoted to evaluate interference + noise power
   *  in control symbols of the subframe
   *
-  * \param p the new LteSinrChunkProcessor to be added to the data processing chain
+  * \param p the new LteChunkProcessor to be added to the data processing chain
   */
-  void AddInterferenceCtrlChunkProcessor (Ptr<LteSinrChunkProcessor> p);
+  void AddInterferenceCtrlChunkProcessor (Ptr<LteChunkProcessor> p);
 
   /**
-  *  LteSinrChunkProcessor devoted to evaluate interference + noise power
+  *  LteChunkProcessor devoted to evaluate interference + noise power
   *  in data symbols of the subframe
   *
-  * \param p the new LteSinrChunkProcessor to be added to the data processing chain
+  * \param p the new LteChunkProcessor to be added to the data processing chain
   */
-  void AddInterferenceDataChunkProcessor (Ptr<LteSinrChunkProcessor> p);
+  void AddInterferenceDataChunkProcessor (Ptr<LteChunkProcessor> p);
   
   
   /** 
   * 
   * 
-  * \param p the new LteSinrChunkProcessor to be added to the ctrl processing chain
+  * \param p the new LteChunkProcessor to be added to the ctrl processing chain
   */
-  void AddCtrlSinrChunkProcessor (Ptr<LteSinrChunkProcessor> p);
+  void AddCtrlSinrChunkProcessor (Ptr<LteChunkProcessor> p);
   
   /** 
   * 
@@ -412,7 +421,9 @@ public:
 
 private:
   void ChangeState (State newState);
-  void EndTx ();
+  void EndTxData ();
+  void EndTxDlCtrl ();
+  void EndTxUlSrs ();
   void EndRxData ();
   void EndRxDlCtrl ();
   void EndRxUlSrs ();
@@ -445,7 +456,6 @@ private:
   TracedCallback<Ptr<const Packet> > m_phyRxEndOkTrace;
   TracedCallback<Ptr<const Packet> > m_phyRxEndErrorTrace;
 
-  LtePhyTxEndCallback        m_ltePhyTxEndCallback;
   LtePhyRxDataEndErrorCallback   m_ltePhyRxDataEndErrorCallback;
   LtePhyRxDataEndOkCallback      m_ltePhyRxDataEndOkCallback;
   

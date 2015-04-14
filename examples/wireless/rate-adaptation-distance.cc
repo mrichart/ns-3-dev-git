@@ -1,5 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
+ * Copyright (c) 2014 Universidad de la República - Uruguay
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation;
@@ -17,24 +19,33 @@
  */
 
 /**
-* This simulation consist of 2 nodes, one AP and one STA.
-* The AP generates UDP traffic with a CBR of 54 Mbps to the STA.
-* The AP and STA can use any rate control mechanism.
-* The STA can be configured to move away from (or towards to) the AP.
-*
-* The output consists of:
-* - A plot of average throughput vs. distance.
-* - If enabled, the changes of rate to standard output.
-*
-* Example usage:
-* ./waf --run "rate-adaptation-distance --manager=ns3::MinstrelWifiManager --outputFileName=minstrel"
-*
-* Another example (moving towards the AP):
-* ./waf --run "rate-adaptation-distance --manager=ns3::MinstrelWifiManager --outputFileName=minstrel --stepsSize=1 --STA1_x=-200"
-*
-* To enable the log of rate changes:
-* export NS_LOG=RateAdaptationDistance=level_info
-*/
+ * This example program is designed to illustrate the behavior of
+ * rate-adaptive WiFi rate controls such as Minstrel.  Power-adaptive
+ * rate controls can be illustrated also, but separate examples exist for
+ * highlighting the power adaptation.
+ *
+ * This simulation consist of 2 nodes, one AP and one STA.
+ * The AP generates UDP traffic with a CBR of 54 Mbps to the STA.
+ * The AP can use any power and rate control mechanism and the STA uses
+ * only Minstrel rate control.
+ * The STA can be configured to move away from (or towards to) the AP.
+ * By default, the AP is at coordinate (0,0,0) and the STA starts at
+ * coordinate (5,0,0) (meters) and moves away on the x axis by 1 meter every
+ * second.
+ *
+ * The output consists of:
+ * - A plot of average throughput vs. distance.
+ * - (if logging is enabled) the changes of rate to standard output.
+ *
+ * Example usage:
+ * ./waf --run "rate-adaptation-distance --manager=ns3::MinstrelWifiManager --outputFileName=minstrel"
+ *
+ * Another example (moving towards the AP):
+ * ./waf --run "rate-adaptation-distance --manager=ns3::MinstrelWifiManager --outputFileName=minstrel --stepsSize=1 --STA1_x=-200"
+ *
+ * To enable the log of rate changes:
+ * export NS_LOG=RateAdaptationDistance=level_info
+ */
 
 #include <sstream>
 #include <fstream>
@@ -43,13 +54,10 @@
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
-#include "ns3/csma-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/applications-module.h"
-
 #include "ns3/stats-module.h"
-
 #include "ns3/flow-monitor-module.h"
 
 using namespace ns3;
@@ -57,83 +65,85 @@ using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("RateAdaptationDistance");
 
-class APStatics
+class NodeStatistics
 {
 public:
-  APStatics(NetDeviceContainer aps, NetDeviceContainer stas);
+  NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas);
 
-  void CheckStatics (double time);
+  void CheckStatistics (double time);
 
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
   Vector GetPosition (Ptr<Node> node);
 
-  Gnuplot2dDataset GetDatafile();
+  Gnuplot2dDataset GetDatafile ();
 
 private:
   uint32_t m_bytesTotal;
   Gnuplot2dDataset m_output;
 };
 
-APStatics::APStatics(NetDeviceContainer aps, NetDeviceContainer stas)
+NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas)
 {
   m_bytesTotal = 0;
 }
 
 void
-APStatics::RxCallback (std::string path, Ptr<const Packet> packet, const Address &from)
+NodeStatistics::RxCallback (std::string path, Ptr<const Packet> packet, const Address &from)
 {
-  m_bytesTotal += packet->GetSize();
+  m_bytesTotal += packet->GetSize ();
 }
 
 void
-APStatics::CheckStatics(double time)
+NodeStatistics::CheckStatistics (double time)
 {
 
 }
 
 void
-APStatics::SetPosition (Ptr<Node> node, Vector position)
+NodeStatistics::SetPosition (Ptr<Node> node, Vector position)
 {
   Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
   mobility->SetPosition (position);
 }
 
 Vector
-APStatics::GetPosition (Ptr<Node> node)
+NodeStatistics::GetPosition (Ptr<Node> node)
 {
   Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
   return mobility->GetPosition ();
 }
 
 void
-APStatics::AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
+NodeStatistics::AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
 {
   Vector pos = GetPosition (node);
-  double mbs = ((m_bytesTotal * 8.0) / (1000000*stepsTime));
+  double mbs = ((m_bytesTotal * 8.0) / (1000000 * stepsTime));
   m_bytesTotal = 0;
   m_output.Add (pos.x, mbs);
   pos.x += stepsSize;
   SetPosition (node, pos);
-  //std::cout << "x="<<pos.x << std::endl;
-  Simulator::Schedule (Seconds (stepsTime), &APStatics::AdvancePosition, this, node, stepsSize, stepsTime);
+  Simulator::Schedule (Seconds (stepsTime), &NodeStatistics::AdvancePosition, this, node, stepsSize, stepsTime);
 }
 
 Gnuplot2dDataset
-APStatics::GetDatafile()
-{ return m_output; }
+NodeStatistics::GetDatafile ()
+{
+  return m_output;
+}
 
 
-void RateCallback (std::string path, uint32_t rate, Mac48Address dest) {
+void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
+{
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
 }
 
 int main (int argc, char *argv[])
 {
-  uint32_t rtsThreshold=2346;
-  std::string manager="ns3::MinstrelWifiManager";
-  std::string outputFileName="minstrel";
+  uint32_t rtsThreshold = 2346;
+  std::string manager = "ns3::MinstrelWifiManager";
+  std::string outputFileName = "minstrel";
   int ap1_x = 0;
   int ap1_y = 0;
   int sta1_x = 5;
@@ -155,7 +165,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
   cmd.Parse (argc, argv);
 
-  int simuTime = steps*stepsTime;
+  int simuTime = steps * stepsTime;
 
   // Define the APs
   NodeContainer wifiApNodes;
@@ -163,10 +173,10 @@ int main (int argc, char *argv[])
 
   //Define the STAs
   NodeContainer wifiStaNodes;
-  wifiStaNodes.Create(1);
+  wifiStaNodes.Create (1);
 
   WifiHelper wifi = WifiHelper::Default ();
-  wifi.SetStandard(WIFI_PHY_STANDARD_80211a);
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
   NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
@@ -178,24 +188,24 @@ int main (int argc, char *argv[])
   NetDeviceContainer wifiDevices;
 
   //Configure the STA node
-  wifi.SetRemoteStationManager (manager, "RtsCtsThreshold", UintegerValue(rtsThreshold));
+  wifi.SetRemoteStationManager (manager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
 
   Ssid ssid = Ssid ("AP");
   wifiMac.SetType ("ns3::StaWifiMac",
-                  "Ssid", SsidValue (ssid),
-                  "ActiveProbing", BooleanValue (false));
-  wifiStaDevices.Add(wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get(0)));
+                   "Ssid", SsidValue (ssid),
+                   "ActiveProbing", BooleanValue (false));
+  wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
 
   //Configure the AP node
-  wifi.SetRemoteStationManager (manager, "RtsCtsThreshold", UintegerValue(rtsThreshold));
+  wifi.SetRemoteStationManager (manager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
 
   ssid = Ssid ("AP");
   wifiMac.SetType ("ns3::ApWifiMac",
-                  "Ssid", SsidValue (ssid));
-  wifiApDevices.Add(wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get(0)));
+                   "Ssid", SsidValue (ssid));
+  wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
 
-  wifiDevices.Add(wifiStaDevices);
-  wifiDevices.Add(wifiApDevices);
+  wifiDevices.Add (wifiStaDevices);
+  wifiDevices.Add (wifiApDevices);
 
   // Configure the mobility.
   MobilityHelper mobility;
@@ -205,14 +215,14 @@ int main (int argc, char *argv[])
   positionAlloc->Add (Vector (sta1_x, sta1_y, 0.0));
   mobility.SetPositionAllocator (positionAlloc);
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility.Install (wifiApNodes.Get(0));
-  mobility.Install (wifiStaNodes.Get(0));
+  mobility.Install (wifiApNodes.Get (0));
+  mobility.Install (wifiStaNodes.Get (0));
 
-  //Statics counter
-  APStatics atpCounter = APStatics(wifiApDevices, wifiStaDevices);
+  //Statistics counter
+  NodeStatistics atpCounter = NodeStatistics (wifiApDevices, wifiStaDevices);
 
   //Move the STA by stepsSize meters every stepsTime seconds
-  Simulator::Schedule (Seconds (0.5+stepsTime), &APStatics::AdvancePosition, &atpCounter, wifiStaNodes.Get (0), stepsSize, stepsTime);
+  Simulator::Schedule (Seconds (0.5 + stepsTime), &NodeStatistics::AdvancePosition, &atpCounter, wifiStaNodes.Get (0), stepsSize, stepsTime);
 
   //Configure the IP stack
   InternetStackHelper stack;
@@ -221,7 +231,7 @@ int main (int argc, char *argv[])
   Ipv4AddressHelper address;
   address.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer i = address.Assign (wifiDevices);
-  Ipv4Address sinkAddress = i.GetAddress(0);
+  Ipv4Address sinkAddress = i.GetAddress (0);
   uint16_t port = 9;
 
   //Configure the CBR generator
@@ -237,25 +247,27 @@ int main (int argc, char *argv[])
   apps_sink.Start (Seconds (0.5));
   apps_sink.Stop (Seconds (simuTime));
 
-    //------------------------------------------------------------
-    //-- Setup stats and data collection
-    //--------------------------------------------
+  //------------------------------------------------------------
+  //-- Setup stats and data collection
+  //--------------------------------------------
 
-   //Register packet receptions to calculate throughput
+  //Register packet receptions to calculate throughput
   Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
-		  	  	  	MakeCallback (&APStatics::RxCallback, &atpCounter));
+                   MakeCallback (&NodeStatistics::RxCallback, &atpCounter));
 
   //Callbacks to print every change of rate
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                    MakeCallback (RateCallback));
+                   MakeCallback (RateCallback));
 
   Simulator::Stop (Seconds (simuTime));
   Simulator::Run ();
 
   std::ofstream outfile (("throughput-" + outputFileName + ".plt").c_str ());
-  Gnuplot gnuplot = Gnuplot(("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
-  gnuplot.SetTerminal("post eps color enhanced");
-  gnuplot.AddDataset (atpCounter.GetDatafile());
+  Gnuplot gnuplot = Gnuplot (("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
+  gnuplot.SetTerminal ("post eps color enhanced");
+  gnuplot.SetLegend ("Time (seconds)", "Throughput (Mb/s)");
+  gnuplot.SetTitle ("Throughput (AP to STA) vs time");
+  gnuplot.AddDataset (atpCounter.GetDatafile ());
   gnuplot.GenerateOutput (outfile);
 
   Simulator::Destroy ();

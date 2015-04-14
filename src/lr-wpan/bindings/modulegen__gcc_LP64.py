@@ -335,6 +335,9 @@ def register_types(module):
     typehandlers.add_type_alias(u'ns3::Callback< void, ns3::McpsDataIndicationParams, ns3::Ptr< ns3::Packet >, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >', u'ns3::McpsDataIndicationCallback')
     typehandlers.add_type_alias(u'ns3::Callback< void, ns3::McpsDataIndicationParams, ns3::Ptr< ns3::Packet >, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >*', u'ns3::McpsDataIndicationCallback*')
     typehandlers.add_type_alias(u'ns3::Callback< void, ns3::McpsDataIndicationParams, ns3::Ptr< ns3::Packet >, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >&', u'ns3::McpsDataIndicationCallback&')
+    typehandlers.add_type_alias(u'void ( * ) ( ns3::SequenceNumber32, ns3::SequenceNumber32 ) *', u'ns3::SequenceNumber32TracedValueCallback')
+    typehandlers.add_type_alias(u'void ( * ) ( ns3::SequenceNumber32, ns3::SequenceNumber32 ) **', u'ns3::SequenceNumber32TracedValueCallback*')
+    typehandlers.add_type_alias(u'void ( * ) ( ns3::SequenceNumber32, ns3::SequenceNumber32 ) *&', u'ns3::SequenceNumber32TracedValueCallback&')
     typehandlers.add_type_alias(u'ns3::Callback< void, ns3::McpsDataConfirmParams, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >', u'ns3::McpsDataConfirmCallback')
     typehandlers.add_type_alias(u'ns3::Callback< void, ns3::McpsDataConfirmParams, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >*', u'ns3::McpsDataConfirmCallback*')
     typehandlers.add_type_alias(u'ns3::Callback< void, ns3::McpsDataConfirmParams, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >&', u'ns3::McpsDataConfirmCallback&')
@@ -1702,10 +1705,10 @@ def register_Ns3LrWpanSpectrumValueHelper_methods(root_module, cls):
     cls.add_method('CreateTxPowerSpectralDensity', 
                    'ns3::Ptr< ns3::SpectrumValue >', 
                    [param('double', 'txPower'), param('uint32_t', 'channel')])
-    ## lr-wpan-spectrum-value-helper.h (module 'lr-wpan'): static double ns3::LrWpanSpectrumValueHelper::TotalAvgPower(ns3::Ptr<ns3::SpectrumValue const> psd) [member function]
+    ## lr-wpan-spectrum-value-helper.h (module 'lr-wpan'): static double ns3::LrWpanSpectrumValueHelper::TotalAvgPower(ns3::Ptr<ns3::SpectrumValue const> psd, uint32_t channel) [member function]
     cls.add_method('TotalAvgPower', 
                    'double', 
-                   [param('ns3::Ptr< ns3::SpectrumValue const >', 'psd')], 
+                   [param('ns3::Ptr< ns3::SpectrumValue const >', 'psd'), param('uint32_t', 'channel')], 
                    is_static=True)
     return
 
@@ -1955,10 +1958,10 @@ def register_Ns3ObjectBase_methods(root_module, cls):
                    'void', 
                    [param('std::string', 'name'), param('ns3::AttributeValue &', 'value')], 
                    is_const=True)
-    ## object-base.h (module 'core'): bool ns3::ObjectBase::GetAttributeFailSafe(std::string name, ns3::AttributeValue & attribute) const [member function]
+    ## object-base.h (module 'core'): bool ns3::ObjectBase::GetAttributeFailSafe(std::string name, ns3::AttributeValue & value) const [member function]
     cls.add_method('GetAttributeFailSafe', 
                    'bool', 
-                   [param('std::string', 'name'), param('ns3::AttributeValue &', 'attribute')], 
+                   [param('std::string', 'name'), param('ns3::AttributeValue &', 'value')], 
                    is_const=True)
     ## object-base.h (module 'core'): ns3::TypeId ns3::ObjectBase::GetInstanceTypeId() const [member function]
     cls.add_method('GetInstanceTypeId', 
@@ -2338,10 +2341,10 @@ def register_Ns3PcapHelper_methods(root_module, cls):
     cls.add_constructor([param('ns3::PcapHelper const &', 'arg0')])
     ## trace-helper.h (module 'network'): ns3::PcapHelper::PcapHelper() [constructor]
     cls.add_constructor([])
-    ## trace-helper.h (module 'network'): ns3::Ptr<ns3::PcapFileWrapper> ns3::PcapHelper::CreateFile(std::string filename, std::_Ios_Openmode filemode, uint32_t dataLinkType, uint32_t snapLen=65535, int32_t tzCorrection=0) [member function]
+    ## trace-helper.h (module 'network'): ns3::Ptr<ns3::PcapFileWrapper> ns3::PcapHelper::CreateFile(std::string filename, std::_Ios_Openmode filemode, uint32_t dataLinkType, uint32_t snapLen=std::numeric_limits<unsigned int>::max(), int32_t tzCorrection=0) [member function]
     cls.add_method('CreateFile', 
                    'ns3::Ptr< ns3::PcapFileWrapper >', 
-                   [param('std::string', 'filename'), param('std::_Ios_Openmode', 'filemode'), param('uint32_t', 'dataLinkType'), param('uint32_t', 'snapLen', default_value='65535'), param('int32_t', 'tzCorrection', default_value='0')])
+                   [param('std::string', 'filename'), param('std::_Ios_Openmode', 'filemode'), param('uint32_t', 'dataLinkType'), param('uint32_t', 'snapLen', default_value='std::numeric_limits<unsigned int>::max()'), param('int32_t', 'tzCorrection', default_value='0')])
     ## trace-helper.h (module 'network'): std::string ns3::PcapHelper::GetFilenameFromDevice(std::string prefix, ns3::Ptr<ns3::NetDevice> device, bool useObjectNames=true) [member function]
     cls.add_method('GetFilenameFromDevice', 
                    'std::string', 
@@ -2630,7 +2633,12 @@ def register_Ns3TypeId_methods(root_module, cls):
     ## type-id.h (module 'core'): ns3::TypeId ns3::TypeId::AddTraceSource(std::string name, std::string help, ns3::Ptr<ns3::TraceSourceAccessor const> accessor) [member function]
     cls.add_method('AddTraceSource', 
                    'ns3::TypeId', 
-                   [param('std::string', 'name'), param('std::string', 'help'), param('ns3::Ptr< ns3::TraceSourceAccessor const >', 'accessor')])
+                   [param('std::string', 'name'), param('std::string', 'help'), param('ns3::Ptr< ns3::TraceSourceAccessor const >', 'accessor')], 
+                   deprecated=True)
+    ## type-id.h (module 'core'): ns3::TypeId ns3::TypeId::AddTraceSource(std::string name, std::string help, ns3::Ptr<ns3::TraceSourceAccessor const> accessor, std::string callback) [member function]
+    cls.add_method('AddTraceSource', 
+                   'ns3::TypeId', 
+                   [param('std::string', 'name'), param('std::string', 'help'), param('ns3::Ptr< ns3::TraceSourceAccessor const >', 'accessor'), param('std::string', 'callback')])
     ## type-id.h (module 'core'): ns3::TypeId::AttributeInformation ns3::TypeId::GetAttribute(uint32_t i) const [member function]
     cls.add_method('GetAttribute', 
                    'ns3::TypeId::AttributeInformation', 
@@ -2681,6 +2689,11 @@ def register_Ns3TypeId_methods(root_module, cls):
                    'uint32_t', 
                    [], 
                    is_static=True)
+    ## type-id.h (module 'core'): std::size_t ns3::TypeId::GetSize() const [member function]
+    cls.add_method('GetSize', 
+                   'std::size_t', 
+                   [], 
+                   is_const=True)
     ## type-id.h (module 'core'): ns3::TypeId::TraceSourceInformation ns3::TypeId::GetTraceSource(uint32_t i) const [member function]
     cls.add_method('GetTraceSource', 
                    'ns3::TypeId::TraceSourceInformation', 
@@ -2757,6 +2770,10 @@ def register_Ns3TypeId_methods(root_module, cls):
     cls.add_method('SetParent', 
                    'ns3::TypeId', 
                    [param('ns3::TypeId', 'tid')])
+    ## type-id.h (module 'core'): ns3::TypeId ns3::TypeId::SetSize(std::size_t size) [member function]
+    cls.add_method('SetSize', 
+                   'ns3::TypeId', 
+                   [param('std::size_t', 'size')])
     ## type-id.h (module 'core'): void ns3::TypeId::SetUid(uint16_t tid) [member function]
     cls.add_method('SetUid', 
                    'void', 
@@ -2791,6 +2808,8 @@ def register_Ns3TypeIdTraceSourceInformation_methods(root_module, cls):
     cls.add_constructor([param('ns3::TypeId::TraceSourceInformation const &', 'arg0')])
     ## type-id.h (module 'core'): ns3::TypeId::TraceSourceInformation::accessor [variable]
     cls.add_instance_attribute('accessor', 'ns3::Ptr< ns3::TraceSourceAccessor const >', is_const=False)
+    ## type-id.h (module 'core'): ns3::TypeId::TraceSourceInformation::callback [variable]
+    cls.add_instance_attribute('callback', 'std::string', is_const=False)
     ## type-id.h (module 'core'): ns3::TypeId::TraceSourceInformation::help [variable]
     cls.add_instance_attribute('help', 'std::string', is_const=False)
     ## type-id.h (module 'core'): ns3::TypeId::TraceSourceInformation::name [variable]
@@ -2929,6 +2948,20 @@ def register_Ns3Header_methods(root_module, cls):
 def register_Ns3LrWpanHelper_methods(root_module, cls):
     ## lr-wpan-helper.h (module 'lr-wpan'): ns3::LrWpanHelper::LrWpanHelper() [constructor]
     cls.add_constructor([])
+    ## lr-wpan-helper.h (module 'lr-wpan'): ns3::LrWpanHelper::LrWpanHelper(bool useMultiModelSpectrumChannel) [constructor]
+    cls.add_constructor([param('bool', 'useMultiModelSpectrumChannel')])
+    ## lr-wpan-helper.h (module 'lr-wpan'): ns3::Ptr<ns3::SpectrumChannel> ns3::LrWpanHelper::GetChannel() [member function]
+    cls.add_method('GetChannel', 
+                   'ns3::Ptr< ns3::SpectrumChannel >', 
+                   [])
+    ## lr-wpan-helper.h (module 'lr-wpan'): void ns3::LrWpanHelper::SetChannel(ns3::Ptr<ns3::SpectrumChannel> channel) [member function]
+    cls.add_method('SetChannel', 
+                   'void', 
+                   [param('ns3::Ptr< ns3::SpectrumChannel >', 'channel')])
+    ## lr-wpan-helper.h (module 'lr-wpan'): void ns3::LrWpanHelper::SetChannel(std::string channelName) [member function]
+    cls.add_method('SetChannel', 
+                   'void', 
+                   [param('std::string', 'channelName')])
     ## lr-wpan-helper.h (module 'lr-wpan'): void ns3::LrWpanHelper::AddMobility(ns3::Ptr<ns3::LrWpanPhy> phy, ns3::Ptr<ns3::MobilityModel> m) [member function]
     cls.add_method('AddMobility', 
                    'void', 
@@ -2945,10 +2978,10 @@ def register_Ns3LrWpanHelper_methods(root_module, cls):
     cls.add_method('EnableLogComponents', 
                    'void', 
                    [])
-    ## lr-wpan-helper.h (module 'lr-wpan'): static std::string ns3::LrWpanHelper::LrWpanPhyEnumerationPrinter(ns3::LrWpanPhyEnumeration arg0) [member function]
+    ## lr-wpan-helper.h (module 'lr-wpan'): static std::string ns3::LrWpanHelper::LrWpanPhyEnumerationPrinter(ns3::LrWpanPhyEnumeration e) [member function]
     cls.add_method('LrWpanPhyEnumerationPrinter', 
                    'std::string', 
-                   [param('ns3::LrWpanPhyEnumeration', 'arg0')], 
+                   [param('ns3::LrWpanPhyEnumeration', 'e')], 
                    is_static=True)
     ## lr-wpan-helper.h (module 'lr-wpan'): static std::string ns3::LrWpanHelper::LrWpanMacStatePrinter(ns3::LrWpanMacState e) [member function]
     cls.add_method('LrWpanMacStatePrinter', 
@@ -3096,13 +3129,13 @@ def register_Ns3LrWpanMacHeader_methods(root_module, cls):
                    'uint64_t', 
                    [], 
                    is_const=True)
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): std::string ns3::LrWpanMacHeader::GetName() const [member function]
-    cls.add_method('GetName', 
-                   'std::string', 
-                   [], 
-                   is_const=True)
     ## lr-wpan-mac-header.h (module 'lr-wpan'): uint8_t ns3::LrWpanMacHeader::GetSecControl() const [member function]
     cls.add_method('GetSecControl', 
+                   'uint8_t', 
+                   [], 
+                   is_const=True)
+    ## lr-wpan-mac-header.h (module 'lr-wpan'): uint8_t ns3::LrWpanMacHeader::GetSecCtrlReserved() const [member function]
+    cls.add_method('GetSecCtrlReserved', 
                    'uint8_t', 
                    [], 
                    is_const=True)
@@ -3151,11 +3184,6 @@ def register_Ns3LrWpanMacHeader_methods(root_module, cls):
                    'ns3::TypeId', 
                    [], 
                    is_static=True)
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): uint8_t ns3::LrWpanMacHeader::GetsecctrlReserved() const [member function]
-    cls.add_method('GetsecctrlReserved', 
-                   'uint8_t', 
-                   [], 
-                   is_const=True)
     ## lr-wpan-mac-header.h (module 'lr-wpan'): bool ns3::LrWpanMacHeader::IsAckReq() const [member function]
     cls.add_method('IsAckReq', 
                    'bool', 
@@ -3186,28 +3214,8 @@ def register_Ns3LrWpanMacHeader_methods(root_module, cls):
                    'bool', 
                    [], 
                    is_const=True)
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): bool ns3::LrWpanMacHeader::IsNoAckReq() const [member function]
-    cls.add_method('IsNoAckReq', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): bool ns3::LrWpanMacHeader::IsNoFrmPend() const [member function]
-    cls.add_method('IsNoFrmPend', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): bool ns3::LrWpanMacHeader::IsNoPanIdComp() const [member function]
-    cls.add_method('IsNoPanIdComp', 
-                   'bool', 
-                   [], 
-                   is_const=True)
     ## lr-wpan-mac-header.h (module 'lr-wpan'): bool ns3::LrWpanMacHeader::IsPanIdComp() const [member function]
     cls.add_method('IsPanIdComp', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): bool ns3::LrWpanMacHeader::IsSecDisable() const [member function]
-    cls.add_method('IsSecDisable', 
                    'bool', 
                    [], 
                    is_const=True)
@@ -3221,11 +3229,6 @@ def register_Ns3LrWpanMacHeader_methods(root_module, cls):
                    'void', 
                    [param('std::ostream &', 'os')], 
                    is_const=True, is_virtual=True)
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): void ns3::LrWpanMacHeader::PrintFrameControl(std::ostream & os) const [member function]
-    cls.add_method('PrintFrameControl', 
-                   'void', 
-                   [param('std::ostream &', 'os')], 
-                   is_const=True)
     ## lr-wpan-mac-header.h (module 'lr-wpan'): void ns3::LrWpanMacHeader::Serialize(ns3::Buffer::Iterator start) const [member function]
     cls.add_method('Serialize', 
                    'void', 
@@ -3303,6 +3306,10 @@ def register_Ns3LrWpanMacHeader_methods(root_module, cls):
     cls.add_method('SetSecControl', 
                    'void', 
                    [param('uint8_t', 'secLevel')])
+    ## lr-wpan-mac-header.h (module 'lr-wpan'): void ns3::LrWpanMacHeader::SetSecCtrlReserved(uint8_t res) [member function]
+    cls.add_method('SetSecCtrlReserved', 
+                   'void', 
+                   [param('uint8_t', 'res')])
     ## lr-wpan-mac-header.h (module 'lr-wpan'): void ns3::LrWpanMacHeader::SetSecDisable() [member function]
     cls.add_method('SetSecDisable', 
                    'void', 
@@ -3335,10 +3342,6 @@ def register_Ns3LrWpanMacHeader_methods(root_module, cls):
     cls.add_method('SetType', 
                    'void', 
                    [param('ns3::LrWpanMacHeader::LrWpanMacType', 'wpanMacType')])
-    ## lr-wpan-mac-header.h (module 'lr-wpan'): void ns3::LrWpanMacHeader::SetsecctrlReserved(uint8_t res) [member function]
-    cls.add_method('SetsecctrlReserved', 
-                   'void', 
-                   [param('uint8_t', 'res')])
     return
 
 def register_Ns3Object_methods(root_module, cls):
@@ -3729,10 +3732,10 @@ def register_Ns3Time_methods(root_module, cls):
     cls.add_constructor([param('long unsigned int', 'v')])
     ## nstime.h (module 'core'): ns3::Time::Time(long long unsigned int v) [constructor]
     cls.add_constructor([param('long long unsigned int', 'v')])
+    ## nstime.h (module 'core'): ns3::Time::Time(ns3::int64x64_t const & v) [constructor]
+    cls.add_constructor([param('ns3::int64x64_t const &', 'v')])
     ## nstime.h (module 'core'): ns3::Time::Time(std::string const & s) [constructor]
     cls.add_constructor([param('std::string const &', 's')])
-    ## nstime.h (module 'core'): ns3::Time::Time(ns3::int64x64_t const & value) [constructor]
-    cls.add_constructor([param('ns3::int64x64_t const &', 'value')])
     ## nstime.h (module 'core'): ns3::TimeWithUnit ns3::Time::As(ns3::Time::Unit const unit) const [member function]
     cls.add_method('As', 
                    'ns3::TimeWithUnit', 
@@ -3743,25 +3746,25 @@ def register_Ns3Time_methods(root_module, cls):
                    'int', 
                    [param('ns3::Time const &', 'o')], 
                    is_const=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::From(ns3::int64x64_t const & from, ns3::Time::Unit timeUnit) [member function]
-    cls.add_method('From', 
-                   'ns3::Time', 
-                   [param('ns3::int64x64_t const &', 'from'), param('ns3::Time::Unit', 'timeUnit')], 
-                   is_static=True)
     ## nstime.h (module 'core'): static ns3::Time ns3::Time::From(ns3::int64x64_t const & value) [member function]
     cls.add_method('From', 
                    'ns3::Time', 
                    [param('ns3::int64x64_t const &', 'value')], 
                    is_static=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromDouble(double value, ns3::Time::Unit timeUnit) [member function]
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::From(ns3::int64x64_t const & value, ns3::Time::Unit unit) [member function]
+    cls.add_method('From', 
+                   'ns3::Time', 
+                   [param('ns3::int64x64_t const &', 'value'), param('ns3::Time::Unit', 'unit')], 
+                   is_static=True)
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromDouble(double value, ns3::Time::Unit unit) [member function]
     cls.add_method('FromDouble', 
                    'ns3::Time', 
-                   [param('double', 'value'), param('ns3::Time::Unit', 'timeUnit')], 
+                   [param('double', 'value'), param('ns3::Time::Unit', 'unit')], 
                    is_static=True)
-    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromInteger(uint64_t value, ns3::Time::Unit timeUnit) [member function]
+    ## nstime.h (module 'core'): static ns3::Time ns3::Time::FromInteger(uint64_t value, ns3::Time::Unit unit) [member function]
     cls.add_method('FromInteger', 
                    'ns3::Time', 
-                   [param('uint64_t', 'value'), param('ns3::Time::Unit', 'timeUnit')], 
+                   [param('uint64_t', 'value'), param('ns3::Time::Unit', 'unit')], 
                    is_static=True)
     ## nstime.h (module 'core'): double ns3::Time::GetDays() const [member function]
     cls.add_method('GetDays', 
@@ -3878,20 +3881,20 @@ def register_Ns3Time_methods(root_module, cls):
                    'bool', 
                    [], 
                    is_static=True)
-    ## nstime.h (module 'core'): ns3::int64x64_t ns3::Time::To(ns3::Time::Unit timeUnit) const [member function]
+    ## nstime.h (module 'core'): ns3::int64x64_t ns3::Time::To(ns3::Time::Unit unit) const [member function]
     cls.add_method('To', 
                    'ns3::int64x64_t', 
-                   [param('ns3::Time::Unit', 'timeUnit')], 
+                   [param('ns3::Time::Unit', 'unit')], 
                    is_const=True)
-    ## nstime.h (module 'core'): double ns3::Time::ToDouble(ns3::Time::Unit timeUnit) const [member function]
+    ## nstime.h (module 'core'): double ns3::Time::ToDouble(ns3::Time::Unit unit) const [member function]
     cls.add_method('ToDouble', 
                    'double', 
-                   [param('ns3::Time::Unit', 'timeUnit')], 
+                   [param('ns3::Time::Unit', 'unit')], 
                    is_const=True)
-    ## nstime.h (module 'core'): int64_t ns3::Time::ToInteger(ns3::Time::Unit timeUnit) const [member function]
+    ## nstime.h (module 'core'): int64_t ns3::Time::ToInteger(ns3::Time::Unit unit) const [member function]
     cls.add_method('ToInteger', 
                    'int64_t', 
-                   [param('ns3::Time::Unit', 'timeUnit')], 
+                   [param('ns3::Time::Unit', 'unit')], 
                    is_const=True)
     return
 
@@ -5356,11 +5359,6 @@ def register_Ns3Packet_methods(root_module, cls):
                    'uint64_t', 
                    [], 
                    is_const=True)
-    ## packet.h (module 'network'): uint8_t const * ns3::Packet::PeekData() const [member function]
-    cls.add_method('PeekData', 
-                   'uint8_t const *', 
-                   [], 
-                   deprecated=True, is_const=True)
     ## packet.h (module 'network'): uint32_t ns3::Packet::PeekHeader(ns3::Header & header) const [member function]
     cls.add_method('PeekHeader', 
                    'uint32_t', 
@@ -5431,6 +5429,11 @@ def register_Ns3Packet_methods(root_module, cls):
     cls.add_method('SetNixVector', 
                    'void', 
                    [param('ns3::Ptr< ns3::NixVector >', 'nixVector')])
+    ## packet.h (module 'network'): std::string ns3::Packet::ToString() const [member function]
+    cls.add_method('ToString', 
+                   'std::string', 
+                   [], 
+                   is_const=True)
     return
 
 def register_Ns3TimeValue_methods(root_module, cls):
