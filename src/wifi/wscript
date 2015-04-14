@@ -65,6 +65,7 @@ def build(bld):
         'model/wifi-tx-vector.cc',
         'model/parf-wifi-manager.cc',
         'model/aparf-wifi-manager.cc',
+        'model/rrpaa-11a-wifi-manager.cc',
         'model/ampdu-subframe-header.cc',
         'model/mpdu-aggregator.cc',
         'model/mpdu-standard-aggregator.cc',
@@ -75,9 +76,6 @@ def build(bld):
         'helper/yans-wifi-helper.cc',
         'helper/nqos-wifi-mac-helper.cc',
         'helper/qos-wifi-mac-helper.cc',
-        'model/parf-wifi-manager.cc',
-        'model/aparf-wifi-manager.cc',
-        'model/rrpaa-11a-wifi-manager.cc'
         ]
 
     obj_test = bld.create_ns3_module_test_library('wifi')
@@ -87,7 +85,6 @@ def build(bld):
         'test/tx-duration-test.cc',
         'test/power-rate-adaptation-test.cc',
         'test/wifi-test.cc',
-        'test/power-rate-adaptation-test.cc',
         ]
 
     headers = bld(features='ns3header')
@@ -152,6 +149,7 @@ def build(bld):
         'model/ht-capabilities.h',
         'model/parf-wifi-manager.h',
         'model/aparf-wifi-manager.h',
+        'model/rrpaa-11a-wifi-manager.h',
         'model/wifi-tx-vector.h',
         'model/ampdu-subframe-header.h',
         'model/mpdu-aggregator.h',
@@ -163,9 +161,6 @@ def build(bld):
         'helper/yans-wifi-helper.h',
         'helper/nqos-wifi-mac-helper.h',
         'helper/qos-wifi-mac-helper.h',
-        'model/parf-wifi-manager.h',
-        'model/aparf-wifi-manager.h',
-        'model/rrpaa-11a-wifi-manager.h'
         ]
 
     if bld.env['ENABLE_GSL']:

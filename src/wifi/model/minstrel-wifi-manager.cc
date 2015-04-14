@@ -457,7 +457,6 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   UpdateRetry (station);
 
-
   station->m_err++;
 
   NS_LOG_DEBUG ("DoReportFinalDataFailed m_txrate = " << station->m_txrate << ", attempt = " << station->m_minstrelTable[station->m_txrate].numRateAttempt << ", success = " << station->m_minstrelTable[station->m_txrate].numRateSuccess << " (after update).");
@@ -751,6 +750,7 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
     }
   NS_LOG_DEBUG ("Attempt/success resetted to 0");
 
+
   uint32_t max_prob = 0, index_max_prob = 0, max_tp = 0, index_max_tp = 0, index_max_tp2 = 0;
 
   /// go find max throughput, second maximum throughput, high probability succ
@@ -799,7 +799,6 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
   NS_LOG_DEBUG ("max throughput=" << index_max_tp << "(" << GetSupported (station, index_max_tp) <<
                 ")\tsecond max throughput=" << index_max_tp2 << "(" << GetSupported (station, index_max_tp2) <<
                 ")\tmax prob=" << index_max_prob << "(" << GetSupported (station, index_max_prob) << ")");
-
 }
 
 void
@@ -865,7 +864,6 @@ MinstrelWifiManager::CalculateTimeUnicastPacket (Time dataTransmissionTime, uint
   return tt;
 }
 
-
 void
 MinstrelWifiManager::InitSampleTable (MinstrelWifiRemoteStation *station)
 {
@@ -928,7 +926,6 @@ MinstrelWifiManager::PrintTable (MinstrelWifiRemoteStation *station)
       NS_LOG_DEBUG (i << " (" << GetSupported (station, i) << "): "  << station->m_minstrelTable[i].perfectTxTime << ", retryCount = " << station->m_minstrelTable[i].retryCount << ", adjustedRetryCount = " << station->m_minstrelTable[i].adjustedRetryCount);
     }
 }
-
 
 } // namespace ns3
 
