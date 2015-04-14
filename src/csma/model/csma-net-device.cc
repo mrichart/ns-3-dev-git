@@ -44,6 +44,7 @@ CsmaNetDevice::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::CsmaNetDevice")
     .SetParent<NetDevice> ()
+    .SetGroupName ("Csma")
     .AddConstructor<CsmaNetDevice> ()
     .AddAttribute ("Address", 
                    "The MAC address of this device.",
@@ -520,7 +521,7 @@ CsmaNetDevice::TransmitStart (void)
           m_txMachineState = BUSY;
           m_phyTxBeginTrace (m_currentPkt);
 
-          Time tEvent = Seconds (m_bps.CalculateTxTime (m_currentPkt->GetSize ()));
+          Time tEvent = m_bps.CalculateBytesTxTime (m_currentPkt->GetSize ());
           NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << tEvent.GetSeconds () << "sec");
           Simulator::Schedule (tEvent, &CsmaNetDevice::TransmitCompleteEvent, this);
         }
@@ -656,7 +657,7 @@ CsmaNetDevice::Attach (Ptr<CsmaChannel> ch)
   //
   // We use the Ethernet interframe gap of 96 bit times.
   //
-  m_tInterframeGap = Seconds (m_bps.CalculateTxTime (96/8));
+  m_tInterframeGap = m_bps.CalculateBytesTxTime (96/8);
 
   //
   // This device is up whenever a channel is attached to it.

@@ -169,6 +169,7 @@ LteUeRrc::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::LteUeRrc")
     .SetParent<Object> ()
+    .SetGroupName("Lte")
     .AddConstructor<LteUeRrc> ()
     .AddAttribute ("DataRadioBearerMap", "List of UE RadioBearerInfo for Data Radio Bearers by LCID.",
                    ObjectMapValue (),
@@ -430,6 +431,8 @@ LteUeRrc::DoSendData (Ptr<Packet> packet, uint8_t bid)
 
   uint8_t drbid = Bid2Drbid (bid);
 
+  if (drbid != 0)
+    {
   std::map<uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator it =   m_drbMap.find (drbid);
   NS_ASSERT_MSG (it != m_drbMap.end (), "could not find bearer with drbid == " << drbid);
 
@@ -443,6 +446,7 @@ LteUeRrc::DoSendData (Ptr<Packet> packet, uint8_t bid)
                      << " (LCID " << (uint32_t) params.lcid << ")"
                      << " (" << packet->GetSize () << " bytes)");
   it->second->m_pdcp->GetLtePdcpSapProvider ()->TransmitPdcpSdu (params);
+    }
 }
 
 
@@ -1293,6 +1297,8 @@ LteUeRrc::ApplyRadioResourceConfigDedicated (LteRrcSap::RadioResourceConfigDedic
       NS_ASSERT_MSG (it != m_drbMap.end (), "could not find bearer with given lcid");
       m_drbMap.erase (it);      
       m_bid2DrbidMap.erase (drbid);
+      //Remove LCID
+      m_cmacSapProvider->RemoveLc (drbid + 2);
     }
 }
 
@@ -1441,8 +1447,8 @@ LteUeRrc::ApplyMeasConfig (LteRrcSap::MeasConfig mc)
       NS_LOG_LOGIC (this << " setting quantityConfig");
       m_varMeasConfig.quantityConfig = mc.quantityConfig;
       // we calculate here the coefficient a used for Layer 3 filtering, see 3GPP TS 36.331 section 5.5.3.2
-      m_varMeasConfig.aRsrp = std::pow (0.5, mc.quantityConfig.filterCoefficientRSRP/4.0);
-      m_varMeasConfig.aRsrq = std::pow (0.5, mc.quantityConfig.filterCoefficientRSRQ/4.0);
+      m_varMeasConfig.aRsrp = std::pow (0.5, mc.quantityConfig.filterCoefficientRSRP / 4.0);
+      m_varMeasConfig.aRsrq = std::pow (0.5, mc.quantityConfig.filterCoefficientRSRQ / 4.0);
       NS_LOG_LOGIC (this << " new filter coefficients: aRsrp=" << m_varMeasConfig.aRsrp << ", aRsrq=" << m_varMeasConfig.aRsrq);
 
       for (std::map<uint8_t, LteRrcSap::MeasIdToAddMod>::iterator measIdIt
@@ -1520,7 +1526,7 @@ LteUeRrc::SaveUeMeasurements (uint16_t cellId, double rsrp, double rsrq,
 {
   NS_LOG_FUNCTION (this << cellId << rsrp << rsrq << useLayer3Filtering);
 
-  std::map<uint16_t, MeasValues>::iterator storedMeasIt = m_storedMeasValues.find (cellId);;
+  std::map<uint16_t, MeasValues>::iterator storedMeasIt = m_storedMeasValues.find (cellId);
 
   if (storedMeasIt != m_storedMeasValues.end ())
     {
@@ -2792,10 +2798,16 @@ uint8_t
 LteUeRrc::Bid2Drbid (uint8_t bid)
 {
   std::map<uint8_t, uint8_t>::iterator it = m_bid2DrbidMap.find (bid);
-  NS_ASSERT_MSG (it != m_bid2DrbidMap.end (), "could not find BID " << bid);
+  //NS_ASSERT_MSG (it != m_bid2DrbidMap.end (), "could not find BID " << bid);
+  if (it == m_bid2DrbidMap.end ())
+    {
+      return 0;
+    }
+  else
+    {
   return it->second;
+    }
 }
-
 
 void 
 LteUeRrc::SwitchToState (State newState)

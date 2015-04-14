@@ -1,5 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
+ * Copyright (c) 2014 Universidad de la República - Uruguay
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation;
@@ -17,31 +19,71 @@
  */
 
 /**
-* This simulation consist of 2 nodes, one AP and one STA.
-* The AP generates UDP traffic with a CBR of 54 Mbps to the STA.
-* The AP can use any power and rate control mechanism and the STA use only rate control.
-* The STA can be configured to move away from (or towards to) the AP.
-*
-* The output consists of:
-* - A plot of average throughput vs. distance.
-* - A plot of average transmit power vs. distance.
-* - If enabled, the changes of power and rate to standard output.
-*
-* Example usage:
-* \code{.sh}
-*   ./waf --run "power-adaptation-distance --manager=ns3::AparfWifiManager --outputFileName=aparf"
-* \endcode
-*
-* Another example (moving towards the AP):
-* \code{.sh}
-*   ./waf --run "power-adaptation-distance --manager=ns3::AparfWifiManager --outputFileName=aparf --stepsSize=-1 --STA1_x=200"
-* \endcode
-*
-* To enable the log of rate and power changes:
-* \code{.sh}
-*   export NS_LOG=PowerAdaptationDistance=level_info
-* \endcode
-*/
+ * This example program is designed to illustrate the behavior of two
+ * power/rate-adaptive WiFi rate controls; namely, ns3::ParfWifiManager
+ * and ns3::AparfWifiManager.
+ *
+ * The output of this is typically two plot files, named throughput-parf.plt
+ * (or throughput-aparf.plt, if Aparf is used) and power-parf.plt If 
+ * Gnuplot program is available, one can use it to convert the plt file
+ * into an eps file, by running:
+ * \code{.sh}
+ *   gnuplot throughput-parf.plt
+ * \endcode
+ * Also, to enable logging of rate and power changes to the terminal, set this
+ * environment variable:
+ * \code{.sh}
+ *   export NS_LOG=PowerAdaptationDistance=level_info
+ * \endcode
+ *
+ * This simulation consist of 2 nodes, one AP and one STA.
+ * The AP generates UDP traffic with a CBR of 54 Mbps to the STA.
+ * The AP can use any power and rate control mechanism and the STA uses 
+ * only Minstrel rate control.
+ * The STA can be configured to move away from (or towards to) the AP.
+ * By default, the AP is at coordinate (0,0,0) and the STA starts at 
+ * coordinate (5,0,0) (meters) and moves away on the x axis by 1 meter every
+ * second.
+ *
+ * The output consists of:
+ * - A plot of average throughput vs. distance.
+ * - A plot of average transmit power vs. distance.
+ * - (if logging is enabled) the changes of power and rate to standard output.
+ *
+ * The Average Transmit Power is defined as an average of the power
+ * consumed per measurement interval, expressed in milliwatts.  The
+ * power level for each frame transmission is reported by the simulator, 
+ * and the energy consumed is obtained by multiplying the power by the
+ * frame duration.  At every 'stepTime' (defaulting to 1 second), the
+ * total energy for the collection period is divided by the step time 
+ * and converted from dbm to milliwatt units, and this average is 
+ * plotted against time.
+ *
+ * When neither Parf nor Aparf is selected as the rate control, the
+ * generation of the plot of average transmit power vs distance is suppressed
+ * since the other Wifi rate controls do not support the necessary callbacks
+ * for computing the average power.
+ *
+ * To display all the possible arguments and their defaults:
+ * \code{.sh}
+ *   ./waf --run "power-adaptation-distance --help"
+ * \endcode
+ * 
+ * Example usage (selecting Aparf rather than Parf):
+ * \code{.sh}
+ *   ./waf --run "power-adaptation-distance --manager=ns3::AparfWifiManager --outputFileName=aparf"
+ * \endcode
+ *
+ * Another example (moving towards the AP):
+ * \code{.sh}
+ *   ./waf --run "power-adaptation-distance --manager=ns3::AparfWifiManager --outputFileName=aparf --stepsSize=-1 --STA1_x=200"
+ * \endcode
+ *
+ * To enable the log of rate and power changes:
+ * \code{.sh}
+ *   export NS_LOG=PowerAdaptationDistance=level_info
+ * \endcode
+ */
 
 #include <sstream>
 #include <fstream>
@@ -50,19 +92,19 @@
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
-#include "ns3/csma-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/applications-module.h"
-
 #include "ns3/stats-module.h"
-
 #include "ns3/flow-monitor-module.h"
 
 using namespace ns3;
 using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("PowerAdaptationDistance");
+
+// packet size generated at the AP
+static const uint32_t packetSize = 1420;
 
 class NodeStatistics
 {
@@ -90,7 +132,7 @@ private:
   std::map<Mac48Address, uint32_t> actualPower;
   std::map<Mac48Address, WifiMode> actualMode;
   uint32_t m_bytesTotal;
-  double totalPower;
+  double totalEnergy;
   double totalTime;
   Ptr<WifiPhy> myPhy;
   TxTime timeTable;
@@ -110,12 +152,11 @@ NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas)
       Ptr<NetDevice> staDevice = stas.Get (j);
       Ptr<WifiNetDevice> wifiStaDevice = DynamicCast<WifiNetDevice> (staDevice);
       Mac48Address addr = wifiStaDevice->GetMac ()->GetAddress ();
-      actualPower[addr] = phy->GetTxPowerEnd();
+      actualPower[addr] = 17;
       actualMode[addr] = phy->GetMode (0);
     }
   actualMode[Mac48Address ("ff:ff:ff:ff:ff:ff")] = phy->GetMode (0);
-  actualPower[Mac48Address ("ff:ff:ff:ff:ff:ff")] = phy->GetTxPowerEnd();
-  totalPower = 0;
+  totalEnergy = 0;
   totalTime = 0;
   m_bytesTotal = 0;
   m_output.SetTitle ("Throughput Mbits/s");
@@ -131,7 +172,7 @@ NodeStatistics::SetupPhy (Ptr<WifiPhy> phy)
       WifiMode mode = phy->GetMode (i);
       WifiTxVector txVector;
       txVector.SetMode (mode);
-      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (1420, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ()), mode));
+      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (packetSize, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency (), 0, 0), mode));
     }
 }
 
@@ -156,13 +197,9 @@ NodeStatistics::PhyCallback (std::string path, Ptr<const Packet> packet)
   packet->PeekHeader (head);
   Mac48Address dest = head.GetAddr1 ();
 
-  //NS_LOG_UNCOND ((Simulator::Now ()).GetSeconds () << " " << dest << " " << actualMode[dest].GetDataRate()/1000000 << " " << (int)actualPower[dest]);
+  totalEnergy += actualPower[dest] * GetCalcTxTime (actualMode[dest]).GetSeconds ();
+  totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
 
-  if (head.GetType() == WIFI_MAC_DATA)
-    {
-      totalPower += pow(10,actualPower[dest]/10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
-      totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
-    }
 }
 
 void
@@ -222,14 +259,14 @@ NodeStatistics::AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
   Vector pos = GetPosition (node);
   double mbs = ((m_bytesTotal * 8.0) / (1000000 * stepsTime));
   m_bytesTotal = 0;
-  double atm = totalPower/stepsTime;
-  totalPower = 0;
+  double atm = pow (10, ((totalEnergy / stepsTime) / 10));
+  totalEnergy = 0;
   totalTime = 0;
   m_output_power.Add (pos.x, atm);
   m_output.Add (pos.x, mbs);
   pos.x += stepsSize;
   SetPosition (node, pos);
-  //std::cout << "x="<<pos.x << std::endl;
+  NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << " sec; setting new position to " << pos);
   Simulator::Schedule (Seconds (stepsTime), &NodeStatistics::AdvancePosition, this, node, stepsSize, stepsTime);
 }
 
@@ -268,9 +305,9 @@ int main (int argc, char *argv[])
   int ap1_y = 0;
   int sta1_x = 5;
   int sta1_y = 0;
-  int steps = 200;
-  int stepsSize = 1;
-  int stepsTime = 1;
+  uint32_t steps = 200;
+  uint32_t stepsSize = 1;
+  uint32_t stepsTime = 1;
 
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager", manager);
@@ -289,7 +326,12 @@ int main (int argc, char *argv[])
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
   cmd.Parse (argc, argv);
 
-  int simuTime = steps * stepsTime + stepsTime;
+  if (steps == 0)
+    {
+      std::cout << "Exiting without running simulation; steps value of 0" << std::endl;
+    }
+
+  uint32_t simuTime = (steps + 1) * stepsTime;
 
   // Define the APs
   NodeContainer wifiApNodes;
@@ -341,12 +383,14 @@ int main (int argc, char *argv[])
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   //Initial position of AP and STA
   positionAlloc->Add (Vector (ap1_x, ap1_y, 0.0));
+  NS_LOG_INFO ("Setting initial AP position to " << Vector (ap1_x, ap1_y, 0.0));
   positionAlloc->Add (Vector (sta1_x, sta1_y, 0.0));
+  NS_LOG_INFO ("Setting initial STA position to " << Vector (sta1_x, sta1_y, 0.0));
   mobility.SetPositionAllocator (positionAlloc);
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (wifiApNodes.Get (0));
   mobility.Install (wifiStaNodes.Get (0));
-
+ 
   //Statistics counter
   NodeStatistics statistics = NodeStatistics (wifiApDevices, wifiStaDevices);
 
@@ -368,7 +412,7 @@ int main (int argc, char *argv[])
   ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
 
   OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
-  onoff.SetConstantRate (DataRate ("54Mb/s"), 1420);
+  onoff.SetConstantRate (DataRate ("54Mb/s"), packetSize);
   onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   ApplicationContainer apps_source = onoff.Install (wifiApNodes.Get (0));
@@ -405,14 +449,22 @@ int main (int argc, char *argv[])
   std::ofstream outfile (("throughput-" + outputFileName + ".plt").c_str ());
   Gnuplot gnuplot = Gnuplot (("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
   gnuplot.SetTerminal ("post eps color enhanced");
+  gnuplot.SetLegend ("Time (seconds)", "Throughput (Mb/s)");
+  gnuplot.SetTitle ("Throughput (AP to STA) vs time");
   gnuplot.AddDataset (statistics.GetDatafile ());
   gnuplot.GenerateOutput (outfile);
 
-  std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
-  gnuplot = Gnuplot (("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");
-  gnuplot.SetTerminal ("post eps color enhanced");
-  gnuplot.AddDataset (statistics.GetPowerDatafile ());
-  gnuplot.GenerateOutput (outfile2);
+  if (manager.compare ("ns3::ParfWifiManager") == 0 ||
+      manager.compare ("ns3::AparfWifiManager") == 0)
+    {
+      std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
+      gnuplot = Gnuplot (("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");
+      gnuplot.SetTerminal ("post eps color enhanced");
+      gnuplot.SetLegend ("Time (seconds)", "Power (mW)");
+      gnuplot.SetTitle ("Average transmit power (AP to STA) vs time");
+      gnuplot.AddDataset (statistics.GetPowerDatafile ());
+      gnuplot.GenerateOutput (outfile2);
+    }
 
   Simulator::Destroy ();
 

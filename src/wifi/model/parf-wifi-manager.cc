@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2004,2005,2006 INRIA
+ * Copyright (c) 2014 Universidad de la República - Uruguay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 
@@ -63,6 +62,7 @@ ParfWifiManager::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::ParfWifiManager")
     .SetParent<WifiRemoteStationManager> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<ParfWifiManager> ()
     .AddAttribute ("AttemptThreshold",
                    "The minimum number of transmission attempts to try a new power or rate.",
@@ -141,11 +141,11 @@ ParfWifiManager::DoReportRtsFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
-/*
+/**
  * \internal
  * It is important to realize that "recovery" mode starts after failure of
  * the first transmission after a rate increase and ends at the first successful
- * transmission. Specifically, recovery mode transcends retransmissions boundaries.
+ * transmission. Specifically, recovery mode spans retransmissions boundaries.
  * Fundamentally, ARF handles each data transmission independently, whether it
  * is the initial transmission of a packet or the retransmission of a packet.
  * The fundamental reason for this is that there is a backoff between each data

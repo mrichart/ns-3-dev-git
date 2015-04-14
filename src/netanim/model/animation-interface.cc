@@ -1590,9 +1590,14 @@ AnimationInterface::WriteLinkProperties ()
                   if (n1Id < n2Id)
                     { 
                       // ouptut the p2p link
-                      NS_LOG_INFO ("Link:" << GetIpv4Address (dev) << ":" << GetMacAddress (dev) << "----" << GetIpv4Address (chDev) << ":" << GetMacAddress (chDev) );
+                      NS_LOG_INFO ("Link:" << GetIpv4Address (dev) << ":" << GetMacAddress (dev) << "----" << GetIpv4Address (chDev) << ":" << GetMacAddress (chDev));
                       AddToIpv4AddressNodeIdTable (GetIpv4Address (dev), n1Id);
                       AddToIpv4AddressNodeIdTable (GetIpv4Address (chDev), n2Id);
+                      P2pLinkNodeIdPair p2pPair;
+                      p2pPair.fromNode = n1Id;
+                      p2pPair.toNode = n2Id;
+                      LinkProperties lp = {GetIpv4Address (dev) + "~" + GetMacAddress (dev), GetIpv4Address (chDev) + "~" + GetMacAddress (chDev), ""};
+                      m_linkProperties[p2pPair] = lp;
                       WriteXmlLink (n1Id, 0, n2Id);
                     }
                 }
@@ -2046,15 +2051,18 @@ AnimationInterface::WriteXmlAnim (bool routing)
 {
   AnimXmlElement element ("anim");
   element.AddAttribute ("ver", GetNetAnimVersion ());
-  element.Close ();
+  FILE * f = m_f;
   if (!routing)
     {
-      WriteN (element.GetElementString (), m_f);
+      element.AddAttribute ("filetype", "animation");
     }
   else
     {
-      WriteN (element.GetElementString (), m_routingF);
+      element.AddAttribute ("filetype", "routing");
+      f = m_routingF;
     }
+  element.Close ();
+  WriteN (element.GetElementString (), f);
 }
 
 void 
@@ -2339,6 +2347,7 @@ AnimByteTag::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::AnimByteTag")
     .SetParent<Tag> ()
+    .SetGroupName ("NetAnim")
     .AddConstructor<AnimByteTag> ()
   ;
   return tid;

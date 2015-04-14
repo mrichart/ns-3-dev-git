@@ -32,11 +32,14 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("TcpTxBuffer");
 
+NS_OBJECT_ENSURE_REGISTERED (TcpTxBuffer);
+
 TypeId
 TcpTxBuffer::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::TcpTxBuffer")
     .SetParent<Object> ()
+    .SetGroupName ("Internet")
     .AddConstructor<TcpTxBuffer> ()
     .AddTraceSource ("UnackSequence",
                      "First unacknowledged sequence number (SND.UNA)",

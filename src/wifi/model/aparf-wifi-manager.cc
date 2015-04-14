@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2004,2005,2006 INRIA
+ * Copyright (c) 2014 Universidad de la República - Uruguay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 #include "aparf-wifi-manager.h"
@@ -62,6 +61,7 @@ AparfWifiManager::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::AparfWifiManager")
     .SetParent<WifiRemoteStationManager> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<AparfWifiManager> ()
     .AddAttribute ("SuccessThreshold 1",
                    "The minimum number of successful transmissions in \"High\" state to try a new power or rate.",

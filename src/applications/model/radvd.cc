@@ -52,6 +52,7 @@ TypeId Radvd::GetTypeId ()
 {
   static TypeId tid = TypeId ("ns3::Radvd")
     .SetParent<Application> ()
+    .SetGroupName("Applications")
     .AddConstructor<Radvd> ()
     .AddAttribute ("AdvertisementJitter",
                    "Uniform variable to provide jitter between min and max values of AdvInterval",
@@ -273,7 +274,7 @@ void Radvd::Send (Ptr<RadvdInterface> config, Ipv6Address dst, bool reschedule)
             delay = MAX_INITIAL_RTR_ADVERT_INTERVAL;
         }
 
-      NS_LOG_INFO ("Reschedule in " << delay);
+      NS_LOG_INFO ("Reschedule in " << delay << " milliseconds");
       Time t = MilliSeconds (delay);
       m_unsolicitedEventIds[config->GetInterface ()] = Simulator::Schedule (t, &Radvd::Send, this, config, Ipv6Address::GetAllNodesMulticast (), true);
     }

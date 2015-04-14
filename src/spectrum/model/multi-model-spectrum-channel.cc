@@ -97,6 +97,7 @@ MultiModelSpectrumChannel::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::MultiModelSpectrumChannel")
     .SetParent<SpectrumChannel> ()
+    .SetGroupName ("Spectrum")
     .AddConstructor<MultiModelSpectrumChannel> ()
     .AddAttribute ("MaxLossDb",
                    "If a single-frequency PropagationLossModel is used, "
@@ -411,6 +412,7 @@ MultiModelSpectrumChannel::GetDevice (uint32_t i) const
             {
               return (*phyIt)->GetDevice ();
             }
+          j++;
         }
     }
   NS_FATAL_ERROR ("m_numDevice > actual number of devices");

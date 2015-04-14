@@ -45,6 +45,7 @@ WifiMacQueue::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::WifiMacQueue")
     .SetParent<Object> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<WifiMacQueue> ()
     .AddAttribute ("MaxPacketNumber", "If a packet arrives when there are already this number of packets, it is dropped.",
                    UintegerValue (400),
@@ -188,7 +189,7 @@ WifiMacQueue::DequeueByTidAndAddress (WifiMacHeader *hdr, uint8_t tid,
 
 Ptr<const Packet>
 WifiMacQueue::PeekByTidAndAddress (WifiMacHeader *hdr, uint8_t tid,
-                                   WifiMacHeader::AddressType type, Mac48Address dest)
+                                   WifiMacHeader::AddressType type, Mac48Address dest, Time *timestamp)
 {
   Cleanup ();
   if (!m_queue.empty ())
@@ -202,6 +203,7 @@ WifiMacQueue::PeekByTidAndAddress (WifiMacHeader *hdr, uint8_t tid,
                   && it->hdr.GetQosTid () == tid)
                 {
                   *hdr = it->hdr;
+                  *timestamp=it->tstamp;
                   return it->packet;
                 }
             }
