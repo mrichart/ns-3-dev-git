@@ -98,7 +98,8 @@ ParfWifiManager::~ParfWifiManager ()
 void
 ParfWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
-  m_nPower = phy->GetNTxPower ();
+  m_minPower = phy->GetTxPowerStart ();
+  m_maxPower = phy->GetTxPowerEnd ();
   WifiRemoteStationManager::SetupPhy (phy);
 }
 
@@ -129,7 +130,7 @@ ParfWifiManager::CheckInit (ParfWifiRemoteStation *station)
     {
       station->m_nSupported = GetNSupported (station);
       station->m_currentRate = station->m_nSupported - 1;
-      station->m_currentPower = m_nPower - 1;
+      station->m_currentPower = m_maxPower;
       m_powerChange (station->m_currentPower, station->m_state->m_address);
       m_rateChange (station->m_currentRate, station->m_state->m_address);
       station->m_initialized = true;
@@ -186,7 +187,7 @@ ParfWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       if (station->m_nRetry == 1)
         {
           // need recovery fallback
-          if (station->m_currentPower < m_nPower - 1)
+          if (station->m_currentPower < m_maxPower)
             {
               NS_LOG_DEBUG ("station=" << station << " inc power");
               station->m_currentPower++;
@@ -202,7 +203,7 @@ ParfWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       if (((station->m_nRetry - 1) % 2) == 1)
         {
           // need normal fallback
-          if (station->m_currentPower == m_nPower - 1)
+          if (station->m_currentPower == m_maxPower)
             {
               if (station->m_currentRate != 0)
                 {
@@ -263,7 +264,7 @@ void ParfWifiManager::DoReportDataOk (WifiRemoteStation *st,
   else if (station->m_nSuccess == m_successThreshold || station->m_nAttempt == m_attemptThreshold)
     {
       //we are at the maximum rate, we decrease power
-      if (station->m_currentPower != 0)
+      if (station->m_currentPower != m_minPower)
         {
           NS_LOG_DEBUG ("station=" << station << " dec power");
           station->m_currentPower--;
