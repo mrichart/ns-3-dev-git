@@ -66,6 +66,14 @@ private:
   {
     m_txop->NotifyChannelSwitching ();
   }
+  virtual void DoNotifySleep (void)
+  {
+    m_txop->NotifySleep ();
+  }
+  virtual void DoNotifyWakeUp (void)
+  {
+    m_txop->NotifyWakeUp ();
+  }
   DcaTxop *m_txop;
 };
 
@@ -127,6 +135,7 @@ DcaTxop::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::DcaTxop")
     .SetParent (ns3::Dcf::GetTypeId ())
+    .SetGroupName ("Wifi")
     .AddConstructor<DcaTxop> ()
     .AddAttribute ("Queue", "The WifiMacQueue object",
                    PointerValue (),
@@ -511,6 +520,22 @@ DcaTxop::NotifyChannelSwitching (void)
   NS_LOG_FUNCTION (this);
   m_queue->Flush ();
   m_currentPacket = 0;
+}
+void
+DcaTxop::NotifySleep (void)
+{
+  NS_LOG_FUNCTION (this);
+  if (m_currentPacket != 0)
+    {
+      m_queue->PushFront (m_currentPacket, m_currentHdr);
+      m_currentPacket = 0;
+    }
+}
+void
+DcaTxop::NotifyWakeUp (void)
+{
+  NS_LOG_FUNCTION (this);
+  RestartAccessIfNeeded ();
 }
 
 void

@@ -57,6 +57,7 @@ RipNg::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::RipNg")
     .SetParent<Ipv6RoutingProtocol> ()
+    .SetGroupName ("Internet")
     .AddConstructor<RipNg> ()
     .AddAttribute ("UnsolicitedRoutingUpdate", "The time between two Unsolicited Routing Updates.",
                    TimeValue (Seconds(30)),
@@ -246,6 +247,15 @@ bool RipNg::RouteInput (Ptr<const Packet> p, const Ipv6Header &header, Ptr<const
           NS_LOG_LOGIC ("Address " << addr << " not a match");
         }
     }
+
+  if (header.GetDestinationAddress ().IsLinkLocal () ||
+      header.GetSourceAddress ().IsLinkLocal ())
+    {
+      NS_LOG_LOGIC ("Dropping packet not for me and with src or dst LinkLocal");
+      ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+      return false;
+    }
+
   // Check if input device supports IP forwarding
   if (m_ipv6->IsForwarding (iif) == false)
     {
@@ -259,13 +269,13 @@ bool RipNg::RouteInput (Ptr<const Packet> p, const Ipv6Header &header, Ptr<const
 
   if (rtentry != 0)
     {
-      NS_LOG_LOGIC ("Found unicast destination- calling unicast callback");
+      NS_LOG_LOGIC ("Found unicast destination - calling unicast callback");
       ucb (idev, rtentry, p, header);  // unicast forwarding callback
       return true;
     }
   else
     {
-      NS_LOG_LOGIC ("Did not find unicast destination- returning false");
+      NS_LOG_LOGIC ("Did not find unicast destination - returning false");
       return false; // Let other routing protocols try to handle this
     }
 }
@@ -282,15 +292,7 @@ void RipNg::NotifyInterfaceUp (uint32_t i)
 
       if (address != Ipv6Address () && networkMask != Ipv6Prefix ())
         {
-          if (networkMask == Ipv6Prefix (128))
-            {
-              /* host route */
-              AddNetworkRouteTo (networkAddress, Ipv6Prefix::GetOnes (), 0);
-            }
-          else
-            {
-              AddNetworkRouteTo (networkAddress, networkMask, i);
-            }
+          AddNetworkRouteTo (networkAddress, networkMask, i);
         }
     }
 
@@ -319,10 +321,6 @@ void RipNg::NotifyInterfaceUp (uint32_t i)
   for (uint32_t j = 0; j < m_ipv6->GetNAddresses (i); j++)
     {
       Ipv6InterfaceAddress address = m_ipv6->GetAddress (i, j);
-
-      Ipv6Address networkAddress = address.GetAddress ().CombinePrefix (address.GetPrefix ());
-      Ipv6Prefix networkMask = address.GetPrefix ();
-      AddNetworkRouteTo (networkAddress, networkMask, i);
 
       if (address.GetScope() == Ipv6InterfaceAddress::LINKLOCAL && sendSocketFound == false && activeInterface == true)
         {

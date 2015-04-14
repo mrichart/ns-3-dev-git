@@ -603,7 +603,6 @@ LteHelper::InstallSingleUeDevice (Ptr<Node> n)
   dlPhy->AddInterferenceCtrlChunkProcessor (pInterf); // for RSRQ evaluation of UE Measurements
 
   Ptr<LteChunkProcessor> pCtrl = Create<LteChunkProcessor> ();
-  pCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateCtrlCqiReport, phy));
   pCtrl->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, dlPhy));
   dlPhy->AddCtrlSinrChunkProcessor (pCtrl);
 
@@ -611,13 +610,21 @@ LteHelper::InstallSingleUeDevice (Ptr<Node> n)
   pData->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, dlPhy));
   dlPhy->AddDataSinrChunkProcessor (pData);
 
-  Ptr<LteChunkProcessor> pDataInterf = Create<LteChunkProcessor> ();
   if (m_usePdschForCqiGeneration)
     {
+      // CQI calculation based on PDCCH for signal and PDSCH for interference
+      pCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateMixedCqiReport, phy));
+      Ptr<LteChunkProcessor> pDataInterf = Create<LteChunkProcessor> ();      
       pDataInterf->AddCallback (MakeCallback (&LteUePhy::ReportDataInterference, phy));
+      dlPhy->AddInterferenceDataChunkProcessor (pDataInterf);
+    }
+  else
+    {
+      // CQI calculation based on PDCCH for both signal and interference
+      pCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateCtrlCqiReport, phy));
     }
 
-  dlPhy->AddInterferenceDataChunkProcessor (pDataInterf);
+
 
   dlPhy->SetChannel (m_downlinkChannel);
   ulPhy->SetChannel (m_uplinkChannel);
@@ -813,18 +820,20 @@ LteHelper::AttachToClosestEnb (Ptr<NetDevice> ueDevice, NetDeviceContainer enbDe
   Attach (ueDevice, closestEnbDevice);
 }
 
-void
+uint8_t
 LteHelper::ActivateDedicatedEpsBearer (NetDeviceContainer ueDevices, EpsBearer bearer, Ptr<EpcTft> tft)
 {
   NS_LOG_FUNCTION (this);
   for (NetDeviceContainer::Iterator i = ueDevices.Begin (); i != ueDevices.End (); ++i)
     {
-      ActivateDedicatedEpsBearer (*i, bearer, tft);
+      uint8_t bearerId = ActivateDedicatedEpsBearer (*i, bearer, tft);
+      return bearerId;
     }
+  return 0;
 }
 
 
-void
+uint8_t
 LteHelper::ActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice, EpsBearer bearer, Ptr<EpcTft> tft)
 {
   NS_LOG_FUNCTION (this);
@@ -832,7 +841,8 @@ LteHelper::ActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice, EpsBearer bearer
   NS_ASSERT_MSG (m_epcHelper != 0, "dedicated EPS bearers cannot be set up when the EPC is not used");
 
   uint64_t imsi = ueDevice->GetObject<LteUeNetDevice> ()->GetImsi ();
-  m_epcHelper->ActivateEpsBearer (ueDevice, imsi, tft, bearer);
+  uint8_t bearerId = m_epcHelper->ActivateEpsBearer (ueDevice, imsi, tft, bearer);
+  return bearerId;
 }
 
 /**
@@ -927,8 +937,8 @@ DrbActivator::ActivateDrb (uint64_t imsi, uint16_t cellId, uint16_t rnti)
       Ptr<LteEnbRrc> enbRrc = enbLteDevice->GetObject<LteEnbNetDevice> ()->GetRrc ();
       NS_ASSERT (ueRrc->GetCellId () == enbLteDevice->GetCellId ());
       Ptr<UeManager> ueManager = enbRrc->GetUeManager (rnti);
-      NS_ASSERT (ueManager->GetState () == UeManager::CONNECTED_NORMALLY ||
-                 ueManager->GetState () == UeManager::CONNECTION_RECONFIGURATION);
+      NS_ASSERT (ueManager->GetState () == UeManager::CONNECTED_NORMALLY
+                 || ueManager->GetState () == UeManager::CONNECTION_RECONFIGURATION);
       EpcEnbS1SapUser::DataRadioBearerSetupRequestParameters params;
       params.rnti = rnti;
       params.bearer = m_bearer;
@@ -1006,8 +1016,30 @@ LteHelper::DoHandoverRequest (Ptr<NetDevice> ueDev, Ptr<NetDevice> sourceEnbDev,
   sourceRrc->SendHandoverRequest (rnti, targetCellId);
 }
 
+void
+LteHelper::DeActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice,Ptr<NetDevice> enbDevice, uint8_t bearerId)
+{
+  NS_LOG_FUNCTION (this << ueDevice << bearerId);
+  NS_ASSERT_MSG (m_epcHelper != 0, "Dedicated EPS bearers cannot be de-activated when the EPC is not used");
+  NS_ASSERT_MSG (bearerId != 1, "Default bearer cannot be de-activated until and unless and UE is released");
+
+  DoDeActivateDedicatedEpsBearer (ueDevice, enbDevice, bearerId);
+}
+
+void
+LteHelper::DoDeActivateDedicatedEpsBearer (Ptr<NetDevice> ueDevice, Ptr<NetDevice> enbDevice, uint8_t bearerId)
+{
+  NS_LOG_FUNCTION (this << ueDevice << bearerId);
+
+  //Extract IMSI and rnti
+  uint64_t imsi = ueDevice->GetObject<LteUeNetDevice> ()->GetImsi ();
+  uint16_t rnti = ueDevice->GetObject<LteUeNetDevice> ()->GetRrc ()->GetRnti ();
 
 
+  Ptr<LteEnbRrc> enbRrc = enbDevice->GetObject<LteEnbNetDevice> ()->GetRrc ();
+
+  enbRrc->DoSendReleaseDataRadioBearer (imsi,rnti,bearerId);
+}
 
 
 void 

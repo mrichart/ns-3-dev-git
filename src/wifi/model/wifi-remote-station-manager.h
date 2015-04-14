@@ -276,6 +276,14 @@ public:
    * \param mode the WifiMode supports by the station
    */
   void AddSupportedMode (Mac48Address address, WifiMode mode);
+  /**
+   * Invoked in a STA or AP to store all of the modes supported 
+   * by a destination which is also supported locally.
+   * The set of supported modes includes the BSSBasicRateSet.
+   *
+   * \param address the address of the station being recorded
+   */
+  void AddAllSupportedModes (Mac48Address address);
   //void  AddBssMembershipParameters(Mac48Address address, uint32_t selector);
 
   /**
@@ -638,7 +646,7 @@ public:
    */
   uint32_t GetNumberOfTransmitAntennas (const WifiRemoteStation *station) const;
   /**
-   * Return the Number of extension spatial streams (Ness) the station has.
+   * \returns the number of Ness the station has.
    *
    * \param station the station being queried
    * \return the number of Ness the station has

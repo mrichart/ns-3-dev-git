@@ -79,6 +79,7 @@ HighLatencyDataTxVectorTag::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::HighLatencyDataTxVectorTag")
     .SetParent<Tag> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<HighLatencyDataTxVectorTag> ()  
     ;
   return tid;
@@ -148,6 +149,7 @@ HighLatencyRtsTxVectorTag::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::HighLatencyRtsTxVectorTag")
     .SetParent<Tag> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<HighLatencyRtsTxVectorTag> ()  
     ;
   return tid;
@@ -216,6 +218,7 @@ HighLatencyCtsToSelfTxVectorTag::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::HighLatencyCtsToSelfTxVectorTag")
     .SetParent<Tag> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<HighLatencyCtsToSelfTxVectorTag> ()  
     ;
   return tid;
@@ -257,6 +260,7 @@ WifiRemoteStationManager::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::WifiRemoteStationManager")
     .SetParent<Object> ()
+    .SetGroupName ("Wifi")
     .AddAttribute ("IsLowLatency", "If true, we attempt to modelize a so-called low-latency device: a device"
                    " where decisions about tx parameters can be made on a per-packet basis and feedback about the"
                    " transmission of each packet is obtained before sending the next. Otherwise, we modelize a "
@@ -447,6 +451,18 @@ WifiRemoteStationManager::AddSupportedMode (Mac48Address address, WifiMode mode)
     }
   state->m_operationalRateSet.push_back (mode);
 }
+void
+WifiRemoteStationManager::AddAllSupportedModes (Mac48Address address)
+{
+  NS_ASSERT (!address.IsGroup ());
+  WifiRemoteStationState *state = LookupState (address);
+  state->m_operationalRateSet.clear ();
+  for (uint32_t i = 0; i < m_wifiPhy->GetNModes (); i++)
+    {
+      state->m_operationalRateSet.push_back ( m_wifiPhy->GetMode (i));
+    }
+}
+
 /*void
 WifiRemoteStationManager::AddBssMembershipParameters(Mac48Address address, uint32_t selector)
 {

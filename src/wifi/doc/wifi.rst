@@ -19,7 +19,7 @@ on the IEEE 802.11 standard [ieee80211]_. We will go into more detail below but 
 
 * basic 802.11 DCF with **infrastructure** and **adhoc** modes
 * **802.11a**, **802.11b**, **802.11g** and **802.11n** (both 2.4 and 5 GHz bands) physical layers
-* **MSDU aggregation** extension of 802.11n
+* **MSDU aggregation** and **MPDU aggregation** extensions of 802.11n
 * QoS-based EDCA and queueing extensions of **802.11e**
 * the ability to use different propagation loss models and propagation delay models,
   please see the chapter on :ref:`Propagation` for more detail
@@ -331,6 +331,38 @@ on a set of nodes in a NodeContainer "c"::
 This creates the WifiNetDevice which includes also a WifiRemoteStationManager, a
 WifiMac, and a WifiPhy (connected to the matching WifiChannel).
 
+The ``WifiHelper::SetStandard`` method set various default timing parameters as defined in the selected standard version, overwriting values that may exist or have been previously configured.
+In order to change parameters that are overwritten by ``WifiHelper::SetStandard``, this should be done post-install using ``Config::Set``::
+
+  WifiHelper wifi = WifiHelper::Default ();
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_2_4GHZ);
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode", StringValue("OfdmRate65MbpsBW20MHz"), "ControlMode", StringValue("OfdmRate6_5MbpsBW20MHz"));
+  HtWifiMacHelper mac = HtWifiMacHelper::Default ();
+
+  //Install PHY and MAC
+  Ssid ssid = Ssid ("ns3-wifi");
+  mac.SetType ("ns3::StaWifiMac",
+  "Ssid", SsidValue (ssid),
+  "ActiveProbing", BooleanValue (false));
+
+  NetDeviceContainer staDevice;
+  staDevice = wifi.Install (phy, mac, wifiStaNode);
+
+  mac.SetType ("ns3::ApWifiMac",
+  "Ssid", SsidValue (ssid));
+
+  NetDeviceContainer apDevice;
+  apDevice = wifi.Install (phy, mac, wifiApNode);
+
+  //Once install is done, we overwrite the standard timing values
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Slot", TimeValue (MicroSeconds (slot)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Sifs", TimeValue (MicroSeconds (sifs)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/AckTimeout", TimeValue (MicroSeconds (ackTimeout)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/CtsTimeout", TimeValue (MicroSeconds (ctsTimeout)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/Rifs", TimeValue (MicroSeconds (rifs)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BasicBlockAckTimeout", TimeValue (MicroSeconds (basicBlockAckTimeout)));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/CompressedBlockAckTimeout", TimeValue (MicroSeconds (compressedBlockAckTimeout)));
+
 There are many |ns3| attributes that can be set on the above helpers to
 deviate from the default behavior; the example scripts show how to do some of
 this reconfiguration.
@@ -598,6 +630,8 @@ Algorithms in literature:
 * ``CaraWifiManager`` [kim2006cara]_
 * ``RraaWifiManager`` [wong2006rraa]_
 * ``AarfcdWifiManager`` [maguolo2008aarfcd]_
+* ``ParfWifiManager`` [akella2007parf]_
+* ``AparfWifiManager`` [chevillat2005aparf]_
 
 ConstantRateWifiManager
 =======================
@@ -699,7 +733,7 @@ Note on the current implementation
 * PHY_RXSTART is not supported
 * 802.11e TXOP is not supported
 * 802.11n MIMO is not supported
-* MPDU aggregation is not supported
+* hybrid aggregation is not supported
 
 
 Wifi Tracing
@@ -734,3 +768,7 @@ References
 .. [wong2006rraa] \ S. Wong, H. Yang, S. Lu, and V. Bharghavan, *Robust Rate Adaptation for 802.11 Wireless Networks*, in Proc. 12th Annual International Conference on Mobile Computing and Networking, 2006
 
 .. [maguolo2008aarfcd] \ F. Maguolo, M. Lacage, and T. Turletti, *Efficient collision detection for auto rate fallback algorithm*, in IEEE Symposium on Computers and Communications, 2008
+
+.. [akella2007parf] \ A. Akella, G. Judd, S. Seshan, and P. Steenkiste, 'Self-management in chaotic wireless deployments', in Wireless Networks, Kluwer Academic Publishers, 2007, 13, 737-755.  `<http://www.cs.odu.edu/~nadeem/classes/cs795-WNS-S13/papers/enter-006.pdf>`__
+
+.. [chevillat2005aparf] \  Chevillat, P.; Jelitto, J., and Truong, H. L., 'Dynamic data rate and transmit power adjustment in IEEE 802.11 wireless LANs', in International Journal of Wireless Information Networks, Springer, 2005, 12, 123-145.  `<http://www.cs.mun.ca/~yzchen/papers/papers/rate_adaptation/80211_dynamic_rate_power_adjustment_chevillat_j2005.pdf>`__

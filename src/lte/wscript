@@ -169,6 +169,7 @@ def build(bld):
         'test/lte-test-cell-selection.cc',
         'test/test-lte-handover-delay.cc',
         'test/test-lte-handover-target.cc',
+        'test/lte-test-deactivate-bearer.cc',
         'test/lte-ffr-simple.cc',
         'test/lte-test-downlink-power-control.cc',
         'test/lte-test-uplink-power-control.cc',

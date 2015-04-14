@@ -91,6 +91,7 @@ MinstrelWifiManager::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::MinstrelWifiManager")
     .SetParent<WifiRemoteStationManager> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<MinstrelWifiManager> ()
     .AddAttribute ("UpdateStatistics",
                    "The interval between updating statistics table ",
@@ -142,7 +143,7 @@ MinstrelWifiManager::SetupPhy (Ptr<WifiPhy> phy)
       WifiMode mode = phy->GetMode (i);
       WifiTxVector txVector;
       txVector.SetMode(mode);
-      AddCalcTxTime (mode, phy->CalculateTxDuration (m_pktLen, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency()));
+      AddCalcTxTime (mode, phy->CalculateTxDuration (m_pktLen, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency(), 0, 0));
     }
   WifiRemoteStationManager::SetupPhy (phy);
 }
@@ -429,7 +430,6 @@ MinstrelWifiManager::DoReportDataOk (WifiRemoteStation *st,
 
   UpdateRetry (station);
 
-  //station->m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
   station->m_packetCount++;
 
   if (m_nsupported >= 1)
@@ -443,6 +443,13 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (st);
   MinstrelWifiRemoteStation *station = (MinstrelWifiRemoteStation *) st;
+
+  CheckInit (station);
+  if (!station->m_initialized)
+    {
+      return;
+    }
+
   NS_LOG_DEBUG ("DoReportFinalDataFailed m_txrate = " << station->m_txrate << ", attempt = " << station->m_minstrelTable[station->m_txrate].numRateAttempt << ", success = " << station->m_minstrelTable[station->m_txrate].numRateSuccess << " (before update).");
 
   station->m_isSampling = false;
@@ -450,7 +457,6 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   UpdateRetry (station);
 
-  //station->m_minstrelTable[station->m_txrate].numRateAttempt += station->m_retry;
 
   station->m_err++;
 
@@ -794,9 +800,6 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
                 ")\tsecond max throughput=" << index_max_tp2 << "(" << GetSupported (station, index_max_tp2) <<
                 ")\tmax prob=" << index_max_prob << "(" << GetSupported (station, index_max_prob) << ")");
 
-  /// reset it
-  //RateInit (station);
-
 }
 
 void
@@ -859,34 +862,6 @@ MinstrelWifiManager::CalculateTimeUnicastPacket (Time dataTransmissionTime, uint
       cw = std::min (cwMax, (cw + 1) * 2);
     }
 
-  /*
-  // First, we have to sense idle channel for DIFS (SIFS + 2*SLOT)
-  Time tt = GetMac ()->GetSifs () + GetMac ()->GetSlot () + GetMac ()->GetSlot ();
-  NS_LOG_DEBUG ("tt (DIFS) = " << tt);
-
-  // Next, we add the ACK timeout duration. Since we are given longRetries, the number of ACK timeout
-  // is longRetries + 1 (first transmission and longRetries times).
-  tt += NanoSeconds ((longRetries + 1) * GetMac ()->GetAckTimeout ());
-  NS_LOG_DEBUG ("tt (DIFS + ACKs) = " << tt << " (ACK TO) = " << GetMac ()->GetAckTimeout ());
-  // Next, we add the time to send (longRetries + 1) DATA. Same logic as ACK timeout.
-  // They can be combined, but separated for clarity.
-  tt += NanoSeconds ((longRetries + 1) * dataTransmissionTime);
-  NS_LOG_DEBUG ("tt (DIFS + ACKs + DATAs) = " << tt);
-
-  // Finally, we account for the backoff time between retransmissions.
-  // The original minstrel code seems to estimate the time as half the current contention window.
-  // The calculation of the original minsrel code is a little bit off (not exactly half) so we do the same.
-  // In addition, WIFI_CW_MIN is set to 31 in the original code.
-  uint32_t cwMax = 1023;
-  uint32_t cw = 31;
-  for (uint32_t i = 0; i <= (shortRetries + longRetries); i++)
-    {
-      cw = std::min (cwMax, (cw + 1) * 2); // estimate the current contention window size (I think it's a bit off)
-      NS_LOG_DEBUG (" cw = " << cw);
-      tt += NanoSeconds ((cw / 2) * GetMac ()->GetSlot ()); // average is about half
-      NS_LOG_DEBUG (" tt (DIFS + ACKs + DATAs + " << cw << " cw) = " << tt);
-    }
-  */
   return tt;
 }
 
@@ -931,14 +906,16 @@ MinstrelWifiManager::PrintSampleTable (MinstrelWifiRemoteStation *station)
   NS_LOG_DEBUG ("PrintSampleTable=" << station);
 
   uint32_t numSampleRates = m_nsupported;
+  std::stringstream table;
   for (uint32_t i = 0; i < numSampleRates; i++)
     {
       for (uint32_t j = 0; j < m_sampleCol; j++)
         {
-          std::cout << station->m_sampleTable[i][j] << "\t";
+          table << station->m_sampleTable[i][j] << "\t";
         }
-      std::cout << std::endl;
+      table << std::endl;
     }
+  NS_LOG_DEBUG (table.str());
 }
 
 void

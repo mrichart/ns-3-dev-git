@@ -21,6 +21,7 @@
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 #include "ns3/trace-source-accessor.h"
+#include <algorithm>
 
 namespace ns3 {
 
@@ -33,6 +34,7 @@ WifiPhyStateHelper::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::WifiPhyStateHelper")
     .SetParent<Object> ()
+    .SetGroupName ("Wifi")
     .AddConstructor<WifiPhyStateHelper> ()
     .AddTraceSource ("State",
                      "The state of the PHY layer",
@@ -84,6 +86,15 @@ void
 WifiPhyStateHelper::RegisterListener (WifiPhyListener *listener)
 {
   m_listeners.push_back (listener);
+}
+void
+WifiPhyStateHelper::UnregisterListener (WifiPhyListener *listener)
+{
+  ListenersI i = find (m_listeners.begin(), m_listeners.end(), listener);
+  if (i != m_listeners.end())
+    {
+      m_listeners.erase(i);
+    }
 }
 
 bool

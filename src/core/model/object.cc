@@ -22,7 +22,6 @@
 #include "object.h"
 #include "object-factory.h"
 #include "assert.h"
-#include "singleton.h"
 #include "attribute.h"
 #include "log.h"
 #include "string.h"
@@ -34,7 +33,7 @@
 /**
  * \file
  * \ingroup object
- * ns3::Object class definition.
+ * ns3::Object class implementation.
  */
 
 namespace ns3 {
@@ -88,6 +87,7 @@ Object::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::Object")
     .SetParent<ObjectBase> ()
+    .SetGroupName ("Core")
   ;
   return tid;
 }

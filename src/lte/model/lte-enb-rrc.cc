@@ -465,14 +465,29 @@ UeManager::ReleaseDataRadioBearer (uint8_t drbid)
   LteRrcSap::RadioResourceConfigDedicated rrcd;
   rrcd.havePhysicalConfigDedicated = false;
   rrcd.drbToReleaseList.push_back (drbid);
+  //populating RadioResourceConfigDedicated information element as per 3GPP TS 36.331 version 9.2.0
+  rrcd.havePhysicalConfigDedicated = true;
+  rrcd.physicalConfigDedicated = m_physicalConfigDedicated;
  
+  //populating RRCConnectionReconfiguration message as per 3GPP TS 36.331 version 9.2.0 Release 9
   LteRrcSap::RrcConnectionReconfiguration msg;
   msg.haveMeasConfig = false;
   msg.haveMobilityControlInfo = false;
- 
+  msg.radioResourceConfigDedicated = rrcd;
+  msg.haveRadioResourceConfigDedicated = true;
+  //RRC Connection Reconfiguration towards UE
   m_rrc->m_rrcSapUser->SendRrcConnectionReconfiguration (m_rnti, msg);
 }
 
+void
+LteEnbRrc::DoSendReleaseDataRadioBearer (uint64_t imsi, uint16_t rnti, uint8_t bearerId)
+{
+  Ptr<UeManager> ueManager = GetUeManager (rnti);
+  // Bearer de-activation towards UE
+  ueManager->ReleaseDataRadioBearer (bearerId);
+  // Bearer de-activation indication towards epc-enb application
+  m_s1SapProvider->DoSendReleaseIndication (imsi,rnti,bearerId);
+}
 
 void 
 UeManager::ScheduleRrcConnectionReconfiguration ()
@@ -649,8 +664,17 @@ UeManager::SendData (uint8_t bid, Ptr<Packet> p)
         params.rnti = m_rnti;
         params.lcid = Bid2Lcid (bid);
         uint8_t drbid = Bid2Drbid (bid);
-        LtePdcpSapProvider* pdcpSapProvider = GetDataRadioBearerInfo (drbid)->m_pdcp->GetLtePdcpSapProvider ();
+        //Transmit PDCP sdu only if DRB ID found in drbMap
+        std::map<uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator it = m_drbMap.find (drbid);
+        if (it != m_drbMap.end ())
+          {
+            Ptr<LteDataRadioBearerInfo> bearerInfo = GetDataRadioBearerInfo (drbid);
+            if (bearerInfo != NULL)
+              {
+                LtePdcpSapProvider* pdcpSapProvider = bearerInfo->m_pdcp->GetLtePdcpSapProvider ();
         pdcpSapProvider->TransmitPdcpSdu (params);
+      }
+          }
       }
       break;
 
@@ -870,6 +894,11 @@ UeManager::RecvRrcConnectionReconfigurationCompleted (LteRrcSap::RrcConnectionRe
         }
       SwitchToState (CONNECTED_NORMALLY);
       m_rrc->m_connectionReconfigurationTrace (m_imsi, m_rrc->m_cellId, m_rnti);
+      break;
+
+    // This case is added to NS-3 in order to handle bearer de-activation scenario for CONNECTED state UE
+    case CONNECTED_NORMALLY:
+      NS_LOG_INFO ("ignoring RecvRrcConnectionReconfigurationCompleted in state " << ToString (m_state));
       break;
 
     case HANDOVER_LEAVING:
@@ -1315,6 +1344,7 @@ LteEnbRrc::GetTypeId (void)
   NS_LOG_FUNCTION ("LteEnbRrc::GetTypeId");
   static TypeId tid = TypeId ("ns3::LteEnbRrc")
     .SetParent<Object> ()
+    .SetGroupName("Lte")
     .AddConstructor<LteEnbRrc> ()
     .AddAttribute ("UeMap", "List of UeManager by C-RNTI.",
                    ObjectMapValue (),
@@ -2409,7 +2439,7 @@ LteEnbRrc::GetNewSrsConfigurationIndex ()
           for (uint16_t srcCi = g_srsCiLow[m_srsCurrentPeriodicityId]; srcCi < g_srsCiHigh[m_srsCurrentPeriodicityId]; srcCi++) 
             {
               std::set<uint16_t>::iterator it = m_ueSrsConfigurationIndexSet.find (srcCi);
-              if (it==m_ueSrsConfigurationIndexSet.end ())
+              if (it == m_ueSrsConfigurationIndexSet.end ())
                 {
                   m_lastAllocatedConfigurationIndex = srcCi;
                   m_ueSrsConfigurationIndexSet.insert (srcCi);

@@ -69,6 +69,7 @@ TypeId Icmpv6L4Protocol::GetTypeId ()
 {
   static TypeId tid = TypeId ("ns3::Icmpv6L4Protocol")
     .SetParent<IpL4Protocol> ()
+    .SetGroupName ("Internet")
     .AddConstructor<Icmpv6L4Protocol> ()
     .AddAttribute ("DAD", "Always do DAD check.",
                    BooleanValue (true),
@@ -379,10 +380,9 @@ void Icmpv6L4Protocol::ReceiveLLA (Icmpv6OptionLinkLayerAddress lla, Ipv6Address
       std::list<Ptr<Packet> > waiting;
       if (entry->IsIncomplete ())
         {
-          entry->StopRetransmitTimer ();
+          entry->StopNudTimer ();
           // mark it to reachable
           waiting = entry->MarkReachable (lla.GetAddress ());
-          entry->StopReachableTimer ();
           entry->StartReachableTimer ();
           // send out waiting packet
           for (std::list<Ptr<Packet> >::const_iterator it = waiting.begin (); it != waiting.end (); it++)
@@ -403,8 +403,7 @@ void Icmpv6L4Protocol::ReceiveLLA (Icmpv6OptionLinkLayerAddress lla, Ipv6Address
             {
               if (!entry->IsReachable ())
                 {
-                  entry->StopProbeTimer ();
-                  entry->StopDelayTimer ();
+                  entry->StopNudTimer ();
                   waiting = entry->MarkReachable (lla.GetAddress ());
                   if (entry->IsProbe ())
                     {
@@ -413,7 +412,6 @@ void Icmpv6L4Protocol::ReceiveLLA (Icmpv6OptionLinkLayerAddress lla, Ipv6Address
                           cache->GetInterface ()->Send (*it, src);
                         }
                     }
-                  entry->StopReachableTimer ();
                   entry->StartReachableTimer ();
                 }
             }
@@ -664,13 +662,12 @@ void Icmpv6L4Protocol::HandleNA (Ptr<Packet> packet, Ipv6Address const &src, Ipv
   if (entry->IsIncomplete ())
     {
       /* we receive a NA so stop the retransmission timer */
-      entry->StopRetransmitTimer ();
+      entry->StopNudTimer ();
 
       if (naHeader.GetFlagS ())
         {
           /* mark it to reachable */
           waiting = entry->MarkReachable (lla.GetAddress ());
-          entry->StopReachableTimer ();
           entry->StartReachableTimer ();
           /* send out waiting packet */
           for (std::list<Ptr<Packet> >::const_iterator it = waiting.begin (); it != waiting.end (); it++)
@@ -692,8 +689,7 @@ void Icmpv6L4Protocol::HandleNA (Ptr<Packet> packet, Ipv6Address const &src, Ipv
   else
     {
       /* we receive a NA so stop the probe timer or delay timer if any */
-      entry->StopProbeTimer ();
-      entry->StopDelayTimer ();
+      entry->StopNudTimer ();
 
       /* if the Flag O is clear and mac address differs from the cache */
       if (!naHeader.GetFlagO () && lla.GetAddress () != entry->GetMacAddress ())
@@ -728,7 +724,6 @@ void Icmpv6L4Protocol::HandleNA (Ptr<Packet> packet, Ipv6Address const &src, Ipv
                           entry->MarkReachable (lla.GetAddress ());
                         }
                     }
-                  entry->StopReachableTimer ();
                   entry->StartReachableTimer ();
                 }
               else if (lla.GetAddress () != entry->GetMacAddress ())
@@ -823,7 +818,7 @@ void Icmpv6L4Protocol::HandleDestinationUnreachable (Ptr<Packet> p, Ipv6Address 
   Ptr<Packet> origPkt = unreach.GetPacket ();
 
   Ipv6Header ipHeader;
-  if ( origPkt->GetSerializedSize () > ipHeader.GetSerializedSize () )
+  if ( origPkt->GetSize () > ipHeader.GetSerializedSize () )
     {
       origPkt->RemoveHeader (ipHeader);
       uint8_t payload[8];

@@ -27,11 +27,14 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("TcpRxBuffer");
 
+NS_OBJECT_ENSURE_REGISTERED (TcpRxBuffer);
+
 TypeId
 TcpRxBuffer::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::TcpRxBuffer")
     .SetParent<Object> ()
+    .SetGroupName ("Internet")
     .AddConstructor<TcpRxBuffer> ()
     .AddTraceSource ("NextRxSequence",
                      "Next sequence number expected (RCV.NXT)",

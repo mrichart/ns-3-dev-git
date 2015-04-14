@@ -208,9 +208,19 @@ RegularWifiMac::SetWifiPhy (Ptr<WifiPhy> phy)
 }
 
 Ptr<WifiPhy>
-RegularWifiMac::GetWifiPhy () const
+RegularWifiMac::GetWifiPhy (void) const
 {
+  NS_LOG_FUNCTION (this);
   return m_phy;
+}
+
+void
+RegularWifiMac::ResetWifiPhy (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_low->ResetPhy ();
+  m_dcfManager->RemovePhyListener (m_phy);
+  m_phy = 0;
 }
 
 void
@@ -641,6 +651,7 @@ RegularWifiMac::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::RegularWifiMac")
     .SetParent<WifiMac> ()
+    .SetGroupName ("Wifi")
     .AddAttribute ("QosSupported",
                    "This Boolean attribute is set to enable 802.11e/WMM-style QoS support at this STA",
                    BooleanValue (false),
