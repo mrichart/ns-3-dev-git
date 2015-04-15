@@ -66,8 +66,6 @@ public:
    */
   typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
 
-	(const uint32_t rate, const Mac48Address remoteAddress);
-
 private:
   // overriden from base class
   virtual WifiRemoteStation * DoCreateStation (void) const;
