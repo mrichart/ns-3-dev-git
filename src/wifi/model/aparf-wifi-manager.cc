@@ -296,7 +296,6 @@ AparfWifiManager::DoReportDataOk (WifiRemoteStation *st, double ackSnr,
                       m_powerChange (station->m_power, station->m_state->m_address);
                       station->m_pCount++;
                     }
-                    }
                 }
             }
         }
