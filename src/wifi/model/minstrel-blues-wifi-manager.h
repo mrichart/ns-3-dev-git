@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2009 Duy Nguyen
+ * Copyright (c) 2014 Universidad de la República - Uruguay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,12 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Duy Nguyen <duy@soe.ucsc.edu>
  * Author: Matias Richart <mrichart@fing.edu.uy>
  */
-
-
-
 #ifndef MINSTREL_BLUES_WIFI_MANAGER_H
 #define MINSTREL_BLUES_WIFI_MANAGER_H
 
@@ -34,30 +30,31 @@ namespace ns3 {
 struct MinstrelBluesWifiRemoteStation;
 
 /**
- * A struct to contain all information related to a data rate
+ * A struct to contain all information related to a data rate.
+ * For each rate statistics information is saved and three power options.
  */
 struct RatePowerInfo
 {
   /**
    * Perfect transmission time calculation, or frame calculation
-   * Given a bit rate and a packet length n bytes
+   * given a bit rate and a packet length in bytes.
    */
   Time perfectTxTime;
 
-  uint32_t retryCount;  ///< retry limit
-  uint32_t adjustedRetryCount;  ///< adjust the retry limit for this rate
-  uint32_t numRateAttempt;  ///< how many number of attempts so far
-  uint32_t numRateSuccess;    ///< number of successful pkts
-  uint32_t prob;  ///< (# pkts success )/(# total pkts)
-  uint32_t longRetry;
-  uint32_t shortRetry;
-  uint32_t retry;
+  uint32_t retryCount;  //!< Retry limit.
+  uint32_t adjustedRetryCount;  //!< Adjust the retry limit for this rate.
+  uint32_t numRateAttempt;  //!< Number of transmission attempts so far.
+  uint32_t numRateSuccess;    //!< Number of successful frames transmitted so far.
+  uint32_t prob;  //!< (# frames success )/(# total frames)
+  //uint32_t longRetry; //! Number of retransmissions to try.
+  //uint32_t shortRetry; //! Number of retransmissions to try.
+  //uint32_t retry;
 
   /**
    * EWMA calculation
    * ewma_prob =[prob *(100 - ewma_level) + (ewma_prob_old * ewma_level)]/100
    */
-  uint32_t ewmaProb;
+  uint32_t ewmaProb; //! Averaged probability to try other rates.
 
   uint32_t prevNumRateAttempt;  ///< from last rate
   uint32_t prevNumRateSuccess;  ///< from last rate
@@ -125,13 +122,13 @@ typedef std::vector<struct RatePowerInfo> MinstrelBluesRate;
 typedef std::vector<std::vector<uint32_t> > SampleRate;
 
 /**
- * \author Matias Richart
- * \brief Implementation of Minstrel Blues Rate and Power Control Algorithm
- * \based on implementation of Duy Nguyen of Minstrel Rate Control Algorithm
  * \ingroup wifi
+ * Minstrel-Blues Power and rate control algorithm
  *
- * Minstrel-Blues is described in the Phd. Thesis "A Measurement-Based Joint
- * Power and Rate Controller for IEEE 802.11 Networks" by Thomas Huehn.
+ * Implementation of Minstrel Blues Rate and Power Control Algorithm
+ * based on implementation of Duy Nguyen of Minstrel Rate Control Algorithm.
+ * Minstrel-Blues is described in the Phd. Thesis <i>A Measurement-Based Joint
+ * Power and Rate Controller for IEEE 802.11 Networks</i> by Thomas Huehn, 2013.
  */
 class MinstrelBluesWifiManager : public WifiRemoteStationManager
 {
@@ -152,6 +149,22 @@ public:
   * \return the number of stream indices assigned by this model
   */
   int64_t AssignStreams (int64_t stream);
+
+  /**
+   * TracedCallback signature for power change events.
+   *
+   * \param [in] power The new power.
+   * \param [in] address The remote station MAC address.
+   */
+  typedef void (*PowerChangeTracedCallback)(const std::string, const uint8_t power, const Mac48Address remoteAddress);
+
+  /**
+   * TracedCallback signature for rate change events.
+   *
+   * \param [in] rate The new rate.
+   * \param [in] address The remote station MAC address.
+   */
+  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
 
 private:
   // overriden from base class
@@ -237,52 +250,42 @@ private:
   typedef std::vector<std::pair<Time,WifiMode> > TxTime;
 
   TxTime m_calcTxTime;  ///< to hold all the calculated TxTime for all modes
-  Time m_updateStats;  ///< how frequent do we calculate the stats(1/10 seconds)
-  double m_lookAroundRate;  ///< the % to try other rates than our current rate
-  double m_ewmaLevel;  ///< exponential weighted moving average
-  uint32_t m_segmentSize;  ///< largest allowable segment size
-  uint32_t m_sampleCol;  ///< number of sample columns
-  uint32_t m_pktLen;  ///< packet length used  for calculate mode TxTime
-  //uint32_t m_nsupported;  ///< modes supported
 
-  double m_lookAroundSamplePower;  ///< the % to try other powers than our current power
-  double m_lookAroundRefPower;  ///< the % to try other reference powers
-  uint32_t m_bluesUpdateStats; ///< minimal number of packets needed for update piano stats
-  uint8_t m_deltaInc; ///< how much to increase power
-  uint8_t m_deltaDec; ///< how much to decrease power
-  uint8_t m_delta; ///< power separation between data and sample packets
-  uint32_t m_nPower;  ///< power levels supported
-  double m_thInc; ///< threshold for increasing power
-  double m_thDec; ///< threshold for decreasing power
+  Time m_updateStats;  //!< How frequent do we calculate the statistics.
+  double m_lookAroundRatePercentage;  //!< The percentage to try other rates than our current rate.
+  double m_ewmaCoefficient;  //!< Exponential weighted moving average coefficient.
 
-  Ptr<WifiPhy> m_phy;
-  double m_countBusy;
-  double m_countRX;
-  double m_busyRatio;
-  Time m_prevTime;
-  double m_calcTime;
-  double m_alpha;
+  uint32_t m_nSampleColumns;  //!< Number of sample columns.
+  uint32_t m_frameLength;  //!< Frame length used  for calculate mode TxTime.
 
-  double m_utilityWeight;
+  double m_lookAroundSamplePowerPercentage; //!< The percentage to try other sample powers than our current sample power.
+  double m_lookAroundReferencePowerPercentage;  //!< The percentage to try other reference powers than our current reference power.
 
-  // Listerner needed to monitor when a channel switching occurs.
-  class PhyMPListener * m_phyMPListener;
-
-
-  /// Provides uniform random variables.
-  Ptr<UniformRandomVariable> m_uniformRandomVariable;
+  uint32_t m_bluesUpdateStatsThreshold; //!< Minimal number of packets needed for update blues statistics.
+  uint8_t m_deltaIncPower; //!< How many levels to increase power.
+  uint8_t m_deltaDecPower; //!< How many levels to decrease power.
+  uint8_t m_deltaDataSamplePower; //!< How many levels of separation between data and sample powers.
 
   /**
-   * The trace source fired when a txVector is asked
+   * Differently form rate, power levels do not depend on the remote station.
+   * The levels depend only on the physical layer of the device.
    */
-  TracedCallback<WifiTxVector> m_getDataTxVector;
+  uint32_t m_minPower; //!< Minimal power level.
+  uint32_t m_maxPower; //! Maximal power level.
+
+  double m_thIncPower; //!< Threshold for increasing power.
+  double m_thDecPower; //!< Threshold for decreasing power.
+
+  double m_bluesUilityWeight;
+
+  Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
 
   /**
-   * The trace source fired when the transmission power change
+   * The trace source fired when the transmission power change.
    */
   TracedCallback<std::string, uint8_t, Mac48Address> m_powerChange;
   /**
-   * The trace source fired when the transmission rate change
+   * The trace source fired when the transmission rate change.
    */
   TracedCallback<uint32_t, Mac48Address> m_rateChange;
 };
