@@ -209,10 +209,10 @@ private:
   double BluesUtility (MinstrelBluesWifiRemoteStation *station, uint32_t rate);
 
   /// updating the Minstrel Table every 1/10 seconds
-  void UpdateStats (MinstrelBluesWifiRemoteStation *station);
+  void MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *station);
 
   /// updating the Minstrel Piano Table every 10 packets
-  void UpdatePowerStats (MinstrelBluesWifiRemoteStation *station);
+  void BluesUpdateStats (MinstrelBluesWifiRemoteStation *station);
 
   /// initialize Minstrel Table
   void RateInit (MinstrelBluesWifiRemoteStation *station);
@@ -275,6 +275,7 @@ private:
 
   double m_thIncPower; //!< Threshold for increasing power.
   double m_thDecPower; //!< Threshold for decreasing power.
+  double m_thEmergency; //!< Threshold for determining a throughput collapse.
 
   double m_bluesUilityWeight;
 
