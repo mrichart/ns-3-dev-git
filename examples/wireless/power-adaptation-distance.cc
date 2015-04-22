@@ -116,6 +116,7 @@ public:
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
   void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
+  void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
   void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
@@ -224,6 +225,25 @@ NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address des
 }
 
 void
+NodeStatistics::BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+{
+  double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
+  double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
+  uint32_t nTxPower = myPhy->GetNTxPower ();
+  double dbm;
+  if (nTxPower > 1)
+    {
+      dbm = txPowerBaseDbm + power * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
+    }
+  else
+    {
+      NS_ASSERT_MSG (txPowerBaseDbm == txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
+      dbm = txPowerBaseDbm;
+    }
+  actualPower[dest] = dbm;
+}
+
+void
 NodeStatistics::RateCallback (std::string path, uint32_t rate, Mac48Address dest)
 {
   actualMode[dest] = myPhy->GetMode (rate);
@@ -287,6 +307,11 @@ NodeStatistics::GetPowerDatafile ()
 void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << (int)power);
+}
+
+void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+{
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << " new " << type << " power: " << (int)power);
 }
 
 void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
@@ -431,8 +456,16 @@ int main (int argc, char *argv[])
                    MakeCallback (&NodeStatistics::RxCallback, &statistics));
 
   //Register power and rate changes to calculate the Average Transmit Power
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
+    {
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                         MakeCallback (&NodeStatistics::BluesPowerCallback, &statistics));
+    }
+  else
+    {
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
                    MakeCallback (&NodeStatistics::PowerCallback, &statistics));
+    }
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
                    MakeCallback (&NodeStatistics::RateCallback, &statistics));
 
@@ -440,8 +473,16 @@ int main (int argc, char *argv[])
                    MakeCallback (&NodeStatistics::PhyCallback, &statistics));
 
   //Callbacks to print every change of power and rate
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                   MakeCallback (PowerCallback));
+  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
+    {
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                         MakeCallback (BluesPowerCallback));
+    }
+  else
+    {
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                         MakeCallback (PowerCallback));
+    }
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
                    MakeCallback (RateCallback));
 
@@ -457,7 +498,8 @@ int main (int argc, char *argv[])
   gnuplot.GenerateOutput (outfile);
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0)
+      manager.compare ("ns3::AparfWifiManager") == 0||
+      manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
       std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");
