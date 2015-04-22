@@ -33,7 +33,7 @@ struct MinstrelBluesWifiRemoteStation;
  * A struct to contain all information related to a data rate.
  * For each rate statistics information is saved and three power options.
  */
-struct RatePowerInfo
+struct BluesRatePowerInfo
 {
   /**
    * Perfect transmission time calculation, or frame calculation
@@ -67,7 +67,7 @@ struct RatePowerInfo
   */
   uint32_t numRefAttempt;  ///< how many number of attempts so far
   uint32_t numRefSuccess;    ///< number of successful pkts
-  uint32_t refProb;  ///< (# pkts success )/(# total pkts)
+  //uint32_t refProb;  ///< (# pkts success )/(# total pkts)
 
   uint32_t ewmaRefProb;
 
@@ -79,7 +79,7 @@ struct RatePowerInfo
   */
   uint32_t numDataAttempt;  ///< how many number of attempts so far
   uint32_t numDataSuccess;    ///< number of successful pkts
-  uint32_t dataProb;  ///< (# pkts success )/(# total pkts)
+  //uint32_t dataProb;  ///< (# pkts success )/(# total pkts)
 
   uint32_t ewmaDataProb;
 
@@ -91,7 +91,7 @@ struct RatePowerInfo
   */
   uint32_t numSampleAttempt;  ///< how many number of attempts so far
   uint32_t numSampleSuccess;    ///< number of successful pkts
-  uint32_t sampleProb;  ///< (# pkts success )/(# total pkts)
+  //uint32_t sampleProb;  ///< (# pkts success )/(# total pkts)
 
   uint32_t ewmaSampleProb;
 
@@ -113,7 +113,7 @@ struct RatePowerInfo
  * Data structure for a Minstrel Rate table
  * A vector of a struct RateInfo
  */
-typedef std::vector<struct RatePowerInfo> MinstrelBluesRate;
+typedef std::vector<struct BluesRatePowerInfo> MinstrelBluesRate;
 
 /**
  * Data structure for a Sample Rate table
@@ -208,8 +208,11 @@ private:
 
   double BluesUtility (MinstrelBluesWifiRemoteStation *station, uint32_t rate);
 
-  /// updating the Minstrel Table every 1/10 seconds
+  /// Updates the Minstrel Table every 1/10 seconds and sort the rates.
   void MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *station);
+
+  /// Sort the list of highest throughput rates.
+  void MinstrelSortBestThRates (MinstrelBluesWifiRemoteStation *station, uint32_t i);
 
   /// updating the Minstrel Piano Table every 10 packets
   void BluesUpdateStats (MinstrelBluesWifiRemoteStation *station);
@@ -254,6 +257,8 @@ private:
   Time m_updateStats;  //!< How frequent do we calculate the statistics.
   double m_lookAroundRatePercentage;  //!< The percentage to try other rates than our current rate.
   double m_ewmaCoefficient;  //!< Exponential weighted moving average coefficient.
+
+  uint32_t m_nMaxThRates; //!< Number of highest throughput rates to consider.
 
   uint32_t m_nSampleColumns;  //!< Number of sample columns.
   uint32_t m_frameLength;  //!< Frame length used  for calculate mode TxTime.
