@@ -109,7 +109,7 @@ static const uint32_t packetSize = 1420;
 class NodeStatistics
 {
 public:
-  NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas);
+  NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas, bool logDistance);
 
   void CheckStatistics (double time);
 
@@ -118,6 +118,7 @@ public:
   void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
   void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
   void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
+  void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
   Vector GetPosition (Ptr<Node> node);
@@ -139,9 +140,10 @@ private:
   TxTime timeTable;
   Gnuplot2dDataset m_output;
   Gnuplot2dDataset m_output_power;
+  bool m_logDistance;
 };
 
-NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas)
+NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas, bool logDistance)
 {
   Ptr<NetDevice> device = aps.Get (0);
   Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
@@ -162,6 +164,7 @@ NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas)
   m_bytesTotal = 0;
   m_output.SetTitle ("Throughput Mbits/s");
   m_output_power.SetTitle ("Average Transmit Power");
+  m_logDistance = logDistance;
 }
 
 void
@@ -250,6 +253,12 @@ NodeStatistics::RateCallback (std::string path, uint32_t rate, Mac48Address dest
 }
 
 void
+NodeStatistics::BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
+{
+  actualMode[dest] = myPhy->GetMode (rate);
+}
+
+void
 NodeStatistics::RxCallback (std::string path, Ptr<const Packet> packet, const Address &from)
 {
   m_bytesTotal += packet->GetSize ();
@@ -284,8 +293,16 @@ NodeStatistics::AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
   double atm = totalEnergy / stepsTime;
   totalEnergy = 0;
   totalTime = 0;
-  m_output_power.Add (pos.x, atm);
-  m_output.Add (pos.x, mbs);
+  if (m_logDistance)
+    {
+      m_output_power.Add (pos.x, atm);
+      m_output.Add (pos.x, mbs);
+    }
+  else
+    {
+      m_output_power.Add (Simulator::Now ().GetSeconds (), atm);
+      m_output.Add (Simulator::Now ().GetSeconds (), mbs);
+    }
   pos.x += stepsSize;
   SetPosition (node, pos);
   NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << " sec; setting new position to " << pos);
@@ -311,12 +328,17 @@ void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
 
 void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
 {
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << " new " << type << " power: " << (int)power);
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " power: " << (int)power);
 }
 
 void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
+}
+
+void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
+{
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
 }
 
 int main (int argc, char *argv[])
@@ -335,6 +357,7 @@ int main (int argc, char *argv[])
   uint32_t steps = 200;
   uint32_t stepsSize = 1;
   uint32_t stepsTime = 1;
+  bool logDistance = false;
 
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager", manager);
@@ -351,6 +374,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("AP1_y", "Position of AP1 in y coordinate", ap1_y);
   cmd.AddValue ("STA1_x", "Position of STA1 in x coordinate", sta1_x);
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
+  cmd.AddValue ("logDistance", "Use distance instead of distance for statistics", logDistance);
   cmd.Parse (argc, argv);
 
   if (steps == 0)
@@ -419,7 +443,7 @@ int main (int argc, char *argv[])
   mobility.Install (wifiStaNodes.Get (0));
  
   //Statistics counter
-  NodeStatistics statistics = NodeStatistics (wifiApDevices, wifiStaDevices);
+  NodeStatistics statistics = NodeStatistics (wifiApDevices, wifiStaDevices, logDistance);
 
   //Move the STA by stepsSize meters every stepsTime seconds
   Simulator::Schedule (Seconds (0.5 + stepsTime), &NodeStatistics::AdvancePosition, &statistics, wifiStaNodes.Get (0), stepsSize, stepsTime);
@@ -460,14 +484,17 @@ int main (int argc, char *argv[])
     {
       Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
                          MakeCallback (&NodeStatistics::BluesPowerCallback, &statistics));
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                         MakeCallback (&NodeStatistics::BluesRateCallback, &statistics));
     }
   else
     {
       Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
                    MakeCallback (&NodeStatistics::PowerCallback, &statistics));
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                         MakeCallback (&NodeStatistics::RateCallback, &statistics));
     }
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                   MakeCallback (&NodeStatistics::RateCallback, &statistics));
+
 
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
                    MakeCallback (&NodeStatistics::PhyCallback, &statistics));
@@ -477,14 +504,16 @@ int main (int argc, char *argv[])
     {
       Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
                          MakeCallback (BluesPowerCallback));
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (BluesRateCallback));
     }
   else
     {
       Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
                          MakeCallback (PowerCallback));
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (RateCallback));
     }
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                   MakeCallback (RateCallback));
 
   Simulator::Stop (Seconds (simuTime));
   Simulator::Run ();
@@ -492,8 +521,17 @@ int main (int argc, char *argv[])
   std::ofstream outfile (("throughput-" + outputFileName + ".plt").c_str ());
   Gnuplot gnuplot = Gnuplot (("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
   gnuplot.SetTerminal ("post eps color enhanced");
-  gnuplot.SetLegend ("Time (seconds)", "Throughput (Mb/s)");
-  gnuplot.SetTitle ("Throughput (AP to STA) vs time");
+  gnuplot.SetExtra("set yrange [0:30]");
+  if (logDistance)
+    {
+      gnuplot.SetLegend ("Distance (meters)", "Throughput (Mb/s)");
+      gnuplot.SetTitle ("Throughput (AP to STA) vs distance");
+    }
+  else
+    {
+      gnuplot.SetLegend ("Time (seconds)", "Throughput (Mb/s)");
+      gnuplot.SetTitle ("Throughput (AP to STA) vs time");
+    }
   gnuplot.AddDataset (statistics.GetDatafile ());
   gnuplot.GenerateOutput (outfile);
 
@@ -504,8 +542,16 @@ int main (int argc, char *argv[])
       std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");
       gnuplot.SetTerminal ("post eps color enhanced");
-      gnuplot.SetLegend ("Time (seconds)", "Power (mW)");
-      gnuplot.SetTitle ("Average transmit power (AP to STA) vs time");
+      if (logDistance)
+        {
+          gnuplot.SetLegend ("Distance (meters)", "Power (mW)");
+          gnuplot.SetTitle ("Average transmit power (AP to STA) vs distance");
+        }
+      else
+        {
+          gnuplot.SetLegend ("Time (seconds)", "Power (mW)");
+          gnuplot.SetTitle ("Average transmit power (AP to STA) vs time");
+        }
       gnuplot.AddDataset (statistics.GetPowerDatafile ());
       gnuplot.GenerateOutput (outfile2);
     }
