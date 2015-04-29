@@ -156,7 +156,7 @@ MinstrelBluesWifiManager::GetTypeId (void)
                    MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("IncrementLevel",
                    "How many levels to increase power each time.",
-                   UintegerValue (1),
+                   UintegerValue (2),
                    MakeUintegerAccessor (&MinstrelBluesWifiManager::m_deltaIncPower),
                    MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("DecrementLevel",
@@ -314,7 +314,7 @@ MinstrelBluesWifiManager::CheckInit (MinstrelBluesWifiRemoteStation *station)
       RateInit (station);
       InitSampleTable (station);
       m_powerChange("init", station->m_currentPower, station->m_state->m_address);
-      m_rateChange(station->m_currentRate, station->m_state->m_address);
+      m_rateChange("init", station->m_currentRate, station->m_state->m_address);
       PrintTable (station);
       PrintSampleTable (station);
       station->m_initialized = true;
@@ -452,7 +452,7 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
         }
 
       station->m_currentPower = station->m_minstrelBluesTable[station->m_currentRate].dataPower;
-      m_rateChange(station->m_currentRate, station->m_state->m_address);
+      m_rateChange("normal", station->m_currentRate, station->m_state->m_address);
       m_powerChange("data", station->m_currentPower, station->m_state->m_address);
     }
 
@@ -541,7 +541,7 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
             }
         }
       station->m_currentPower = station->m_minstrelBluesTable[station->m_currentRate].refPower;
-      m_rateChange(station->m_currentRate, station->m_state->m_address);
+      m_rateChange("minstrel", station->m_currentRate, station->m_state->m_address);
       m_powerChange("ref", station->m_currentPower, station->m_state->m_address);
     }
   //BLUES SAMPLING
@@ -559,7 +559,6 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 	    NS_LOG_DEBUG ("More retries left for the sampling rate.");
 	    station->m_currentRate = station->m_bluesSampleRate;
 	    station->m_currentPower = station->m_minstrelBluesTable[station->m_bluesSampleRate].samplePower;
-	    m_rateChange(station->m_currentRate, station->m_state->m_address);
 	    m_powerChange("sample", station->m_currentPower, station->m_state->m_address);
 	  }
 
@@ -570,7 +569,6 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 	    NS_LOG_DEBUG (" More retries left for the maximum throughput rate.");
 	    station->m_currentRate = station->m_maxThRate;
 	    station->m_currentPower = station->m_minstrelBluesTable[station->m_currentRate].dataPower;
-	    m_rateChange(station->m_currentRate, station->m_state->m_address);
 	    m_powerChange("data", station->m_currentPower, station->m_state->m_address);
 	  }
 
@@ -582,7 +580,6 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 	    NS_LOG_DEBUG (" More retries left for the maximum probability rate.");
 	    station->m_currentRate = station->m_maxProbRate;
 	    station->m_currentPower = station->m_minstrelBluesTable[station->m_currentRate].dataPower;
-	    m_rateChange(station->m_currentRate, station->m_state->m_address);
 	    m_powerChange("data", station->m_currentPower, station->m_state->m_address);
 	  }
 
@@ -594,9 +591,9 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 	    NS_LOG_DEBUG (" More retries left for the base rate.");
 	    station->m_currentRate = 0;
 	    station->m_currentPower = station->m_minstrelBluesTable[station->m_currentRate].dataPower;
-	    m_rateChange(station->m_currentRate, station->m_state->m_address);
 	    m_powerChange("data", station->m_currentPower, station->m_state->m_address);
 	  }
+        m_rateChange("blues", station->m_currentRate, station->m_state->m_address);
       }
 }
 
@@ -734,7 +731,7 @@ MinstrelBluesWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
 
       /// start the rate at half way
       station->m_currentRate = station->m_nSupported / 2;
-      m_rateChange(station->m_currentRate, station->m_state->m_address);
+      m_rateChange("init", station->m_currentRate, station->m_state->m_address);
     }
 
   WifiTxVector vector =  WifiTxVector (GetSupported (station, station->m_currentRate),
@@ -851,7 +848,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
     {
       rate = 0;
       power = m_maxPower;
-      m_rateChange(rate, station->m_state->m_address);
+      m_rateChange("init", rate, station->m_state->m_address);
       m_powerChange("init", power, station->m_state->m_address);
     }
   else
@@ -912,7 +909,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 			    station->m_maxThRate << "(" << GetSupported (station, station->m_maxThRate) << ")");
 	      rate =  station->m_maxThRate;
 	    }
-          m_rateChange(rate, station->m_state->m_address);
+          m_rateChange("minstrel", rate, station->m_state->m_address);
 
           /*
            * When Minstrel sampling use reference power.
@@ -929,7 +926,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	  station->m_bluesSampleCount--;
 	  rate = station->m_maxURate;
 	  power = station->m_minstrelBluesTable[rate].dataPower;
-	  m_rateChange(rate, station->m_state->m_address);
+	  m_rateChange("normal", rate, station->m_state->m_address);
 	  m_powerChange("data", power, station->m_state->m_address);
 	  NS_LOG_DEBUG("Data packet: rate= " << rate << "(" << GetSupported (station, rate) << ") power= " << (int)power);
 	}
@@ -961,7 +958,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 			    station->m_maxThRate << "(" << GetSupported (station, station->m_maxThRate) << ")");
 	      rate =  station->m_maxThRate;
 	    }
-	  m_rateChange(rate, station->m_state->m_address);
+	  m_rateChange("blues", rate, station->m_state->m_address);
 
 	  /// Alternate between sample and reference power.
 	  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;

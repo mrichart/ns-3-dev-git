@@ -164,7 +164,7 @@ public:
    * \param [in] rate The new rate.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
+  typedef void (*RateChangeTracedCallback)(const std::string, const uint32_t rate, const Mac48Address remoteAddress);
 
 private:
   // overriden from base class
@@ -293,7 +293,7 @@ private:
   /**
    * The trace source fired when the transmission rate change.
    */
-  TracedCallback<uint32_t, Mac48Address> m_rateChange;
+  TracedCallback<std::string, uint32_t, Mac48Address> m_rateChange;
 };
 
 } // namespace ns3
