@@ -117,18 +117,13 @@ MinstrelBluesWifiManager::GetTypeId (void)
     .AddAttribute ("LookAroundRate",
                    "The percentage to try other rates than our current rate.",
                    DoubleValue (10),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManager::m_lookAroundRatePercentage),
+                   MakeDoubleAccessor (&MinstrelBluesWifiManager::m_minstrelSamplingRatio),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("EWMA",
                    "The EWMA coefficient",
                    DoubleValue (75),
                    MakeDoubleAccessor (&MinstrelBluesWifiManager::m_ewmaCoefficient),
                    MakeDoubleChecker<double> ())
-   .AddAttribute ("MaxThRates",
-		  "Number of highest throughput rates to consider.",
-		  DoubleValue (4),
-		  MakeDoubleAccessor (&MinstrelBluesWifiManager::m_nMaxThRates),
-		  MakeDoubleChecker <uint32_t> ())
     .AddAttribute ("SampleColumn",
                    "The number of columns used for sampling",
                    DoubleValue (10),
@@ -142,13 +137,8 @@ MinstrelBluesWifiManager::GetTypeId (void)
     .AddAttribute ("LookAroundSamplePower",
                    "The percentage to try other sample powers than our current sample power.",
                    DoubleValue (10),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManager::m_lookAroundSamplePowerPercentage),
+                   MakeDoubleAccessor (&MinstrelBluesWifiManager::m_bluesSamplingRatio),
                    MakeDoubleChecker <double> ())
-   .AddAttribute ("LookAroundReferencePower",
-		  "The percentage to try other reference powers than our current reference power.",
-		  DoubleValue (10),
-		  MakeDoubleAccessor (&MinstrelBluesWifiManager::m_lookAroundReferencePowerPercentage),
-		  MakeDoubleChecker <double> ())
     .AddAttribute ("BluesUpdateStats",
                    "How many reference and sample frames are needed for updating statistics.",
                    UintegerValue (10),
@@ -169,6 +159,11 @@ MinstrelBluesWifiManager::GetTypeId (void)
                    UintegerValue (2),
                    MakeUintegerAccessor (&MinstrelBluesWifiManager::m_deltaDataSamplePower),
                    MakeUintegerChecker <uint8_t> ())
+   .AddAttribute ("BluesPowerStep",
+                  "Minimum separation between sample and reference power.",
+                  UintegerValue (2),
+                  MakeUintegerAccessor (&MinstrelBluesWifiManager::m_bluesPowerStep),
+                  MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("IncrementThreshold",
                    "The difference between probabilities needed to increase power.",
                    DoubleValue (0.1),
@@ -268,7 +263,7 @@ MinstrelBluesWifiManager::DoCreateStation (void) const
   station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
   station->m_col = 0;
   station->m_index = 0;
-  station->m_sortedThRates = new uint32_t[m_nMaxThRates];
+  station->m_sortedThRates = new uint32_t[N_MAX_TH_RATES];
   station->m_maxThRate = 0;
   station->m_maxThRate2 = 0;
   station->m_maxProbRate = 0;
@@ -285,14 +280,14 @@ MinstrelBluesWifiManager::DoCreateStation (void) const
   station->m_initialized = false;
   station->m_bluesSampleRateSlower = false;
   station->m_bluesRefCount = 0;
-  station->m_bluesSampleCount = 100 / m_lookAroundSamplePowerPercentage;
+  station->m_bluesSampleCount = 100 / m_bluesSamplingRatio;
   station->m_samplingBlues = false;
   station->m_bluesSampleRate = 0;
   station->m_bluesRoundRobinIndex = 0;
   station->m_currentPower = m_maxPower;
   station->m_dataPower = m_maxPower;
   station->m_refPower = m_maxPower;
-  station->m_samplePower = m_maxPower-3;//TODO
+  station->m_samplePower = m_maxPower-m_bluesPowerStep;//TODO
   station->m_maxURate = 0;
   station->m_maxURate2 = 0;
 
@@ -364,17 +359,17 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
    * Retry Chain table is implemented here
    * In Minstrel Blues we have three cases:
    * 1- Minstrel sampling, Retry Chain is the same as Minstrel, with ref_power.
-   * 2- Blues sampling, round robin rate for the first stage, with sample_power (or ref_power?). The rest of the chain as Minstrel, with data_power.
+   * 2- Blues sampling, round robin rate for the first stage, with sample_power or ref_power. The rest of the chain as Minstrel, with data_power.
    * 3- No sampling, Retry Chain assembled with Blues Utility function and data_power.
    *
-   *	          MINSTREL SAMPLING		|      		                       |
-   * Try |         LOOKAROUND RATE              |           BLUES SAMPLING             |    NORMAL RATE      |
-   *     | random < best    | random > best     | random < best    | random > best     |          	     |
+   *	          MINSTREL SAMPLING		|      		    |                     |
+   * Try |         LOOKAROUND RATE              |  BLUES SAMPLING   |    NORMAL RATE      |
+   *     | random < best    | random > best     |                   |          	          |
    * ---------------------------------------------------------------------------------------------------------
-   *  1  | Best throughput  | Random rate       | Best throughput  | Round Robin rate  | Best utility	     |
-   *  2  | Random rate      | Best throughput   | Round Robin rate | Best throughput   | Second best utility |
-   *  3  | Best probability | Best probability  | Best probability | Best probability  | Best probability    |
-   *  4  | Lowest Baserate  | Lowest baserate   | Lowest baserate  | Lowest baserate   | Lowest baserate     |
+   *  1  | Best throughput  | Random rate       | Round Robin rate  | Best utility	  |
+   *  2  | Random rate      | Best throughput   | Best throughput   | Second best utility |
+   *  3  | Best probability | Best probability  | Best probability  | Best probability    |
+   *  4  | Lowest Baserate  | Lowest baserate   | Lowest baserate   | Lowest baserate     |
    *
    * Note: For clarity, multiple blocks of if's and else's are used
    * After a failing 7 times, DoReportFinalDataFailed will be called
@@ -553,7 +548,6 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
                                 ", maxProb=" << station->m_maxProbRate);
 	NS_LOG_DEBUG ("Look around rate is faster than the maximum throughput rate.");
 	/// use random rate
-	//TODO controlar que random<best
 	if (station->m_longRetryCount < station->m_minstrelBluesTable[station->m_bluesSampleRate].adjustedRetryCount)
 	  {
 	    NS_LOG_DEBUG ("More retries left for the sampling rate.");
@@ -861,7 +855,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
        * Note: do it randomly by flipping a coin instead of sampling
        * all at once until it reaches the look around rate.
        */
-      if ( (((100 * station->m_minstrelSampleCount) / (station->m_minstrelSampleCount + station->m_frameCount )) < m_lookAroundRatePercentage)
+      if ( (((100 * station->m_minstrelSampleCount) / (station->m_minstrelSampleCount + station->m_frameCount )) < m_minstrelSamplingRatio)
            && (coinFlip == 1) )
         {
 	  /// MINSTREL SAMPLING
@@ -919,7 +913,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
           m_powerChange("ref", power, station->m_state->m_address);
           NS_LOG_DEBUG ("With sample rate use reference power: " << (int) power);
         }
-      else if (station->m_bluesSampleCount > 0)
+      else if (station->m_bluesSampleCount > 1)  //suggested by thomas
 	{
 	  /// NO SAMPLING, NORMAL RATE
 	  NS_LOG_DEBUG ("Using normal rate");
@@ -939,31 +933,38 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	   * uses for sampling to the data-rates that support potentially high throughput.
 	   * If any data-rate below the maximum throughput rate is selected for power sampling,
 	   * the rate order in the multi-rate-retry (mrr) chain is also changed accordingly, for consistency.
+	   * Consulted Thomas about this, the change consists on selecting the third highest throughput rate
+	   * only if it is faster than the first. Else, the max prob rate is selected.
 	   */
 	  NS_LOG_DEBUG ("Using blues sampling rate");
 	  station->m_samplingBlues = true;
-	  station->m_bluesSampleCount = 100 / m_lookAroundSamplePowerPercentage;
+	  station->m_bluesSampleCount = 100 / m_bluesSamplingRatio;
 
-	  // choose round robin between the 4 best rates
-	  station->m_bluesRoundRobinIndex = (station->m_bluesRoundRobinIndex + 1) % m_nMaxThRates;
-	  station->m_bluesSampleRate = station->m_sortedThRates[station->m_bluesRoundRobinIndex];
-	  rate = station->m_bluesSampleRate;
-	  station->m_sampleRateSlower =
-	      (station->m_minstrelBluesTable[station->m_sampleRateSlower].perfectTxTime > station->m_minstrelBluesTable[station->m_maxThRate].perfectTxTime);
-
-	  /// using the best rate instead
-	  if (station->m_sampleRateSlower)
+	  // choose round robin between the 4 best rate
+	  if (station->m_bluesRoundRobinIndex < 2)
 	    {
-	      NS_LOG_DEBUG ("The next look around rate is slower than the maximum throughput rate, continue with the maximum throughput rate: " <<
-			    station->m_maxThRate << "(" << GetSupported (station, station->m_maxThRate) << ")");
-	      rate =  station->m_maxThRate;
+              station->m_bluesSampleRate = station->m_sortedThRates[station->m_bluesRoundRobinIndex];
 	    }
+	  else
+	    {
+	      NS_ASSERT(station->m_bluesRoundRobinIndex == 2);
+	      if (station->m_minstrelBluesTable[station->m_sortedThRates[station->m_bluesRoundRobinIndex]].perfectTxTime >
+	          station->m_minstrelBluesTable[station->m_sortedThRates[0]].perfectTxTime)
+                {
+                  station->m_bluesSampleRate = station->m_sortedThRates[station->m_bluesRoundRobinIndex];
+                }
+              else
+                {
+                  station->m_bluesSampleRate = station->m_maxProbRate;
+                }
+	    }
+          station->m_bluesRoundRobinIndex = (station->m_bluesRoundRobinIndex + 1) % (N_MAX_TH_RATES - 1);
+	  rate = station->m_bluesSampleRate;
+
 	  m_rateChange("blues", rate, station->m_state->m_address);
 
-	  /// Alternate between sample and reference power.
-	  int coinFlip = m_uniformRandomVariable->GetInteger (0, 100) % 2;
-
-	  if (coinFlip == 1)
+	  // Keep a balanced sampling between tpc_ref and tpc_sample.
+	  if (station->m_minstrelBluesTable[rate].numRefAttempt > station->m_minstrelBluesTable[rate].numSampleAttempt)
 	    {
 	      power = station->m_minstrelBluesTable[rate].samplePower;
 	      m_powerChange("sample", power, station->m_state->m_address);
@@ -1015,7 +1016,7 @@ MinstrelBluesWifiManager::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *s
     }
 
   //Reset sorted list.
-  for (uint32_t i = 0; i < m_nMaxThRates; i++)
+  for (uint32_t i = 0; i < N_MAX_TH_RATES; i++)
       station->m_sortedThRates[i]=0;
 
   station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
@@ -1132,7 +1133,7 @@ MinstrelBluesWifiManager::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *s
   /// Obtain the 2 best rates for blues utility function.
   double max_util = 0, max_util2 = 0;
   uint32_t index_max_util = 0, index_max_util2 = 0;
-  for (uint32_t i = 0; i < m_nMaxThRates; i++)
+  for (uint32_t i = 0; i < N_MAX_TH_RATES; i++)
     {
       double max_temp = BluesUtility(station, station->m_sortedThRates[i]);
       NS_LOG_DEBUG (i << " " << station->m_sortedThRates[i] << " " << max_temp << " " <<
@@ -1178,13 +1179,13 @@ MinstrelBluesWifiManager::MinstrelSortBestThRates (MinstrelBluesWifiRemoteStatio
 
   //FIXME I "copy" what is done in linux wireless minstrel algorithm but it appears to be a bug, when
   // rate 0 is the higher (or one of the highest) th rates.
-  uint32_t j = m_nMaxThRates - 1;
+  uint32_t j = N_MAX_TH_RATES - 1;
   while (j > 0 && station->m_minstrelBluesTable[i].throughput > station->m_minstrelBluesTable[station->m_sortedThRates[j]].throughput)
     {
       station->m_sortedThRates[j] = station->m_sortedThRates[j-1];
       j--;
     }
-  if (j < m_nMaxThRates - 1)
+  if (j < N_MAX_TH_RATES - 1)
     station->m_sortedThRates[j] = i;
 }
 
@@ -1260,7 +1261,7 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           // Update powers.
           if (station->m_minstrelBluesTable[i].ewmaSampleProb < (station->m_minstrelBluesTable[i].ewmaRefProb - m_thIncPower*18000))
             {
-              station->m_minstrelBluesTable[i].samplePower = Min((m_maxPower-3), (station->m_minstrelBluesTable[i].samplePower + m_deltaIncPower)); //TODO According to Thomas sample power is always ref_power-tpc_power_step
+              station->m_minstrelBluesTable[i].samplePower = Min((m_maxPower-m_bluesPowerStep), (station->m_minstrelBluesTable[i].samplePower + m_deltaIncPower)); //TODO According to Thomas sample power is always ref_power-tpc_power_step
             }
 
           if (station->m_minstrelBluesTable[i].ewmaDataProb > (station->m_minstrelBluesTable[i].ewmaRefProb - m_thDecPower*18000))
@@ -1275,7 +1276,7 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
 
           if (station->m_minstrelBluesTable[i].ewmaRefProb > (18000 - m_thDecPower*18000))
             {
-              station->m_minstrelBluesTable[i].refPower = Max(3,(station->m_minstrelBluesTable[i].refPower - m_deltaDecPower)); //TODO minimum cannot be 0 but it should be tpc_power_step
+              station->m_minstrelBluesTable[i].refPower = Max(m_bluesPowerStep,(station->m_minstrelBluesTable[i].refPower - m_deltaDecPower)); //TODO minimum cannot be 0 but it should be tpc_power_step
             }
 
           station->m_minstrelBluesTable[i].dataPower = station->m_minstrelBluesTable[i].samplePower + m_deltaDataSamplePower;
@@ -1304,9 +1305,10 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
        * (1) all higher data-rates above the highest throughput rate are assigned the maximum
        * power level and (2) the power level of the fourth highest throughput rate is used to
        * set the power level of the lower data-rates.
+       * Thomas tell me that the validity timer is 10 seconds.
        */
 // TODO revisar si esto es lo que se pretende
-      if (station->m_minstrelBluesTable[i].validityTimer > Simulator::Now() + Seconds(1))
+      if (station->m_minstrelBluesTable[i].validityTimer > Simulator::Now() + Seconds(10))
         {
           if (i > station->m_maxThRate)
             {
@@ -1316,9 +1318,9 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
             }
           else
             {
-              station->m_minstrelBluesTable[i].dataPower =  station->m_minstrelBluesTable[station->m_sortedThRates[m_nMaxThRates-1]].dataPower;
-              station->m_minstrelBluesTable[i].refPower =  station->m_minstrelBluesTable[station->m_sortedThRates[m_nMaxThRates-1]].refPower;
-              station->m_minstrelBluesTable[i].samplePower =  station->m_minstrelBluesTable[station->m_sortedThRates[m_nMaxThRates-1]].samplePower;
+              station->m_minstrelBluesTable[i].dataPower =  station->m_minstrelBluesTable[station->m_sortedThRates[N_MAX_TH_RATES-1]].dataPower;
+              station->m_minstrelBluesTable[i].refPower =  station->m_minstrelBluesTable[station->m_sortedThRates[N_MAX_TH_RATES-1]].refPower;
+              station->m_minstrelBluesTable[i].samplePower =  station->m_minstrelBluesTable[station->m_sortedThRates[N_MAX_TH_RATES-1]].samplePower;
             }
 
         }
@@ -1331,7 +1333,7 @@ MinstrelBluesWifiManager::RateInit (MinstrelBluesWifiRemoteStation *station)
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("RateInit=" << station);
 
-  for (uint32_t i = 0; i < m_nMaxThRates; i++)
+  for (uint32_t i = 0; i < N_MAX_TH_RATES; i++)
     station->m_sortedThRates[i]=0;
 
   for (uint32_t i = 0; i < station->m_nSupported; i++)

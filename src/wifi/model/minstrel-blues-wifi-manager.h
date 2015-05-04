@@ -255,21 +255,21 @@ private:
   TxTime m_calcTxTime;  ///< to hold all the calculated TxTime for all modes
 
   Time m_updateStats;  //!< How frequent do we calculate the statistics.
-  double m_lookAroundRatePercentage;  //!< The percentage to try other rates than our current rate.
+  double m_minstrelSamplingRatio;  //!< The ratio to try other rates than our current rate.
   double m_ewmaCoefficient;  //!< Exponential weighted moving average coefficient.
 
-  uint32_t m_nMaxThRates; //!< Number of highest throughput rates to consider.
+  const uint32_t N_MAX_TH_RATES = 4; //!< Number of highest throughput rates to consider.
 
   uint32_t m_nSampleColumns;  //!< Number of sample columns.
   uint32_t m_frameLength;  //!< Frame length used  for calculate mode TxTime.
 
-  double m_lookAroundSamplePowerPercentage; //!< The percentage to try other sample powers than our current sample power.
-  double m_lookAroundReferencePowerPercentage;  //!< The percentage to try other reference powers than our current reference power.
+  double m_bluesSamplingRatio; //!< The ratio to sample power.
 
   uint32_t m_bluesUpdateStatsThreshold; //!< Minimal number of packets needed for update blues statistics.
   uint8_t m_deltaIncPower; //!< How many levels to increase power.
   uint8_t m_deltaDecPower; //!< How many levels to decrease power.
   uint8_t m_deltaDataSamplePower; //!< How many levels of separation between data and sample powers.
+  uint8_t m_bluesPowerStep; //!< Minimum separation between sample and reference power.
 
   /**
    * Differently form rate, power levels do not depend on the remote station.
