@@ -109,6 +109,19 @@ struct BluesRatePowerInfo
   Time validityTimer;
 };
 
+const uint32_t N_MAX_TH_RATES = 4; //!< Number of highest throughput rates to consider.
+
+const uint32_t IEEE80211_TX_RATE_TABLE_SIZE = 4; //!< Maximum number of rate table entries.
+
+/**
+ * A struct to contain all the rate and associated retry count.
+ */
+struct MRRChainElement {
+        uint32_t rate;
+        uint8_t power;
+        uint32_t count;
+};
+
 /**
  * Data structure for a Minstrel Rate table
  * A vector of a struct RateInfo
@@ -257,8 +270,6 @@ private:
   Time m_updateStats;  //!< How frequent do we calculate the statistics.
   double m_minstrelSamplingRatio;  //!< The ratio to try other rates than our current rate.
   double m_ewmaCoefficient;  //!< Exponential weighted moving average coefficient.
-
-  const uint32_t N_MAX_TH_RATES = 4; //!< Number of highest throughput rates to consider.
 
   uint32_t m_nSampleColumns;  //!< Number of sample columns.
   uint32_t m_frameLength;  //!< Frame length used  for calculate mode TxTime.
