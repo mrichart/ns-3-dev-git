@@ -369,18 +369,22 @@ MinstrelBluesWifiManager::DoReportDataFailed (WifiRemoteStation *st)
   NS_LOG_DEBUG ("DoReportDataFailed " << station << " rate " << station->m_currentRate << " power " << (int)station->m_currentPower << " longRetry " << station->m_longRetryCount);
 
   uint32_t counter = 0;
-  for (uint32_t i=0;i<=station->m_chainIndex;i++)
+  for (uint32_t i=0; i<=station->m_chainIndex; i++)
     {
       counter += station->m_chain[i].count;
     }
 
   if (station->m_longRetryCount >= counter)
     {
-      NS_ASSERT(station->m_chainIndex == IEEE80211_TX_RATE_TABLE_SIZE - 1); //If the retry counts are right this should never happen.
-      NS_LOG_DEBUG ("Move to the next rate.");
-      station->m_chainIndex++;
-      station->m_currentRate = station->m_chain[station->m_chainIndex].rate;
-      station->m_currentPower = station->m_chain[station->m_chainIndex].power;
+      if (station->m_chainIndex < IEEE80211_TX_RATE_TABLE_SIZE - 1)
+        {
+          NS_LOG_DEBUG ("Move to the next rate.");
+          station->m_chainIndex++;
+          station->m_currentRate = station->m_chain[station->m_chainIndex].rate;
+          station->m_currentPower = station->m_chain[station->m_chainIndex].power;
+        }
+      else
+          NS_LOG_DEBUG ("All retry attempts consumed");
     }
 }
 
@@ -546,12 +550,12 @@ MinstrelBluesWifiManager::DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<c
     }
 
   uint32_t counter = 0;
-  for (uint32_t i=0;i<IEEE80211_TX_RATE_TABLE_SIZE;i++)
+  for (uint32_t i=0; i<IEEE80211_TX_RATE_TABLE_SIZE; i++)
     {
       counter += station->m_chain[i].count;
     }
 
-  if (station->m_longRetryCount >= counter) //FIXME ver si es igual o mayor igual
+  if (station->m_longRetryCount >= counter)
     {
       return false;
     }
@@ -782,6 +786,11 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	  NS_LOG_DEBUG("Sample power packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << (int)station->m_chain[0].power);
 	}
     }
+  for (uint32_t i = 0; i<IEEE80211_TX_RATE_TABLE_SIZE; i++)
+    {
+      station->m_chain[i].count = station->m_minstrelBluesTable[station->m_chain[i].rate].adjustedRetryCount;
+    }
+  station->m_chainIndex = 0;
   station->m_currentRate = station->m_chain[0].rate;
   station->m_currentPower = station->m_chain[0].power;
 }
@@ -1096,32 +1105,42 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           station->m_minstrelBluesTable[i].numDataSuccess = 0;
           station->m_minstrelBluesTable[i].numDataAttempt = 0;
         }
-
-      /**
-       * Blues maintains a validity timer for the power statistics at each sampled rate
-       * (set to 1 second by default). Power levels of such rates that Blues does not
-       * actively sample, or rates where the statistic validity timer expired are set as follows:
-       * (1) all higher data-rates above the highest throughput rate are assigned the maximum
-       * power level and (2) the power level of the fourth highest throughput rate is used to
-       * set the power level of the lower data-rates.
-       * Thomas tell me that the validity timer is 10 seconds.
-       */
+    }
+  /**
+   * Blues maintains a validity timer for the power statistics at each sampled rate
+   * (set to 1 second by default). Power levels of such rates that Blues does not
+   * actively sample, or rates where the statistic validity timer expired are set as follows:
+   * (1) all higher data-rates above the highest throughput rate are assigned the maximum
+   * power level and (2) the power level of the fourth highest throughput rate is used to
+   * set the power level of the lower data-rates.
+   * Thomas tell me that the validity timer is 10 seconds.
+   */
 // TODO revisar si esto es lo que se pretende
+  for (uint32_t i = 0; i<station->m_nSupported; i++)
+    {
       if (station->m_minstrelBluesTable[i].validityTimer > Simulator::Now() + Seconds(10))
         {
-          if (i > station->m_maxThRate)
+          if (i < station->m_sortedThRates[3] && station->m_minstrelBluesTable[station->m_sortedThRates[3]].validityTimer <= Seconds(10))
             {
-              station->m_minstrelBluesTable[i].dataPower = m_maxPower;
-              station->m_minstrelBluesTable[i].refPower = m_maxPower;
-              station->m_minstrelBluesTable[i].samplePower = station->m_minstrelBluesTable[i].refPower - 3;
+              station->m_minstrelBluesTable[i].dataPower =  station->m_minstrelBluesTable[station->m_sortedThRates[3]].dataPower;
+            }
+          else if (i < station->m_sortedThRates[2] && station->m_minstrelBluesTable[station->m_sortedThRates[2]].validityTimer <= Seconds(10))
+            {
+              station->m_minstrelBluesTable[i].dataPower =  station->m_minstrelBluesTable[station->m_sortedThRates[2]].dataPower;
+            }
+          else if (i < station->m_sortedThRates[1] && station->m_minstrelBluesTable[station->m_sortedThRates[1]].validityTimer <= Seconds(10))
+            {
+              station->m_minstrelBluesTable[i].dataPower =  station->m_minstrelBluesTable[station->m_sortedThRates[1]].dataPower;
+            }
+          else if (i < station->m_sortedThRates[0] && station->m_minstrelBluesTable[station->m_sortedThRates[0]].validityTimer <= Seconds(10))
+            {
+              station->m_minstrelBluesTable[i].dataPower =  station->m_minstrelBluesTable[station->m_sortedThRates[0]].dataPower;
             }
           else
             {
-              station->m_minstrelBluesTable[i].dataPower =  station->m_minstrelBluesTable[station->m_sortedThRates[N_MAX_TH_RATES-1]].dataPower;
-              station->m_minstrelBluesTable[i].refPower =  station->m_minstrelBluesTable[station->m_sortedThRates[N_MAX_TH_RATES-1]].refPower;
-              station->m_minstrelBluesTable[i].samplePower =  station->m_minstrelBluesTable[station->m_sortedThRates[N_MAX_TH_RATES-1]].samplePower;
+              station->m_minstrelBluesTable[i].dataPower = m_maxPower;
+              station->m_minstrelBluesTable[i].refPower = m_maxPower;
             }
-
         }
     }
 }
