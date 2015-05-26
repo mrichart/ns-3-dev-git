@@ -85,7 +85,9 @@ public:
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
   void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
+  void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
   void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
+  void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest);
   void StateCallback (std::string path, Time init, Time duration, enum WifiPhy::State state);
 
   Gnuplot2dDataset GetDatafile ();
@@ -220,7 +222,32 @@ NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address des
 }
 
 void
+NodeStatistics::BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+{
+  double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
+  double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
+  uint32_t nTxPower = myPhy->GetNTxPower ();
+  double dbm;
+  if (nTxPower > 1)
+    {
+      dbm = txPowerBaseDbm + power * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
+    }
+  else
+    {
+      NS_ASSERT_MSG (txPowerBaseDbm == txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
+      dbm = txPowerBaseDbm;
+    }
+  actualPower[dest] = dbm;
+}
+
+void
 NodeStatistics::RateCallback (std::string path, uint32_t rate, Mac48Address dest)
+{
+  actualMode[dest] = myPhy->GetMode (rate);
+}
+
+void
+NodeStatistics::BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
 {
   actualMode[dest] = myPhy->GetMode (rate);
 }
@@ -327,10 +354,19 @@ void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
   // end PowerCallback
 }
 
+void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+{
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " power: " << (int)power);
+}
+
 void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
-  // end PowerCallback
+}
+
+void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
+{
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
 }
 
 int main (int argc, char *argv[])
@@ -495,15 +531,28 @@ int main (int argc, char *argv[])
                    MakeCallback (&NodeStatistics::RxCallback, &statisticsAp1));
 
   //Register power and rate changes to calculate the Average Transmit Power
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                   MakeCallback (&NodeStatistics::PowerCallback, &statisticsAp0));
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                   MakeCallback (&NodeStatistics::RateCallback, &statisticsAp0));
-  Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                   MakeCallback (&NodeStatistics::PowerCallback, &statisticsAp1));
-  Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                   MakeCallback (&NodeStatistics::RateCallback, &statisticsAp1));
-
+  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
+    {
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                       MakeCallback (&NodeStatistics::BluesPowerCallback, &statisticsAp0));
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (&NodeStatistics::BluesRateCallback, &statisticsAp0));
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                       MakeCallback (&NodeStatistics::BluesPowerCallback, &statisticsAp1));
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (&NodeStatistics::BluesRateCallback, &statisticsAp1));
+    }
+  else
+    {
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                       MakeCallback (&NodeStatistics::PowerCallback, &statisticsAp0));
+      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (&NodeStatistics::RateCallback, &statisticsAp0));
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                       MakeCallback (&NodeStatistics::PowerCallback, &statisticsAp1));
+      Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (&NodeStatistics::RateCallback, &statisticsAp1));
+    }
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
                    MakeCallback (&NodeStatistics::PhyCallback, &statisticsAp0));
   Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
@@ -519,10 +568,20 @@ int main (int argc, char *argv[])
   statisticsAp1.CheckStatistics (1);
 
   //Callbacks to print every change of power and rate
-  Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                   MakeCallback (PowerCallback));
-  Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                   MakeCallback (RateCallback));
+  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
+    {
+      Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                       MakeCallback (BluesPowerCallback));
+      Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (BluesRateCallback));
+    }
+  else
+    {
+      Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                       MakeCallback (PowerCallback));
+      Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (RateCallback));
+    }
 
 
   // Calculate Throughput using Flowmonitor
@@ -571,7 +630,8 @@ int main (int argc, char *argv[])
   gnuplot.GenerateOutput (outfileTh0);
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0)
+      manager.compare ("ns3::AparfWifiManager") == 0 ||
+      manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
       std::ofstream outfilePower0 (("power-" + outputFileName + "-0.plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + "-0.eps").c_str (), "Average Transmit Power");
