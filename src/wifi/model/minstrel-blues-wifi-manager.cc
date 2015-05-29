@@ -243,6 +243,7 @@ MinstrelBluesWifiManager::AddCalcTxTime (WifiMode mode, Time t)
 {
   NS_LOG_FUNCTION (this);
   m_calcTxTime.push_back (std::make_pair (t, mode));
+  NS_LOG_UNCOND (mode << " " << t);
 }
 
 WifiRemoteStation *
@@ -1059,17 +1060,10 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           station->m_minstrelBluesTable[i].numSampleSuccess = 0;
           station->m_minstrelBluesTable[i].numSampleAttempt = 0;
 
-          //If throughput collapse, reset to initial settings
-          if ((station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
-          {
-        	  RateInit(station);
-        	  NS_LOG_DEBUG("Throughput collapse at rate: " << i);
-          }
-
           // Update powers.
           if (station->m_minstrelBluesTable[i].ewmaSampleProb < (station->m_minstrelBluesTable[i].ewmaRefProb - m_thIncPower*18000))
             {
-              station->m_minstrelBluesTable[i].samplePower = Min((m_maxPower-m_bluesPowerStep), (station->m_minstrelBluesTable[i].samplePower + m_deltaIncPower)); //TODO According to Thomas sample power is always ref_power-tpc_power_step
+              station->m_minstrelBluesTable[i].samplePower = Min((station->m_minstrelBluesTable[i].refPower-m_bluesPowerStep), (station->m_minstrelBluesTable[i].samplePower + m_deltaIncPower)); //TODO According to Thomas sample power is always at least tpc_power_step below ref_power
             }
 
           if (station->m_minstrelBluesTable[i].ewmaDataProb > (station->m_minstrelBluesTable[i].ewmaRefProb - m_thDecPower*18000))
@@ -1084,7 +1078,10 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
 
           if (station->m_minstrelBluesTable[i].ewmaRefProb > (18000 - m_thDecPower*18000))
             {
-              station->m_minstrelBluesTable[i].refPower = Max(m_bluesPowerStep,(station->m_minstrelBluesTable[i].refPower - m_deltaDecPower)); //TODO minimum cannot be 0 but it should be tpc_power_step
+              if (station->m_minstrelBluesTable[i].refPower > station->m_minstrelBluesTable[i].samplePower + 2*m_deltaIncPower + m_bluesPowerStep) //FIXME Is ok? Ensure that ref power is only decrease if bigger than sample power
+        	{
+        	  station->m_minstrelBluesTable[i].refPower = Max(0,(station->m_minstrelBluesTable[i].refPower - m_deltaDecPower));
+        	}
             }
 
           station->m_minstrelBluesTable[i].dataPower = station->m_minstrelBluesTable[i].samplePower + m_deltaDataSamplePower;
@@ -1105,6 +1102,14 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           station->m_minstrelBluesTable[i].numDataSuccess = 0;
           station->m_minstrelBluesTable[i].numDataAttempt = 0;
         }
+      /**
+       * If throughput collapse, reset to initial settings.
+       */
+      if ((station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
+      {
+  	    RateInit(station);
+  	    NS_LOG_DEBUG("Throughput collapse at rate: " << i);
+      }
     }
   /**
    * Blues maintains a validity timer for the power statistics at each sampled rate
