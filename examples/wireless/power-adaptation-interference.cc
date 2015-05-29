@@ -380,6 +380,7 @@ int main (int argc, char *argv[])
   uint32_t rtsThreshold = 2346;
   std::string manager = "ns3::ParfWifiManager";
   std::string outputFileName = "parf";
+  std::string transportProtocol = "ns3::UdpSocketFactory";
   int ap1_x = 0;
   int ap1_y = 0;
   int sta1_x = 10;
@@ -399,6 +400,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("minPower", "Minimum available transmission level (dbm).", minPower);
   cmd.AddValue ("powerLevels", "Number of transmission power levels available between "
                 "TxPowerStart and TxPowerEnd included.", powerLevels);
+  cmd.AddValue ("transportProtocol", "Transport protocol of the CBR traffic", transportProtocol);
   cmd.AddValue ("AP1_x", "Position of AP1 in x coordinate", ap1_x);
   cmd.AddValue ("AP1_y", "Position of AP1 in y coordinate", ap1_y);
   cmd.AddValue ("STA1_x", "Position of STA1 in x coordinate", sta1_x);
@@ -495,26 +497,42 @@ int main (int argc, char *argv[])
   uint16_t port = 9;
 
   //Configure the CBR generator
-  PacketSinkHelper sink ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
+  PacketSinkHelper sink (transportProtocol, InetSocketAddress (sinkAddress, port));
   ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
 
-  OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
-  onoff.SetConstantRate (DataRate ("54Mb/s"), packetSize);
-  onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
-  onoff.SetAttribute ("StopTime", TimeValue (Seconds (100.0)));
-  ApplicationContainer apps_source = onoff.Install (wifiApNodes.Get (0));
-
-  PacketSinkHelper sink1 ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress1, port));
+  PacketSinkHelper sink1 (transportProtocol, InetSocketAddress (sinkAddress1, port));
   apps_sink.Add (sink1.Install (wifiStaNodes.Get (1)));
-
-  OnOffHelper onoff1 ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress1, port));
-  onoff1.SetConstantRate (DataRate ("54Mb/s"), packetSize);
-  onoff1.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
-  onoff1.SetAttribute ("StopTime", TimeValue (Seconds (100.0)));
-  apps_source.Add (onoff1.Install (wifiApNodes.Get (1)));
 
   apps_sink.Start (Seconds (0.5));
   apps_sink.Stop (Seconds (simuTime));
+
+  ApplicationContainer apps_source;
+
+  if (transportProtocol.compare("ns3::UdpSocketFactory") == 0)
+    {
+      OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
+      onoff.SetConstantRate (DataRate ("54Mb/s"), packetSize);
+      onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
+      onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
+      apps_source = onoff.Install (wifiApNodes.Get (0));
+
+      OnOffHelper onoff1 ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress1, port));
+      onoff1.SetConstantRate (DataRate ("54Mb/s"), packetSize);
+      onoff1.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
+      onoff1.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
+      apps_source.Add (onoff1.Install (wifiApNodes.Get (1)));
+    }
+  else
+    {
+      BulkSendHelper source ("ns3::TcpSocketFactory", InetSocketAddress (sinkAddress, port));
+      source.SetAttribute("MaxBytes", UintegerValue(0));
+      apps_source = source.Install (wifiApNodes.Get (0));
+      BulkSendHelper source1 ("ns3::TcpSocketFactory", InetSocketAddress (sinkAddress1, port));
+      source1.SetAttribute("MaxBytes", UintegerValue(0));
+      apps_source = source1.Install (wifiApNodes.Get (1));
+    }
+  apps_source.Start (Seconds (0.5));
+  apps_source.Stop (Seconds (simuTime));
 
   //------------------------------------------------------------
   //-- Setup stats and data collection
