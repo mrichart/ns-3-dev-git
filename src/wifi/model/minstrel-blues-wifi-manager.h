@@ -232,6 +232,7 @@ private:
 
   /// initialize Minstrel Table
   void RateInit (MinstrelBluesWifiRemoteStation *station);
+  void Reset (MinstrelBluesWifiRemoteStation *station, uint32_t rate);
 
   /**
    * Estimate the time to transmit the given packet with the given number of retries.

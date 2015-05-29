@@ -132,7 +132,7 @@ MinstrelBluesWifiManager::GetTypeId (void)
                    MakeDoubleChecker <double> ())
     .AddAttribute ("BluesUpdateStats",
                    "How many reference and sample frames are needed for updating statistics.",
-                   UintegerValue (10),
+                   UintegerValue (35),
                    MakeUintegerAccessor (&MinstrelBluesWifiManager::m_bluesUpdateStatsThreshold),
                    MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("IncrementLevel",
@@ -243,7 +243,6 @@ MinstrelBluesWifiManager::AddCalcTxTime (WifiMode mode, Time t)
 {
   NS_LOG_FUNCTION (this);
   m_calcTxTime.push_back (std::make_pair (t, mode));
-  NS_LOG_UNCOND (mode << " " << t);
 }
 
 WifiRemoteStation *
@@ -412,8 +411,13 @@ MinstrelBluesWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
   /**
    * If enough samples, stats will be updated.
    */
-  MinstrelUpdateStats (station);
-  BluesUpdateStats(station);
+  if (Simulator::Now () >=  station->m_nextStatsUpdate)
+    {
+      MinstrelUpdateStats (station);
+      BluesUpdateStats(station);
+      station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
+      NS_LOG_DEBUG ("Next update at " << station->m_nextStatsUpdate);
+    }
 
   SetRatePower(station);
 
@@ -481,9 +485,13 @@ MinstrelBluesWifiManager::DoReportDataOk (WifiRemoteStation *st,
   /**
    * If enough samples, stats will be updated.
    */
-  MinstrelUpdateStats (station);
-  BluesUpdateStats(station);
-
+  if (Simulator::Now () >=  station->m_nextStatsUpdate)
+    {
+      MinstrelUpdateStats (station);
+      BluesUpdateStats(station);
+      station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
+      NS_LOG_DEBUG ("Next update at " << station->m_nextStatsUpdate);
+    }
   SetRatePower(station);
 
   //PrintTable (station);
@@ -820,10 +828,6 @@ void
 MinstrelBluesWifiManager::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
-  if (Simulator::Now () <  station->m_nextStatsUpdate)
-    {
-      return;
-    }
 
   if (!station->m_initialized)
     {
@@ -834,8 +838,6 @@ MinstrelBluesWifiManager::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *s
   for (uint32_t i = 0; i < N_MAX_TH_RATES; i++)
       station->m_sortedThRates[i]=0;
 
-  station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
-  NS_LOG_DEBUG ("Next update at " << station->m_nextStatsUpdate);
   NS_LOG_DEBUG ("Currently using rate: " << station->m_currentRate << " (" << GetSupported (station, station->m_currentRate) << ")");
 
   Time txTime;
@@ -1060,6 +1062,15 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           station->m_minstrelBluesTable[i].numSampleSuccess = 0;
           station->m_minstrelBluesTable[i].numSampleAttempt = 0;
 
+          /**
+           * If throughput collapse, reset to initial settings.
+           */
+          if ((station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
+            {
+	      NS_LOG_UNCOND("Throughput collapse at rate: " << i << " " << station->m_minstrelBluesTable[i].ewmaDataProb << " " << station->m_minstrelBluesTable[i].throughput);
+	      Reset(station, i);
+            }
+
           // Update powers.
           if (station->m_minstrelBluesTable[i].ewmaSampleProb < (station->m_minstrelBluesTable[i].ewmaRefProb - m_thIncPower*18000))
             {
@@ -1101,15 +1112,15 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           station->m_minstrelBluesTable[i].ewmaDataProb = dataTempProb;
           station->m_minstrelBluesTable[i].numDataSuccess = 0;
           station->m_minstrelBluesTable[i].numDataAttempt = 0;
+          /**
+	   * If throughput collapse, reset to initial settings.
+	   */
+          if ((station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
+	    {
+	      NS_LOG_UNCOND("Throughput collapse at rate: " << i << " " << station->m_minstrelBluesTable[i].ewmaDataProb << " " << station->m_minstrelBluesTable[i].throughput);
+	      Reset(station, i);
+	    }
         }
-      /**
-       * If throughput collapse, reset to initial settings.
-       */
-      if ((station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
-      {
-  	    RateInit(station);
-  	    NS_LOG_DEBUG("Throughput collapse at rate: " << i);
-      }
     }
   /**
    * Blues maintains a validity timer for the power statistics at each sampled rate
@@ -1203,6 +1214,52 @@ MinstrelBluesWifiManager::RateInit (MinstrelBluesWifiRemoteStation *station)
       station->m_minstrelBluesTable[i].samplePower = station->m_minstrelBluesTable[i].refPower - m_bluesPowerStep;
       station->m_minstrelBluesTable[i].validityTimer = Simulator::Now();
     }
+}
+
+void
+MinstrelBluesWifiManager::Reset (MinstrelBluesWifiRemoteStation *station, uint32_t rate)
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_DEBUG ("Reset=" << station);
+
+  station->m_minstrelBluesTable[rate].numRateAttempt = 0;
+  station->m_minstrelBluesTable[rate].numRateSuccess = 0;
+  station->m_minstrelBluesTable[rate].prob = 0;
+  station->m_minstrelBluesTable[rate].ewmaProb = 0;
+  station->m_minstrelBluesTable[rate].throughput = 0;
+  station->m_minstrelBluesTable[rate].retryCount = 1;
+  station->m_minstrelBluesTable[rate].adjustedRetryCount = 1;
+  // Emulating minstrel.c::ath_rate_ctl_reset
+  // We only check from 2 to 10 retries. This guarantee that
+  // at least one retry is permitted.
+  Time totalTxTimeWithGivenRetries = Seconds (0.0); // tx_time in minstrel.c
+  NS_LOG_DEBUG (" Calculating the number of retries");
+  for (uint32_t retries = 2; retries < 11; retries++)
+    {
+      NS_LOG_DEBUG ("  Checking " << retries << " retries");
+      totalTxTimeWithGivenRetries = CalculateTimeUnicastPacket (station->m_minstrelBluesTable[rate].perfectTxTime, 0, retries);
+      NS_LOG_DEBUG ("   totalTxTimeWithGivenRetries = " << totalTxTimeWithGivenRetries);
+      if (totalTxTimeWithGivenRetries > MilliSeconds (6))
+	{
+	  break;
+	}
+      station->m_minstrelBluesTable[rate].retryCount = retries;
+      station->m_minstrelBluesTable[rate].adjustedRetryCount = retries;
+    }
+  /*blues init*/
+  station->m_minstrelBluesTable[rate].numRefAttempt = 0;
+  station->m_minstrelBluesTable[rate].numRefSuccess = 0;
+  station->m_minstrelBluesTable[rate].ewmaRefProb = 0;
+  station->m_minstrelBluesTable[rate].numDataAttempt = 0;
+  station->m_minstrelBluesTable[rate].numDataSuccess = 0;
+  station->m_minstrelBluesTable[rate].ewmaDataProb = 0;
+  station->m_minstrelBluesTable[rate].numSampleAttempt = 0;
+  station->m_minstrelBluesTable[rate].numSampleSuccess = 0;
+  station->m_minstrelBluesTable[rate].ewmaSampleProb = 0;
+  station->m_minstrelBluesTable[rate].dataPower = m_maxPower;
+  station->m_minstrelBluesTable[rate].refPower = m_maxPower;
+  station->m_minstrelBluesTable[rate].samplePower = station->m_minstrelBluesTable[rate].refPower - m_bluesPowerStep;
+  station->m_minstrelBluesTable[rate].validityTimer = Simulator::Now();
 }
 
 Time
