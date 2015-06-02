@@ -82,6 +82,7 @@ FdNetDevice::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::FdNetDevice")
     .SetParent<NetDevice> ()
+    .SetGroupName ("FdNetDevice")
     .AddConstructor<FdNetDevice> ()
     .AddAttribute ("Address",
                    "The MAC address of this device.",
@@ -302,9 +303,16 @@ FdNetDevice::ReceiveCallback (uint8_t *buf, ssize_t len)
    }
 }
 
-/// \todo Consider having a instance member m_packetBuffer and using memmove
-///  instead of memcpy to add the PI header.
-///  It might be faster in this case to use memmove and avoid the extra mallocs.
+/**
+ * \ingroup fd-net-device
+ * \brief Synthesize PI header for the kernel
+ * \param buf the buffer to add the header to
+ * \param len the buffer length
+ *
+ * \todo Consider having a instance member m_packetBuffer and using memmove
+ * instead of memcpy to add the PI header. It might be faster in this case
+ * to use memmove and avoid the extra mallocs.
+ */
 static void
 AddPIHeader (uint8_t *&buf, ssize_t &len)
 {
@@ -341,6 +349,12 @@ AddPIHeader (uint8_t *&buf, ssize_t &len)
   buf = buf2;
 }
 
+/**
+ * \ingroup fd-net-device
+ * \brief Removes PI header
+ * \param buf the buffer to add the header to
+ * \param len the buffer length
+ */
 static void
 RemovePIHeader (uint8_t *&buf, ssize_t &len)
 {

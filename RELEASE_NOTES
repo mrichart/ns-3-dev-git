@@ -21,21 +21,65 @@ Supported platforms
 
 New user-visible features
 -------------------------
-- (network) CalculateTxTime has been declared obsolete.
-  CalculateBytesTxTime and CalculateBitsTxTime are to be used instead.
-  The return value is a Time, instead of a double.
-- (mobility) Classes for converting geographic to cartesian coordinates.
-- (spectrum) TvSpectrumTransmitter classes to create television 
-  transmitter(s) that transmit PSD spectrums customized by attributes such 
-  as modulation type, power, antenna type, channel frequency, etc.
 
 Bugs fixed
 ----------
+- Bug 2126 - LrWpanNetDevice silently accepts no mobility on the node
+
+Known issues
+------------
+In general, known issues are tracked on the project tracker available
+at http://www.nsnam.org/bugzilla/
+
+Release 3.23
+============
+
+Availability
+------------
+This release is available from:
+http://www.nsnam.org/release/ns-allinone-3.23.tar.bz2
+
+Supported platforms
+-------------------
+This release has been tested on the following platforms:
+- Ubuntu 15.04 (64 bit) with g++-4.9.2
+- Fedora Core 21 (64 bit) with g++-4.9.2
+- Ubuntu 14.04 (64 bit) with g++-4.8.2
+- Ubuntu 12.04.4 (32/64 bit) with g++-4.6.3
+- CentOS/RHEL 6.6 (64-bit) with g++-4.4.7
+- OS X Yosemite 10.10.3 with Xcode 6.3.1 and Apple LLVM version 6.1.0
+- FreeBSD 10.1-RELEASE (64 bit) with clang-3.4.1
+
+New user-visible features
+-------------------------
+- (network) CalculateTxTime has been declared obsolete.
+  CalculateBytesTxTime and CalculateBitsTxTime are to be used instead.
+  The return value is a Time, instead of a double.
+- (mobility) Classes added for converting geographic to cartesian coordinates.
+- (spectrum) TvSpectrumTransmitter models added to create television 
+  transmitter(s) that transmit PSD spectrums customized by attributes such 
+  as modulation type, power, antenna type, channel frequency, etc.
+- (wifi) Several model improvements have been made.  Access points now 
+  establish BSSBasicRateSet for control frame transmissions.  PLCP header 
+  and payload reception have been decoupled for improved PHY modeling
+  accuracy.  RTS/CTS with A-MPDU is now fully supported, and 802.11n
+  stations now support two-level aggregation.
+
+Bugs fixed
+----------
+- Bug 1757 - RLC AM not using NACK_SN
 - Bug 1974 - CalculateTxTime should return a Time, not a double
 - Bug 1982 - AODV and mesh use random variables before seed can be set
+- Bug 2004 - Wrong timeout calculation for 802.11n in WifiMac
+- Bug 2008 - (lr-wpan) Crash if ending rx while status change is in progress
 - Bug 2025 - (lr-wpan) Changing the channel doesn't affect the Tx params
+- Bug 2034 - (lr-wpan) CSMA-CA BackoffPeriod is too short 
+- Bug 2054 - TCP window update can shrink the Left Edge of the window
+- Bug 2066 - A-MPDU reception should check for successful preamble
+- Bug 2067 - TCP performance when advertised window exceeds sender buffer size
 - Bug 2070 - Wrong report of Packets and Bytes stored in CoDeL
 - Bug 2073 - NDisc cache entries update timer might be stuck in a loop
+- Bug 2075 - A-MPDU using RTS/CTS behaves wrongly when MaxSsrc is reached
 - Bug 2076 - TCP MinRTO Attribute is not actually used
 - Bug 2077 - Icmpv6L4Protocol::HandleDestinationUnreachable must check the packet size, not its serialized size
 - Bug 2079 - mcs variable in ht-wifi-network example is confusing
@@ -44,9 +88,14 @@ Bugs fixed
 - Bug 2087 - Waf fails to build ns-3 if the path contains accented characters
 - Bug 2090 - (rip-ng) Routes may be added twice on interface activation
 - Bug 2093 - MultiModelSpectrumChannel::GetDevice only works for 0-th index
+- Bug 2095 - (wimax) Wrong values in default-traces.h for 16 QAM 3/4
+- Bug 2097 - ACKs should be sent using legacy rates and preambles in 802.11n
+- Bug 2103 - Ipv[4,6]RoutingHelper::PrintRoutingTableAll[At,Every] hangs if a node doesn't have IP
 
 Known issues
 ------------
+In general, known issues are tracked on the project tracker available
+at http://www.nsnam.org/bugzilla/
 
 Release 3.22
 ============

@@ -160,10 +160,10 @@ public:
   /**
    * arg1: packet received successfully
    * arg2: snr of packet
-   * arg3: mode of packet
+   * arg3: TXVECTOR of packet
    * arg4: type of preamble used for packet.
    */
-  typedef Callback<void,Ptr<Packet>, double, WifiMode, enum WifiPreamble> RxOkCallback;
+  typedef Callback<void,Ptr<Packet>, double, WifiTxVector, enum WifiPreamble> RxOkCallback;
   /**
    * arg1: packet received unsuccessfully
    * arg2: snr of packet
@@ -295,6 +295,13 @@ public:
    *          the transmission of these bytes.
    */
   Time CalculateTxDuration (uint32_t size, WifiTxVector txvector, enum WifiPreamble preamble, double frequency, uint8_t packetType, uint8_t incFlag);
+  
+  /**
+   * \param txvector the transmission parameters used for this packet
+   * \param preamble the type of preamble to use for this packet.
+   * \return the total amount of time this PHY will stay busy for the transmission of the plcp.
+   */
+  Time CalculatePlcpDuration (WifiTxVector txvector, enum WifiPreamble preamble);
 
   /**
    * \param preamble the type of preamble
@@ -311,12 +318,11 @@ public:
    */
   static WifiMode GetMFPlcpHeaderMode (WifiMode payloadMode, WifiPreamble preamble);
   /** 
-   * \param payloadMode the WifiMode use for the transmission of the payload
    * \param preamble the type of preamble
    * 
    * \return the duration of the HT-SIG in Mixed Format and greenfield format PLCP header 
    */
-  static Time GetPlcpHtSigHeaderDuration (WifiMode payloadMode, WifiPreamble preamble);
+  static Time GetPlcpHtSigHeaderDuration (WifiPreamble preamble);
 
 
   /** 

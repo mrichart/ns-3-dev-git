@@ -170,7 +170,7 @@ WifiPhy::GetPlcpHtTrainingSymbolDuration (WifiPreamble preamble, WifiTxVector tx
 
 //return L-SIG
 Time
-WifiPhy::GetPlcpHtSigHeaderDuration (WifiMode payloadMode, WifiPreamble preamble)
+WifiPhy::GetPlcpHtSigHeaderDuration (WifiPreamble preamble)
 {
          switch (preamble)
             {
@@ -579,9 +579,19 @@ WifiPhy::CalculateTxDuration (uint32_t size, WifiTxVector txvector, WifiPreamble
   WifiMode payloadMode=txvector.GetMode();
   Time duration = GetPlcpPreambleDuration (payloadMode, preamble)
     + GetPlcpHeaderDuration (payloadMode, preamble)
-    + GetPlcpHtSigHeaderDuration (payloadMode, preamble)
+    + GetPlcpHtSigHeaderDuration (preamble)
     + GetPlcpHtTrainingSymbolDuration (preamble, txvector)
     + GetPayloadDuration (size, txvector, preamble, frequency, packetType, incFlag);
+  return duration;
+}
+Time
+WifiPhy::CalculatePlcpDuration (WifiTxVector txvector, WifiPreamble preamble)
+{
+  WifiMode payloadMode=txvector.GetMode();
+  Time duration = GetPlcpPreambleDuration (payloadMode, preamble)
+    + GetPlcpHeaderDuration (payloadMode, preamble)
+    + GetPlcpHtSigHeaderDuration (preamble)
+    + GetPlcpHtTrainingSymbolDuration (preamble, txvector);
   return duration;
 }
 
