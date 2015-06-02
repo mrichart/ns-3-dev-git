@@ -16,12 +16,11 @@
  * Author: Matías Richart <mrichart@fing.edu.uy>
  */
 
-#ifndef PRCS_11a_WIFI_MANAGER_H
-#define PRCS_11a_WIFI_MANAGER_H
+#ifndef PRCS_WIFI_MANAGER_H
+#define PRCS_WIFI_MANAGER_H
 
 #include "ns3/nstime.h"
 #include "wifi-remote-station-manager.h"
-#include "ns3/random-variable.h"
 
 namespace ns3 {
 
@@ -37,26 +36,29 @@ struct PrcsWifiRemoteStation;
  * by "Matías Richart", "Jorge Visca", and,
  * "Javier Baliosian" presented at CNSM 2014.
  */
-class Prcs11aWifiManager : public WifiRemoteStationManager
+
+struct Thresholds
+{
+  double ori;
+  double mtl;
+  uint32_t ewnd;
+};
+
+typedef std::vector<std::pair<Thresholds,WifiMode> > PrcsThresholds;
+
+class PrcsWifiManager : public WifiRemoteStationManager
 {
 public:
   static TypeId GetTypeId (void);
 
-  Prcs11aWifiManager ();
-  virtual ~Prcs11aWifiManager ();
+  PrcsWifiManager ();
+  virtual ~PrcsWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
   void NotifyMaybeCcaBusyStartNow (Time duration);
 
 private:
-  struct ThresholdsItem
-  {
-    uint32_t datarate;
-    double pori;
-    double pmtl;
-    uint32_t ewnd;
-  };
 
   // overriden from base class
   virtual WifiRemoteStation * DoCreateStation (void) const;
@@ -85,36 +87,41 @@ private:
   void RunBasicAlgorithm (PrcsWifiRemoteStation *station);
   void ARts (PrcsWifiRemoteStation *station);
   void ResetCountersBasic (PrcsWifiRemoteStation *station);
-  struct ThresholdsItem GetThresholds (WifiMode mode) const;
-  struct ThresholdsItem GetThresholds (PrcsWifiRemoteStation *station, uint32_t rate) const;
+  Thresholds GetThresholds (PrcsWifiRemoteStation *station, uint32_t rate) const;
+
+  /// for estimating the TxTime of a packet with a given mode
+  Time GetCalcTxTime (WifiMode mode) const;
+  void AddCalcTxTime (WifiMode mode, Time t);  /// for estimating the TxTime of a packet with a given mode
+
+  typedef std::vector<std::pair<Time,WifiMode> > TxTime;
+
+  Thresholds GetThresholds(PrcsWifiRemoteStation *station, WifiMode mode) const;
+  void AddThresholds (PrcsWifiRemoteStation *station, WifiMode mode, Thresholds th);
+
+  void InitThresholds (PrcsWifiRemoteStation *station);
+
+  void CheckInit (PrcsWifiRemoteStation *station);  ///< check for initializations
+
+  TxTime m_calcTxTime;  ///< to hold all the calculated TxTime for all modes
+  Time m_sifs;
+  Time m_difs;
+
+  uint32_t m_frameLength;  //!< Frame length used  for calculate mode TxTime.
+  uint32_t m_ackLength;  //!< Frame length used  for calculate mode TxTime.
 
   bool m_basic;
   Time m_timeout;
-  uint32_t m_ewndfor54;
-  uint32_t m_ewndfor48;
-  uint32_t m_ewndfor36;
-  uint32_t m_ewndfor24;
-  uint32_t m_ewndfor18;
-  uint32_t m_ewndfor12;
-  uint32_t m_ewndfor9;
-  uint32_t m_ewndfor6;
-  double m_porifor48;
-  double m_porifor36;
-  double m_porifor24;
-  double m_porifor18;
-  double m_porifor12;
-  double m_porifor9;
-  double m_porifor6;
-  double m_pmtlfor54;
-  double m_pmtlfor48;
-  double m_pmtlfor36;
-  double m_pmtlfor24;
-  double m_pmtlfor18;
-  double m_pmtlfor12;
-  double m_pmtlfor9;
-  double m_pmtlfor6;
+  double m_alpha;
+  double m_beta;
+  double m_gamma;
 
-  uint8_t m_nPower;
+  /**
+   * Differently form rate, power levels do not depend on the remote station.
+   * The levels depend only on the physical layer of the device.
+   */
+  uint32_t m_minPower; //!< Minimal power level.
+  uint32_t m_maxPower; //! Maximal power level.
+  uint32_t m_nPower; //! Number of power levels.
 
   double m_countBusy;
   Time m_prevTime;
@@ -137,4 +144,4 @@ private:
 
 } // namespace ns3
 
-#endif /* RRAA_WIFI_MANAGER_H */
+#endif /* PRCS_WIFI_MANAGER_H */

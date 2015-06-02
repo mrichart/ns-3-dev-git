@@ -16,7 +16,7 @@
  * Author: Matías Richart <mrichart@fing.edu.uy>
  */
 
-#include "prcs-11a-wifi-manager.h"
+#include "prcs-wifi-manager.h"
 #include "yans-wifi-phy.h"
 #include "wifi-phy.h"
 #include "ns3/assert.h"
@@ -25,11 +25,10 @@
 #include "ns3/double.h"
 #include "ns3/uinteger.h"
 #include "ns3/simulator.h"
-#include "ns3/random-variable.h"
 
 #define Min(a,b) ((a < b) ? a : b)
 
-NS_LOG_COMPONENT_DEFINE ("Prcs11aWifiManager");
+NS_LOG_COMPONENT_DEFINE ("PrcsWifiManager");
 
 namespace ns3 {
 
@@ -52,20 +51,22 @@ struct PrcsWifiRemoteStation : public WifiRemoteStation
 
   double** m_priTable;
 
+  PrcsThresholds m_thresholds;
+
   double m_ett;
   double m_countBusy;
   uint32_t m_countTx;
 };
 
 /***************************************************************
- *         Listener for PHY events. Forwards to Prcs11aWifiManager
+ *         Listener for PHY events. Forwards to PrcsWifiManager
  ***************************************************************/
 
 
 class PhyPrcsListener : public ns3::WifiPhyListener
 {
 public:
-  PhyPrcsListener (ns3::Prcs11aWifiManager *prcs)
+  PhyPrcsListener (ns3::PrcsWifiManager *prcs)
     : m_prcs (prcs)
   {
   }
@@ -92,180 +93,158 @@ public:
   {
   }
 private:
-  ns3::Prcs11aWifiManager *m_prcs;
+  ns3::PrcsWifiManager *m_prcs;
 };
 
-NS_OBJECT_ENSURE_REGISTERED (Prcs11aWifiManager);
+NS_OBJECT_ENSURE_REGISTERED (PrcsWifiManager);
 
 TypeId
-Prcs11aWifiManager::GetTypeId (void)
+PrcsWifiManager::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::Prcs11aWifiManager")
+  static TypeId tid = TypeId ("ns3::PrcsWifiManager")
     .SetParent<WifiRemoteStationManager> ()
-    .AddConstructor<Prcs11aWifiManager> ()
+    .AddConstructor<PrcsWifiManager> ()
     .AddAttribute ("Basic",
                    "If true the RRAA-BASIC algorithm will be used, otherwise the RRAA wil be used",
                    BooleanValue (true),
-                   MakeBooleanAccessor (&Prcs11aWifiManager::m_basic),
+                   MakeBooleanAccessor (&PrcsWifiManager::m_basic),
                    MakeBooleanChecker ())
     .AddAttribute ("Timeout",
                    "Timeout for the RRAA BASIC loss estimaton block (s)",
                    TimeValue (Seconds (0.05)),
-                   MakeTimeAccessor (&Prcs11aWifiManager::m_timeout),
+                   MakeTimeAccessor (&PrcsWifiManager::m_timeout),
                    MakeTimeChecker ())
-    .AddAttribute ("ewndFor54mbps",
-                    "ewnd parameter for 54 Mbs data mode",
-                    UintegerValue (40),
-                    MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor54),
-                    MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("ewndFor48mbps",
-                  "ewnd parameter for 48 Mbs data mode",
-                  UintegerValue (40),
-                  MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor48),
-                  MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("ewndFor36mbps",
-                  "ewnd parameter for 36 Mbs data mode",
-                  UintegerValue (40),
-                  MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor36),
-                  MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("ewndFor24mbps",
-                  "ewnd parameter for 24 Mbs data mode",
-                  UintegerValue (40),
-                  MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor24),
-                  MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("ewndFor18mbps",
-                  "ewnd parameter for 18 Mbs data mode",
-                  UintegerValue (20),
-                  MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor18),
-                  MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("ewndFor12mbps",
-                  "ewnd parameter for 12 Mbs data mode",
-                  UintegerValue (20),
-                  MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor12),
-                  MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("ewndFor9mbps",
-                  "ewnd parameter for 9 Mbs data mode",
-                  UintegerValue (10),
-                  MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor9),
-                  MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("ewndFor6mbps",
-                  "ewnd parameter for 6 Mbs data mode",
-                  UintegerValue (6),
-                  MakeUintegerAccessor (&Prcs11aWifiManager::m_ewndfor6),
-                  MakeUintegerChecker<uint32_t> ())
-   .AddAttribute ("poriFor48mbps",
-                  "Pori parameter for 48 Mbs data mode",
-                  DoubleValue (0.047),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_porifor48),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("poriFor36mbps",
-                  "Pori parameter for 36 Mbs data mode",
-                  DoubleValue (0.125),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_porifor36),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("poriFor24mbps",
-                  "Pori parameter for 24 Mbs data mode",
-                  DoubleValue (0.1643),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_porifor24),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("poriFor18mbps",
-                  "Pori parameter for 18 Mbs data mode",
-                  DoubleValue (0.1301),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_porifor18),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("poriFor12mbps",
-                  "Pori parameter for 12 Mbs data mode",
-                  DoubleValue (0.1884),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_porifor12),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("poriFor9mbps",
-                  "Pori parameter for 9 Mbs data mode",
-                  DoubleValue (0.1434),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_porifor9),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("poriFor6mbps",
-                  "Pori parameter for 6 Mbs data mode",
-                  DoubleValue (0.1974),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_porifor6),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("pmtlFor54mbps",
-                  "Pmtl parameter for 54 Mbs data mode",
-                  DoubleValue (0.0951),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_pmtlfor54),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("pmtlFor48mbps",
-                  "Pmtl parameter for 48 Mbs data mode",
-                  DoubleValue (0.25),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_pmtlfor48),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("pmtlFor36mbps",
-                  "Pmtl parameter for 36 Mbs data mode",
-                  DoubleValue (0.3285),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_pmtlfor36),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("pmtlFor24mbps",
-                  "Pmtl parameter for 24 Mbs data mode",
-                  DoubleValue (0.2602),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_pmtlfor24),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("pmtlFor18mbps",
-                  "Pmtl parameter for 18 Mbs data mode",
-                  DoubleValue (0.3768),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_pmtlfor18),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("pmtlFor12mbps",
-                  "Pmtl parameter for 12 Mbs data mode",
-                  DoubleValue (0.2869),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_pmtlfor12),
-                  MakeDoubleChecker<double> ())
-   .AddAttribute ("pmtlFor9mbps",
-                  "Pmtl parameter for 9 Mbs data mode",
-                  DoubleValue (0.3949),
-                  MakeDoubleAccessor (&Prcs11aWifiManager::m_pmtlfor9),
-                  MakeDoubleChecker<double> ())
+    .AddAttribute ("FrameLength",
+		  "The frame length used for calculating mode TxTime",
+		  UintegerValue (1420),
+		  MakeUintegerAccessor (&RrpaaWifiManager::m_frameLength),
+		  MakeUintegerChecker <uint32_t> ())
+    .AddAttribute ("AckFrameLength",
+		  "The ACK frame length used for calculating mode TxTime",
+		  DoubleValue (14),
+		  MakeDoubleAccessor (&RrpaaWifiManager::m_ackLength),
+		  MakeDoubleChecker <uint32_t> ())
+    .AddAttribute ("Alpha",
+		  "ewnd parameter for 54 Mbs data mode",
+		  DoubleValue (1.25),
+		  MakeDoubleAccessor (&RrpaaWifiManager::m_alpha),
+		  MakeDoubleChecker<double> ())
+    .AddAttribute ("Beta",
+		  "ewnd parameter for 48 Mbs data mode",
+		  DoubleValue (2),
+		  MakeDoubleAccessor (&RrpaaWifiManager::m_beta),
+		  MakeDoubleChecker<double> ())
+    .AddAttribute ("Gamma",
+		  "ewnd parameter for 36 Mbs data mode",
+		  DoubleValue (0.015),
+		  MakeDoubleAccessor (&RrpaaWifiManager::m_gamma),
+		  MakeDoubleChecker<double> ())
    .AddTraceSource("RateChange",
                    "The transmission rate has change",
-                   MakeTraceSourceAccessor(&Prcs11aWifiManager::m_rateChange))
+                   MakeTraceSourceAccessor(&PrcsWifiManager::m_rateChange))
    .AddTraceSource ("PowerChange",
                   "The transmission power has change",
-                   MakeTraceSourceAccessor (&Prcs11aWifiManager::m_powerChange))
+                   MakeTraceSourceAccessor (&PrcsWifiManager::m_powerChange))
    .AddTraceSource ("CstChange",
                   "The carrier sense threshold has change",
-                   MakeTraceSourceAccessor (&Prcs11aWifiManager::m_cstChange))
+                   MakeTraceSourceAccessor (&PrcsWifiManager::m_cstChange))
   ;
   return tid;
 }
 
 
-Prcs11aWifiManager::Prcs11aWifiManager ()
+PrcsWifiManager::PrcsWifiManager ()
   : m_countBusy(0),
     m_prevTime(0),
     m_maxCst(-99.0)
 {
 }
-Prcs11aWifiManager::~Prcs11aWifiManager ()
+PrcsWifiManager::~PrcsWifiManager ()
 {
 }
 
 void
-Prcs11aWifiManager::SetupPhyPrcsListener (Ptr<WifiPhy> phy)
+PrcsWifiManager::SetupPhyPrcsListener (Ptr<WifiPhy> phy)
 {
   m_phyPrcsListener = new PhyPrcsListener (this);
   phy->RegisterListener (m_phyPrcsListener);
 }
 
 void
-Prcs11aWifiManager::SetupPhy (Ptr<WifiPhy> phy)
+PrcsWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
+  NS_LOG_FUNCTION (this);
   m_phy = phy;
   m_nPower = phy->GetNTxPower();
-  //m_minPower = m_nPower - 1;
+  m_minPower = phy->GetTxPowerStart();
+  m_maxPower = phy->GetTxPowerEnd();
+  uint32_t nModes = phy->GetNModes ();
+  for (uint32_t i = 0; i < nModes; i++)
+    {
+      WifiMode mode = phy->GetMode (i);
+      WifiTxVector txVector;
+      txVector.SetMode(mode);
+      /* Calculate the TX Time of the data and the corresponding ACK*/
+      AddCalcTxTime (mode, phy->CalculateTxDuration (m_frameLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency(), 0, 0) +
+                     phy->CalculateTxDuration (m_ackLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency(), 0, 0));
+    }
   WifiRemoteStationManager::SetupPhy (phy);
   SetupPhyPrcsListener(phy);
 }
 
+void
+PrcsWifiManager::SetupMac (Ptr<WifiMac> mac)
+{
+  m_sifs = mac->GetSifs();
+  m_difs = m_sifs + 2*mac->GetSlot();
+  WifiRemoteStationManager::SetupMac (mac);
+}
+
+Time
+PrcsWifiManager::GetCalcTxTime (WifiMode mode) const
+{
+  NS_LOG_FUNCTION (this);
+  for (TxTime::const_iterator i = m_calcTxTime.begin (); i != m_calcTxTime.end (); i++)
+    {
+      if (mode == i->second)
+        {
+          return i->first;
+        }
+    }
+  NS_ASSERT (false);
+  return Seconds (0);
+}
+
+void
+PrcsWifiManager::AddCalcTxTime (WifiMode mode, Time t)
+{
+  NS_LOG_FUNCTION (this);
+  m_calcTxTime.push_back (std::make_pair (t, mode));
+}
+
+Thresholds
+PrcsWifiManager::GetThresholds (PrcsWifiRemoteStation *station, WifiMode mode) const
+{
+  NS_LOG_FUNCTION (this);
+  for (RrpaaThresholds::const_iterator i = station->m_thresholds.begin (); i != station->m_thresholds.end (); i++)
+    {
+      if (mode == i->second)
+        {
+          return i->first;
+        }
+    }
+  NS_ASSERT (false);
+}
+
+void
+PrcsWifiManager::AddThresholds (PrcsWifiRemoteStation *station, WifiMode mode, Thresholds th)
+{
+  NS_LOG_FUNCTION (this);
+  station->m_thresholds.push_back (std::make_pair (th, mode));
+}
+
 WifiRemoteStation *
-Prcs11aWifiManager::DoCreateStation (void) const
+PrcsWifiManager::DoCreateStation (void) const
 {
   PrcsWifiRemoteStation *station = new PrcsWifiRemoteStation ();
   station->m_initialized = false;
@@ -277,52 +256,65 @@ Prcs11aWifiManager::DoCreateStation (void) const
 }
 
 void
-Prcs11aWifiManager::ResetCountersBasic (PrcsWifiRemoteStation *station)
+PrcsWifiManager::CheckInit (PrcsWifiRemoteStation *station)
 {
+  NS_LOG_FUNCTION (this);
   if (!station->m_initialized)
     {
+      // Note: we appear to be doing late initialization of the table
+      // to make sure that the set of supported rates has been initialized
+      // before we perform our own initialization.
+      station->m_nRate = GetNSupported (station);
       station->m_rate = GetMaxRate (station);
       m_rateChange(station->m_rate, station->m_state->m_address);
-      station->m_power = m_nPower-1;
+      station->m_power = m_maxPower;
       m_powerChange(station->m_power, station->m_state->m_address);
       station->m_cst = -99.0;
       //m_cstChange(station->m_cst, station->m_state->m_address);
 
-      station->m_nRate = GetNSupported (station);
       station->m_priTable = new double*[station->m_nRate];
-      for (uint32_t i = 0; i < station->m_nRate; ++i)
-        {
-          station->m_priTable[i] = new double[m_nPower];
-          for (uint8_t j = 0; j < m_nPower; ++j)
-            station->m_priTable[i][j] = 1;
-        }
+      for (uint32_t i = 0; i < station->m_nRate; i++)
+	{
+	  station->m_priTable[i] = new double[m_nPower];
+	  for (uint8_t j = 0; j < m_nPower; j++)
+	    station->m_priTable[i][j] = 1;
+	}
 
       station->m_initialized = true;
+
+      station->m_thresholds = PrcsThresholds (station->m_nRate);
+      InitThresholds (station);
+      ResetCountersBasic(station);
     }
+}
+
+void
+PrcsWifiManager::ResetCountersBasic (PrcsWifiRemoteStation *station)
+{
   station->m_failed = 0;
   station->m_counter = GetThresholds (station, station->m_rate).ewnd;
   station->m_lastReset = Simulator::Now ();
 }
 
 uint32_t
-Prcs11aWifiManager::GetMaxRate (PrcsWifiRemoteStation *station)
+PrcsWifiManager::GetMaxRate (PrcsWifiRemoteStation *station)
 {
   return GetNSupported (station) - 1;
 }
 uint32_t
-Prcs11aWifiManager::GetMinRate (PrcsWifiRemoteStation *station)
+PrcsWifiManager::GetMinRate (PrcsWifiRemoteStation *station)
 {
   return 0;
 }
 
 
 void
-Prcs11aWifiManager::DoReportRtsFailed (WifiRemoteStation *st)
+PrcsWifiManager::DoReportRtsFailed (WifiRemoteStation *st)
 {
 }
 
 void
-Prcs11aWifiManager::DoReportDataFailed (WifiRemoteStation *st)
+PrcsWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 {
   PrcsWifiRemoteStation *station = (PrcsWifiRemoteStation *) st;
   station->m_lastFrameFail = true;
@@ -332,18 +324,18 @@ Prcs11aWifiManager::DoReportDataFailed (WifiRemoteStation *st)
   RunBasicAlgorithm (station);
 }
 void
-Prcs11aWifiManager::DoReportRxOk (WifiRemoteStation *st,
+PrcsWifiManager::DoReportRxOk (WifiRemoteStation *st,
                                double rxSnr, WifiMode txMode)
 {
 }
 void
-Prcs11aWifiManager::DoReportRtsOk (WifiRemoteStation *st,
+PrcsWifiManager::DoReportRtsOk (WifiRemoteStation *st,
                                 double ctsSnr, WifiMode ctsMode, double rtsSnr)
 {
   NS_LOG_DEBUG ("self=" << st << " rts ok");
 }
 void
-Prcs11aWifiManager::DoReportDataOk (WifiRemoteStation *st,
+PrcsWifiManager::DoReportDataOk (WifiRemoteStation *st,
                                  double ackSnr, WifiMode ackMode, double dataSnr)
 {
   PrcsWifiRemoteStation *station = (PrcsWifiRemoteStation *) st;
@@ -353,16 +345,16 @@ Prcs11aWifiManager::DoReportDataOk (WifiRemoteStation *st,
   RunBasicAlgorithm (station);
 }
 void
-Prcs11aWifiManager::DoReportFinalRtsFailed (WifiRemoteStation *st)
+PrcsWifiManager::DoReportFinalRtsFailed (WifiRemoteStation *st)
 {
 }
 void
-Prcs11aWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
+PrcsWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 {
 }
 
 WifiTxVector
-Prcs11aWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
+PrcsWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
                                 uint32_t size)
 {
   PrcsWifiRemoteStation *station = (PrcsWifiRemoteStation *) st;
@@ -381,7 +373,7 @@ Prcs11aWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
                        GetStbc (station));
 }
 WifiTxVector
-Prcs11aWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
+PrcsWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   PrcsWifiRemoteStation *station = (PrcsWifiRemoteStation *) st;
   return WifiTxVector (GetSupported (st, 0),
@@ -394,7 +386,7 @@ Prcs11aWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 }
 
 bool
-Prcs11aWifiManager::DoNeedRts (WifiRemoteStation *st,
+PrcsWifiManager::DoNeedRts (WifiRemoteStation *st,
                             Ptr<const Packet> packet, bool normally)
 {
   PrcsWifiRemoteStation *station = (PrcsWifiRemoteStation *) st;
@@ -407,7 +399,7 @@ Prcs11aWifiManager::DoNeedRts (WifiRemoteStation *st,
 }
 
 void
-Prcs11aWifiManager::CheckTimeout (PrcsWifiRemoteStation *station)
+PrcsWifiManager::CheckTimeout (PrcsWifiRemoteStation *station)
 {
   Time d = Simulator::Now () - station->m_lastReset;
   if (station->m_counter == 0 || d > m_timeout)
@@ -417,12 +409,12 @@ Prcs11aWifiManager::CheckTimeout (PrcsWifiRemoteStation *station)
 }
 
 void
-Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
+PrcsWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
 {
-  ThresholdsItem thresholds = GetThresholds (station, station->m_rate);
+  Thresholds thresholds = GetThresholds (station, station->m_rate);
   double bploss = (double) station->m_failed / (double) thresholds.ewnd;
   double wploss = (double) (station->m_counter + station->m_failed) / (double) thresholds.ewnd;
-  UniformVariable uv;
+  Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
   double busyProb = station->m_countBusy/station->m_ett;
   if (busyProb > (1.52*wploss))
     {
@@ -433,7 +425,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
   station->m_countBusy = 0;
   station->m_countTx = 0;
 
-  if (bploss > thresholds.pmtl && station->m_power < m_nPower-1)
+  if (bploss > thresholds.mtl && station->m_power < m_nPower-1)
     {
       station->m_priTable[station->m_rate][station->m_power] /= 2;
       station->m_power++;
@@ -441,7 +433,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
       //NS_LOG_UNCOND(station->m_state->m_address << " " << station->m_priTable[station->m_rate][station->m_power]);
       ResetCountersBasic (station);
     }
-  else if (bploss > thresholds.pmtl && station->m_power == m_nPower-1)
+  else if (bploss > thresholds.mtl && station->m_power == m_nPower-1)
     {
       if (station->m_cst > m_maxCst)
         {
@@ -456,7 +448,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
           ResetCountersBasic (station);
         }
     }
-  if (wploss < thresholds.pori)
+  if (wploss < thresholds.ori)
     {
       for (uint32_t i = 0; i <= station->m_rate; i++)
         {
@@ -464,7 +456,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
           if (station->m_priTable[i][station->m_power] > 1)
             station->m_priTable[i][station->m_power] = 1;
         }
-      double rand = uv.GetValue(0,1);
+      double rand = uv->GetValue(0,1);
       if ((station->m_rate < station->m_nRate-1) && (rand < station->m_priTable[station->m_rate+1][station->m_power]) && station->m_power == m_nPower-1)
         {
           station->m_rate++;
@@ -478,7 +470,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
               if (station->m_priTable[station->m_rate][i] > 1)
                 station->m_priTable[station->m_rate][i] = 1;
             }
-          double rand = uv.GetValue(0,1);
+          double rand = uv->GetValue(0,1);
           if (rand < station->m_priTable[station->m_rate][station->m_power-1])
             {
               //NS_LOG_UNCOND(rand << " " << station->m_priTable[station->m_rate][station->m_power-1]);
@@ -488,7 +480,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
         }
       ResetCountersBasic (station);
     }
-  else if (bploss >= thresholds.pori && wploss < thresholds.pmtl && station->m_power > 0)
+  else if (bploss >= thresholds.ori && wploss < thresholds.mtl && station->m_power > 0)
     {
       for (uint32_t i = m_nPower-1; i >= station->m_power; i--)
         {
@@ -496,7 +488,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
           if (station->m_priTable[station->m_rate][i] > 1)
             station->m_priTable[station->m_rate][i] = 1;
         }
-     double rand = uv.GetValue(0,1);
+     double rand = uv->GetValue(0,1);
      if (rand < station->m_priTable[station->m_rate][station->m_power-1])
        {
          station->m_power--;
@@ -511,7 +503,7 @@ Prcs11aWifiManager::RunBasicAlgorithm (PrcsWifiRemoteStation *station)
 }
 
 void
-Prcs11aWifiManager::ARts (PrcsWifiRemoteStation *station)
+PrcsWifiManager::ARts (PrcsWifiRemoteStation *station)
 {
   if (!station->m_rtsOn
       && station->m_lastFrameFail)
@@ -536,112 +528,22 @@ Prcs11aWifiManager::ARts (PrcsWifiRemoteStation *station)
     }
 }
 
-struct Prcs11aWifiManager::ThresholdsItem
-Prcs11aWifiManager::GetThresholds (PrcsWifiRemoteStation *station,
+Thresholds
+PrcsWifiManager::GetThresholds (PrcsWifiRemoteStation *station,
                                 uint32_t rate) const
 {
   WifiMode mode = GetSupported (station, rate);
-  return GetThresholds (mode);
-}
-
-struct Prcs11aWifiManager::ThresholdsItem
-Prcs11aWifiManager::GetThresholds (WifiMode mode) const
-{
-  switch (mode.GetDataRate () / 1000000)
-    {
-  case 54:
-        {
-          ThresholdsItem mode54 = {
-            54000000,
-            0.0,
-            m_pmtlfor54,
-            m_ewndfor54
-          };
-          return mode54;
-        } break;
-      case 48:
-        {
-          ThresholdsItem mode48 = {
-            48000000,
-            m_porifor48,
-            m_pmtlfor48,
-            m_ewndfor48
-          };
-          return mode48;
-        } break;
-      case 36:
-        {
-          ThresholdsItem mode36 = {
-            36000000,
-            m_porifor36,
-            m_pmtlfor36,
-            m_ewndfor36
-          };
-          return mode36;
-        } break;
-      case 24:
-        {
-          ThresholdsItem mode24 = {
-            24000000,
-            m_porifor24,
-            m_pmtlfor24,
-            m_ewndfor24
-          };
-          return mode24;
-        } break;
-      case 18:
-        {
-          ThresholdsItem mode18 = {
-            18000000,
-            m_porifor18,
-            m_pmtlfor18,
-            m_ewndfor18
-          };
-          return mode18;
-        } break;
-      case 12:
-        {
-          ThresholdsItem mode12 = {
-            12000000,
-            m_porifor12,
-            m_pmtlfor12,
-            m_ewndfor12
-          };
-          return mode12;
-        } break;
-      case 9:
-        {
-          ThresholdsItem mode9 =  {
-            9000000,
-            m_porifor9,
-            m_pmtlfor9,
-            m_ewndfor9
-          };
-          return mode9;
-        } break;
-      case 6:
-        {
-          ThresholdsItem mode6 =  {
-            6000000,
-            m_porifor6,
-            0.8,
-            m_ewndfor6
-          };
-          return mode6;
-        } break;
-      }
-  NS_ASSERT_MSG (false, "Thresholds for an unknown mode are asked (" << mode << ")");
-  return ThresholdsItem ();
+  return GetThresholds (station, mode);
 }
 
 bool
-Prcs11aWifiManager::IsLowLatency (void) const
+PrcsWifiManager::IsLowLatency (void) const
 {
   return true;
 }
 
 void
-Prcs11aWifiManager::DoReportTxInit (WifiRemoteStation *st)
+PrcsWifiManager::DoReportTxInit (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   Time currtime = Simulator::Now();
@@ -673,7 +575,7 @@ Prcs11aWifiManager::DoReportTxInit (WifiRemoteStation *st)
 }
 
 void
-Prcs11aWifiManager::NotifyMaybeCcaBusyStartNow (Time duration)
+PrcsWifiManager::NotifyMaybeCcaBusyStartNow (Time duration)
 {
   m_countBusy += duration.ToDouble(Time::S);
 }
