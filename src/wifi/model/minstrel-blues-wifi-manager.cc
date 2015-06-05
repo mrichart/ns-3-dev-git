@@ -421,7 +421,7 @@ MinstrelBluesWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   SetRatePower(station);
 
-  //PrintTable (station);
+  PrintTable (station);
 }
 
 void
@@ -494,7 +494,7 @@ MinstrelBluesWifiManager::DoReportDataOk (WifiRemoteStation *st,
     }
   SetRatePower(station);
 
-  //PrintTable (station);
+  PrintTable (station);
 }
 
 void
@@ -1347,16 +1347,23 @@ MinstrelBluesWifiManager::PrintTable (MinstrelBluesWifiRemoteStation *station)
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("PrintTable=" << station);
 
-  NS_LOG_DEBUG ("index throughput ewmaProb prob success(attempt) refPower samplePower dataPower ewmaRefProb ewmaSampleProb ewmaDataProb refSuccess(refAttempt) sampleSucces(sampleAttempt) dataSuccess(dataAttempt)\n");
+  NS_LOG_DEBUG ("index throughput ewmaProb prob succ(atmpt) refPower samplePower dataPower ewmaRefProb ewmaSampleProb ewmaDataProb ref_succ(atmpt) sample_succ(atmpt) data_succ(atmpt)\n");
   for (uint32_t i = 0; i < station->m_nSupported; i++)
     {
-      NS_LOG_DEBUG( std::setw(2) << i << std::setw(10) << station->m_minstrelBluesTable[i].throughput << std::setw(10) << station->m_minstrelBluesTable[i].ewmaProb << std::setw(10) << station->m_minstrelBluesTable[i].prob
-                  << std::setw(10) << station->m_minstrelBluesTable[i].numRateSuccess << "(" << station->m_minstrelBluesTable[i].numRateAttempt << ")"
-                  << std::setw(10) << (int) station->m_minstrelBluesTable[i].refPower << std::setw(10) << (int) station->m_minstrelBluesTable[i].samplePower << std::setw(10) << (int) station->m_minstrelBluesTable[i].dataPower
-                  << std::setw(10) << station->m_minstrelBluesTable[i].ewmaRefProb << std::setw(10) << station->m_minstrelBluesTable[i].ewmaSampleProb << std::setw(10) << station->m_minstrelBluesTable[i].ewmaDataProb
-                  << std::setw(15) << station->m_minstrelBluesTable[i].numRefSuccess << "(" << station->m_minstrelBluesTable[i].numRefAttempt << ")"
-                  << std::setw(15) << station->m_minstrelBluesTable[i].numSampleSuccess << "(" << station->m_minstrelBluesTable[i].numSampleAttempt << ")"
-                  << std::setw(15) << station->m_minstrelBluesTable[i].numDataSuccess << "(" << station->m_minstrelBluesTable[i].numDataAttempt << ")"
+      NS_LOG_DEBUG( std::setw(2) << i <<
+                    std::setw(10) << station->m_minstrelBluesTable[i].throughput <<
+                    std::setw(10) << station->m_minstrelBluesTable[i].ewmaProb <<
+                    std::setw(10) << station->m_minstrelBluesTable[i].prob <<
+                    std::setw(8) << station->m_minstrelBluesTable[i].numRateSuccess << "(" << station->m_minstrelBluesTable[i].numRateAttempt << ")" <<
+                    std::setw(10) << (int) station->m_minstrelBluesTable[i].refPower <<
+                    std::setw(10) << (int) station->m_minstrelBluesTable[i].samplePower <<
+                    std::setw(10) << (int) station->m_minstrelBluesTable[i].dataPower
+                  << std::setw(10) << station->m_minstrelBluesTable[i].ewmaRefProb <<
+                  std::setw(10) << station->m_minstrelBluesTable[i].ewmaSampleProb <<
+                  std::setw(10) << station->m_minstrelBluesTable[i].ewmaDataProb <<
+                  std::setw(15) << station->m_minstrelBluesTable[i].numRefSuccess << "(" << station->m_minstrelBluesTable[i].numRefAttempt << ")" <<
+                  std::setw(15) << station->m_minstrelBluesTable[i].numSampleSuccess << "(" << station->m_minstrelBluesTable[i].numSampleAttempt << ")" <<
+                  std::setw(15) << station->m_minstrelBluesTable[i].numDataSuccess << "(" << station->m_minstrelBluesTable[i].numDataAttempt << ")"
                   <<"\n");
     }
 }
