@@ -390,6 +390,7 @@ int main (int argc, char *argv[])
   int sta2_x = 180;
   int sta2_y = 0;
   uint32_t simuTime = 100;
+  bool enablePcap = false;
 
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager", manager);
@@ -409,6 +410,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("AP2_y", "Position of AP2 in y coordinate", ap2_y);
   cmd.AddValue ("STA2_x", "Position of STA2 in x coordinate", sta2_x);
   cmd.AddValue ("STA2_y", "Position of STA2 in y coordinate", sta2_y);
+  cmd.AddValue ("enablePcap", "Enable pcap logging", enablePcap);
   cmd.Parse (argc, argv);
 
   // Define the APs
@@ -599,6 +601,11 @@ int main (int argc, char *argv[])
                        MakeCallback (PowerCallback));
       Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
                        MakeCallback (RateCallback));
+    }
+
+  if (enablePcap)
+    {
+      wifiPhy.EnablePcapAll (outputFileName);
     }
 
 

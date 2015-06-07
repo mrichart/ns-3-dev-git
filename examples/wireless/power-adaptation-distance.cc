@@ -358,6 +358,7 @@ int main (int argc, char *argv[])
   uint32_t steps = 200;
   uint32_t stepsSize = 1;
   uint32_t stepsTime = 1;
+  bool enablePcap = false;
   bool logDistance = false;
 
   CommandLine cmd;
@@ -376,6 +377,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("AP1_y", "Position of AP1 in y coordinate", ap1_y);
   cmd.AddValue ("STA1_x", "Position of STA1 in x coordinate", sta1_x);
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
+  cmd.AddValue ("enablePcap", "Enable pcap logging", enablePcap);
   cmd.AddValue ("logDistance", "Use distance instead of distance for statistics", logDistance);
   cmd.Parse (argc, argv);
 
@@ -527,6 +529,11 @@ int main (int argc, char *argv[])
                          MakeCallback (PowerCallback));
       Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
                        MakeCallback (RateCallback));
+    }
+
+  if (enablePcap)
+    {
+      wifiPhy.EnablePcapAll (outputFileName);
     }
 
   Simulator::Stop (Seconds (simuTime));
