@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2014 Universidad de la República - Uruguay
+ * Copyright (c) 2015 Universidad de la República - Uruguay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -29,7 +29,7 @@ struct RrpaaWifiRemoteStation;
 
 /**
  * \ingroup wifi
- * \brief Robust Rate and Power Adaptation Algorithm
+ * Robust Rate and Power Adaptation Algorithm
  *
  * This class implements the RRPAA algorithm as described in <i>Self Management of Power,
  * Rate and Carrier Sense Threshold for Interference Mitigation in IEEE 802.11 Netwroks</i>
@@ -42,8 +42,13 @@ struct RrpaaWifiRemoteStation;
  * Hao Yang; Songwu Lu and Vaduvur Bharghavan in Proceedings of the 12th annual
  * international conference on Mobile computing and networking (pp. 146-157). ACM.
  * http://ocw.cs.pub.ro/courses/_media/isrm/articole/rrate_adapt_mobicom06.pdf
+ *
  */
 
+/**
+ * For each rate there is a Opportunistic Rate Increase threshold,
+ * a Maximum Tolerable Loss threshold and an Evaluation Window.
+ */
 struct Thresholds
 {
   double ori;
@@ -51,6 +56,9 @@ struct Thresholds
   uint32_t ewnd;
 };
 
+/**
+ * List of thresholds for each mode.
+ */
 typedef std::vector<std::pair<Thresholds,WifiMode> > RrpaaThresholds;
 
 class RrpaaWifiManager : public WifiRemoteStationManager
@@ -103,47 +111,105 @@ private:
                           Ptr<const Packet> packet, bool normally);
   virtual bool IsLowLatency (void) const;
 
-  uint32_t GetMaxRate (RrpaaWifiRemoteStation *station);
-  uint32_t GetMinRate (RrpaaWifiRemoteStation *station);
+  /**
+   * Check for initializations.
+   * \param station The remote station.
+   */
+  void CheckInit (RrpaaWifiRemoteStation *station);
+
+  /**
+   * Check if the counter should be resetted.
+   *
+   * \param station
+   */
   void CheckTimeout (RrpaaWifiRemoteStation *station);
+  /**
+   * Find an appropriate rate and power for the given station, using
+   * a basic algorithm.
+   *
+   * \param station
+   */
   void RunBasicAlgorithm (RrpaaWifiRemoteStation *station);
+  /**
+   * Activate the use of RTS for the given station if the conditions are met.
+   *
+   * \param station
+   */
   void ARts (RrpaaWifiRemoteStation *station);
+  /**
+   * Reset the counters of the given station.
+   *
+   * \param station
+   */
   void ResetCountersBasic (RrpaaWifiRemoteStation *station);
-  Thresholds GetThresholds (RrpaaWifiRemoteStation *station, uint32_t rate) const;
 
-  /// for estimating the TxTime of a packet with a given mode
-  Time GetCalcTxTime (WifiMode mode) const;
-  void AddCalcTxTime (WifiMode mode, Time t);  /// for estimating the TxTime of a packet with a given mode
-
-  typedef std::vector<std::pair<Time,WifiMode> > TxTime;
-
-  Thresholds GetThresholds(RrpaaWifiRemoteStation *station, WifiMode mode) const;
-  void AddThresholds (RrpaaWifiRemoteStation *station, WifiMode mode, Thresholds th);
-
+  /**
+   * Initialize the thresholds internal list for the given station.
+   *
+   * \param station
+   */
   void InitThresholds (RrpaaWifiRemoteStation *station);
 
-  void CheckInit (RrpaaWifiRemoteStation *station);  ///< check for initializations
+  /**
+   * Get the thresholds for the given station and mode.
+   *
+   * \param station
+   * \param mode
+   * \return threshold
+   */
+  Thresholds GetThresholds(RrpaaWifiRemoteStation *station, WifiMode mode) const;
 
-  TxTime m_calcTxTime;  ///< to hold all the calculated TxTime for all modes
-  Time m_sifs;
-  Time m_difs;
+  /**
+   * Get the thresholds for the given station and mode index.
+   *
+   * \param station
+   * \param rate
+   * \return threshold
+   */
+  Thresholds GetThresholds (RrpaaWifiRemoteStation *station, uint32_t rate) const;
 
-  uint32_t m_frameLength;  //!< Frame length used  for calculate mode TxTime.
-  uint32_t m_ackLength;  //!< Frame length used  for calculate mode TxTime.
+  /**
+   * Get the estimated TxTime of a packet with a given mode.
+   *
+   * \param mode
+   * \return time
+   */
+  Time GetCalcTxTime (WifiMode mode) const;
+  /**
+   * Add transmission time for the given mode to an internal list.
+   *
+   * \param mode Wi-Fi mode
+   * \param t transmission time
+   */
+  void AddCalcTxTime (WifiMode mode, Time t);
 
-  bool m_basic;
-  Time m_timeout;
-  double m_alpha;
-  double m_beta;
-  double m_gamma;
+  /**
+   * typedef for a vector of a pair of Time, WifiMode.
+   * Essentially a list for WifiMode and its corresponding transmission time
+   * to transmit a reference packet.
+   */
+  typedef std::vector<std::pair<Time,WifiMode> > TxTime;
+
+  TxTime m_calcTxTime;  //!< To hold all the calculated TxTime for all modes.
+  Time m_sifs; //!< Value of SIFS configured in the device.
+  Time m_difs; //!< Value of DIFS configured in the device.
+
+  uint32_t m_frameLength;  //!< Data frame length used for calculate mode TxTime.
+  uint32_t m_ackLength;  //!< Ack frame length used for calculate mode TxTime.
+
+  bool m_basic; //!< If using the basic algorithm (without RTS/CTS).
+  Time m_timeout; //!< Timeout for the RRAA BASIC loss estimaton block.
+  double m_alpha; //!< Alpha value for RRPAA (value for calculating MTL threshold)
+  double m_beta; //!< Beta value for RRPAA (value for calculating ORI threshold).
+  double m_gamma; //!< Gamma value for RRPAA (value for calculating EWND size).
 
   /**
    * Differently form rate, power levels do not depend on the remote station.
    * The levels depend only on the physical layer of the device.
    */
   uint32_t m_minPower; //!< Minimal power level.
-  uint32_t m_maxPower; //! Maximal power level.
-  uint32_t m_nPower; //! Number of power levels.
+  uint32_t m_maxPower; //!< Maximal power level.
+  uint32_t m_nPower; //!< Number of power levels.
 
   /**
    * The trace source fired when the transmission power change
