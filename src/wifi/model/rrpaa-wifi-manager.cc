@@ -102,11 +102,21 @@ RrpaaWifiManager::GetTypeId (void)
                    DoubleValue (2),
 		    MakeDoubleAccessor (&RrpaaWifiManager::m_beta),
 		    MakeDoubleChecker<double> ())
-    .AddAttribute ("Gamma",
+    .AddAttribute ("Tau",
                    "Constant for calculating the EWND size.",
                    DoubleValue (0.015),
-                   MakeDoubleAccessor (&RrpaaWifiManager::m_gamma),
+                   MakeDoubleAccessor (&RrpaaWifiManager::m_tau),
                    MakeDoubleChecker<double> ())
+   .AddAttribute ("Gamma",
+		  "Constant for Probabilistic Decision Table decrements.",
+		  DoubleValue (2),
+		  MakeDoubleAccessor (&RrpaaWifiManager::m_gamma),
+		  MakeDoubleChecker<double> ())
+    .AddAttribute ("Delta",
+		   "Constant for Probabilistic Decision Table increments.",
+		   DoubleValue (1.0905),
+		   MakeDoubleAccessor (&RrpaaWifiManager::m_delta),
+		   MakeDoubleChecker<double> ())
     .AddTraceSource("RateChange",
                    "The transmission rate has change.",
                    MakeTraceSourceAccessor(&RrpaaWifiManager::m_rateChange),
@@ -270,7 +280,7 @@ RrpaaWifiManager::InitThresholds (RrpaaWifiRemoteStation *station)
 	  ori = nextMtl / m_beta;;
 	}
       Thresholds th;
-      th.ewnd = ceil (m_gamma / totalTxTime.GetSeconds());
+      th.ewnd = ceil (m_tau / totalTxTime.GetSeconds());
       th.ori = ori;
       th.mtl = mtl;
       station->m_thresholds.push_back(std::make_pair (th, mode));
@@ -400,14 +410,14 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
   Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
   if (bploss > thresholds.mtl && station->m_power < m_maxPower)
     {
-      station->m_priTable[station->m_rate][station->m_power] /= 2;
+      station->m_priTable[station->m_rate][station->m_power] /= m_gamma;
       station->m_power++;
       m_powerChange(station->m_power, station->m_state->m_address);
       ResetCountersBasic (station);
     }
   else if (station->m_rate != 0 && bploss > thresholds.mtl && station->m_power == m_maxPower)
     {
-      station->m_priTable[station->m_rate][station->m_power] /= 2;
+      station->m_priTable[station->m_rate][station->m_power] /= m_gamma;
       station->m_rate--;
       m_rateChange(station->m_rate, station->m_state->m_address);
       ResetCountersBasic (station);
@@ -416,7 +426,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
     {
       for (uint32_t i = 0; i <= station->m_rate; i++)
         {
-          station->m_priTable[i][station->m_power] *= 1.0905;
+          station->m_priTable[i][station->m_power] *= m_delta;
     	  if (station->m_priTable[i][station->m_power] > 1)
     	    {
     	      station->m_priTable[i][station->m_power] = 1;
@@ -432,7 +442,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
         {
     	  for (uint32_t i = m_maxPower; i > station->m_power; i--)
     	    {
-              station->m_priTable[station->m_rate][i] *= 1.0905;
+              station->m_priTable[station->m_rate][i] *= m_delta;
 	      if (station->m_priTable[station->m_rate][i] > 1)
 		{
 		  station->m_priTable[station->m_rate][i] = 1;
@@ -451,7 +461,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
     {
       for (uint32_t i = m_maxPower; i >= station->m_power; i--)
         {
-          station->m_priTable[station->m_rate][i] *= 1.0905;
+          station->m_priTable[station->m_rate][i] *= m_delta;
           if (station->m_priTable[station->m_rate][i] > 1)
             {
               station->m_priTable[station->m_rate][i] = 1;
