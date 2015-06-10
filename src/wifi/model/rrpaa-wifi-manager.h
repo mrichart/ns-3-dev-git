@@ -201,7 +201,9 @@ private:
   Time m_timeout; //!< Timeout for the RRAA BASIC loss estimaton block.
   double m_alpha; //!< Alpha value for RRPAA (value for calculating MTL threshold)
   double m_beta; //!< Beta value for RRPAA (value for calculating ORI threshold).
-  double m_gamma; //!< Gamma value for RRPAA (value for calculating EWND size).
+  double m_tau; //!< Tau value for RRPAA (value for calculating EWND size).
+  double m_gamma; //!< Gamma value for RRPAA (value for pdTable decrements).
+  double m_delta; //!< Delta value for RRPAA (value for pdTable increments).
 
   /**
    * Differently form rate, power levels do not depend on the remote station.
