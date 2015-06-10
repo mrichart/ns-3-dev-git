@@ -60,7 +60,7 @@ struct RrpaaWifiRemoteStation : public WifiRemoteStation
 
   RrpaaThresholds m_thresholds; //!< Rrpaa thresholds for this station.
 
-  double** m_priTable; //!< Probability table for power and rate changes.
+  double** m_pdTable; //!< Probability table for power and rate changes.
 };
 
 NS_OBJECT_ENSURE_REGISTERED (RrpaaWifiManager);
@@ -233,12 +233,12 @@ RrpaaWifiManager::CheckInit (RrpaaWifiRemoteStation *station)
       m_rateChange(station->m_rate, station->m_state->m_address);
       m_powerChange(station->m_power, station->m_state->m_address);
 
-      station->m_priTable = new double*[station->m_nRate];
+      station->m_pdTable = new double*[station->m_nRate];
       for (uint32_t i = 0; i < station->m_nRate; i++)
 	{
-	  station->m_priTable[i] = new double[m_nPower];
+	  station->m_pdTable[i] = new double[m_nPower];
 	  for (uint8_t j = 0; j < m_nPower; j++)
-	    station->m_priTable[i][j] = 1;
+	    station->m_pdTable[i][j] = 1;
 	}
 
       station->m_initialized = true;
@@ -410,14 +410,14 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
   Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
   if (bploss > thresholds.mtl && station->m_power < m_maxPower)
     {
-      station->m_priTable[station->m_rate][station->m_power] /= m_gamma;
+      station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
       station->m_power++;
       m_powerChange(station->m_power, station->m_state->m_address);
       ResetCountersBasic (station);
     }
   else if (station->m_rate != 0 && bploss > thresholds.mtl && station->m_power == m_maxPower)
     {
-      station->m_priTable[station->m_rate][station->m_power] /= m_gamma;
+      station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
       station->m_rate--;
       m_rateChange(station->m_rate, station->m_state->m_address);
       ResetCountersBasic (station);
@@ -426,14 +426,14 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
     {
       for (uint32_t i = 0; i <= station->m_rate; i++)
         {
-          station->m_priTable[i][station->m_power] *= m_delta;
-    	  if (station->m_priTable[i][station->m_power] > 1)
+          station->m_pdTable[i][station->m_power] *= m_delta;
+    	  if (station->m_pdTable[i][station->m_power] > 1)
     	    {
-    	      station->m_priTable[i][station->m_power] = 1;
+    	      station->m_pdTable[i][station->m_power] = 1;
     	    }
         }
       double rand = uv->GetValue(0,1);
-      if ((station->m_rate < station->m_nRate-1) && (rand < station->m_priTable[station->m_rate+1][station->m_power]) && station->m_power == m_maxPower)
+      if ((station->m_rate < station->m_nRate-1) && (rand < station->m_pdTable[station->m_rate+1][station->m_power]) && station->m_power == m_maxPower)
         {
           station->m_rate++;
           m_rateChange(station->m_rate, station->m_state->m_address);
@@ -442,14 +442,14 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
         {
     	  for (uint32_t i = m_maxPower; i > station->m_power; i--)
     	    {
-              station->m_priTable[station->m_rate][i] *= m_delta;
-	      if (station->m_priTable[station->m_rate][i] > 1)
+              station->m_pdTable[station->m_rate][i] *= m_delta;
+	      if (station->m_pdTable[station->m_rate][i] > 1)
 		{
-		  station->m_priTable[station->m_rate][i] = 1;
+		  station->m_pdTable[station->m_rate][i] = 1;
 		}
             }
     	  double rand = uv->GetValue(0,1);
-    	  if (rand < station->m_priTable[station->m_rate][station->m_power-1])
+    	  if (rand < station->m_pdTable[station->m_rate][station->m_power-1])
     	    {
     	      station->m_power--;
     	      m_powerChange(station->m_power, station->m_state->m_address);
@@ -461,14 +461,14 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
     {
       for (uint32_t i = m_maxPower; i >= station->m_power; i--)
         {
-          station->m_priTable[station->m_rate][i] *= m_delta;
-          if (station->m_priTable[station->m_rate][i] > 1)
+          station->m_pdTable[station->m_rate][i] *= m_delta;
+          if (station->m_pdTable[station->m_rate][i] > 1)
             {
-              station->m_priTable[station->m_rate][i] = 1;
+              station->m_pdTable[station->m_rate][i] = 1;
             }
         }
       double rand = uv->GetValue(0,1);
-      if (rand < station->m_priTable[station->m_rate][station->m_power-1])
+      if (rand < station->m_pdTable[station->m_rate][station->m_power-1])
 	{
 	  station->m_power--;
 	  m_powerChange(station->m_power, station->m_state->m_address);
