@@ -618,16 +618,20 @@ PowerRateAdaptationTest::TestRrpaa ()
   dev->Send (p, remoteAddress, 1);
 
   /**
-   * This will be the thresholds table:
-   * Mode	     EWND  MTL       ORI        RI-PDsuc  RD-PIfail  PDsuc
-   * OfdmRate6Mbps   8     1         0.19861    7             2
-   * OfdmRate9Mbps   11    0.397219  0.14556    10     5   7  2
-   * OfdmRate12Mbps  15    0.291121  0.189753   13     5   11 3
-   * OfdmRate18Mbps  21    0.379507  0.13624    19     8   14 3
-   * OfdmRate24Mbps  27    0.27248   0.174216   23     8   20 5
-   * OfdmRate36Mbps  37    0.348432  0.120773   33     13  25 5
-   * OfdmRate48Mbps  45    0.241546  0.0523952  43     11  35 3
-   * OfdmRate54Mbps  50    0.10479   0                 6   45
+   * This will be the thresholds table.
+   * We also calculate the needed success and failures to generate
+   * a rate or power change.
+   *
+   * Mode	     EWND  MTL       ORI        RI-PD  RD-PI  PDsuc
+   *  						succ   fails  succ fails
+   * OfdmRate6Mbps   8     1         0.19861    7      8      2
+   * OfdmRate9Mbps   11    0.397219  0.14556    10     5      7    2
+   * OfdmRate12Mbps  15    0.291121  0.189753   13     5      11   3
+   * OfdmRate18Mbps  21    0.379507  0.13624    19     8      14   3
+   * OfdmRate24Mbps  27    0.27248   0.174216   23     8      20   5
+   * OfdmRate36Mbps  37    0.348432  0.120773   33     13     25   5
+   * OfdmRate48Mbps  45    0.241546  0.0523952  43     11     35   3
+   * OfdmRate54Mbps  50    0.10479   0          50     6      45   5
    *
    */
 
@@ -802,7 +806,7 @@ PowerRateAdaptationTest::TestRrpaa ()
    * will not generate a rate decrease.
    */
 
-  for(int i = 0; i<44; i++)
+  for(int i = 0; i<49; i++)
     {
       manager->ReportDataOk(remoteAddress, &packetHeader, 0, ackMode, 0);
     }
@@ -830,7 +834,7 @@ PowerRateAdaptationTest::TestRrpaa ()
    * After 16*45 successful transmissions power is decreased to zero.
    */
 
-  for(int i = 0; i<16*45; i++)
+  for(int i = 0; i<16*50; i++)
     {
       manager->ReportDataOk(remoteAddress, &packetHeader, 0, ackMode, 0);
     }
