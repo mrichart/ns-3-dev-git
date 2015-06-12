@@ -56,7 +56,7 @@ struct RrpaaWifiRemoteStation : public WifiRemoteStation
   uint32_t m_nRate; //!< Number of supported rates.
 
   uint32_t m_rate; //!< Current rate.
-  uint8_t m_power; //!< Current rate.
+  uint8_t m_power; //!< Current power.
 
   RrpaaThresholds m_thresholds; //!< Rrpaa thresholds for this station.
 
@@ -263,10 +263,6 @@ RrpaaWifiManager::InitThresholds (RrpaaWifiRemoteStation *station)
     {
       WifiMode mode = GetSupported(station, i);
       Time totalTxTime = GetCalcTxTime(mode) + m_sifs + m_difs;
-      if (i == 0)
-	{
-	  mtl = 1;
-	}
       if (i == station->m_nRate -1)
 	{
 	  ori = 0;
@@ -278,6 +274,10 @@ RrpaaWifiManager::InitThresholds (RrpaaWifiRemoteStation *station)
 	  nextCritical = 1 - (nextTotalTxTime.GetSeconds() / totalTxTime.GetSeconds());
 	  nextMtl = m_alpha*nextCritical;
 	  ori = nextMtl / m_beta;;
+	}
+      if (i == 0)
+	{
+	  mtl = nextMtl;
 	}
       Thresholds th;
       th.ewnd = ceil (m_tau / totalTxTime.GetSeconds());
@@ -408,37 +408,43 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
   double bploss = (double) station->m_nFailed / (double) thresholds.ewnd;
   double wploss = (double) (station->m_counter + station->m_nFailed) / (double) thresholds.ewnd;
   Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
-  if (bploss > thresholds.mtl && station->m_power < m_maxPower)
+  if (bploss >= thresholds.mtl)
     {
-      station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
-      station->m_power++;
-      m_powerChange(station->m_power, station->m_state->m_address);
-      ResetCountersBasic (station);
+      if (station->m_power < m_maxPower)
+	{
+	  station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
+	  station->m_power++;
+	  m_powerChange(station->m_power, station->m_state->m_address);
+	  ResetCountersBasic (station);
+	}
+      else if (station->m_rate != 0)
+	{
+	  station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
+	  station->m_rate--;
+	  m_rateChange(station->m_rate, station->m_state->m_address);
+	  ResetCountersBasic (station);
+	}
     }
-  else if (station->m_rate != 0 && bploss > thresholds.mtl && station->m_power == m_maxPower)
+  else if (wploss <= thresholds.ori)
     {
-      station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
-      station->m_rate--;
-      m_rateChange(station->m_rate, station->m_state->m_address);
-      ResetCountersBasic (station);
-    }
-  if (wploss < thresholds.ori)
-    {
-      for (uint32_t i = 0; i <= station->m_rate; i++)
-        {
-          station->m_pdTable[i][station->m_power] *= m_delta;
-    	  if (station->m_pdTable[i][station->m_power] > 1)
-    	    {
-    	      station->m_pdTable[i][station->m_power] = 1;
-    	    }
-        }
-      double rand = uv->GetValue(0,1);
-      if ((station->m_rate < station->m_nRate-1) && (rand < station->m_pdTable[station->m_rate+1][station->m_power]) && station->m_power == m_maxPower)
-        {
-          station->m_rate++;
-          m_rateChange(station->m_rate, station->m_state->m_address);
-        }
-      else
+      if (station->m_rate < station->m_nRate-1)
+	{
+	  for (uint32_t i = 0; i <= station->m_rate; i++)
+	    {
+	      station->m_pdTable[i][station->m_power] *= m_delta;
+	      if (station->m_pdTable[i][station->m_power] > 1)
+		{
+		  station->m_pdTable[i][station->m_power] = 1;
+		}
+	    }
+	  double rand = uv->GetValue(0,1);
+	  if (rand < station->m_pdTable[station->m_rate+1][station->m_power])
+	    {
+	      station->m_rate++;
+	      m_rateChange(station->m_rate, station->m_state->m_address);
+	    }
+	}
+      else if (station->m_power > m_minPower)
         {
     	  for (uint32_t i = m_maxPower; i > station->m_power; i--)
     	    {
@@ -457,23 +463,26 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
         }
       ResetCountersBasic (station);
     }
-  else if (bploss >= thresholds.ori && wploss < thresholds.mtl && station->m_power > 0)
+  else if (bploss > thresholds.ori && wploss < thresholds.mtl)
     {
-      for (uint32_t i = m_maxPower; i >= station->m_power; i--)
-        {
-          station->m_pdTable[station->m_rate][i] *= m_delta;
-          if (station->m_pdTable[station->m_rate][i] > 1)
-            {
-              station->m_pdTable[station->m_rate][i] = 1;
-            }
-        }
-      double rand = uv->GetValue(0,1);
-      if (rand < station->m_pdTable[station->m_rate][station->m_power-1])
+      if (station->m_power > m_minPower)
 	{
-	  station->m_power--;
-	  m_powerChange(station->m_power, station->m_state->m_address);
+	  for (uint32_t i = m_maxPower; i >= station->m_power; i--)
+	    {
+	      station->m_pdTable[station->m_rate][i] *= m_delta;
+	      if (station->m_pdTable[station->m_rate][i] > 1)
+		{
+		  station->m_pdTable[station->m_rate][i] = 1;
+		}
+	    }
+	  double rand = uv->GetValue(0,1);
+	  if (rand < station->m_pdTable[station->m_rate][station->m_power-1])
+	    {
+	      station->m_power--;
+	      m_powerChange(station->m_power, station->m_state->m_address);
+	    }
+	  ResetCountersBasic (station);
 	}
-      ResetCountersBasic (station);
     }
   if (station->m_counter == 0)
     {
