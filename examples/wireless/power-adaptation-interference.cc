@@ -656,6 +656,7 @@ int main (int argc, char *argv[])
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
       manager.compare ("ns3::AparfWifiManager") == 0 ||
+      manager.compare ("ns3::RrpaaWifiManager") == 0 ||
       manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
       std::ofstream outfilePower0 (("power-" + outputFileName + "-0.plt").c_str ());
@@ -709,7 +710,8 @@ int main (int argc, char *argv[])
   gnuplot.GenerateOutput (outfileTh1);
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0)
+      manager.compare ("ns3::AparfWifiManager") == 0 ||
+      manager.compare ("ns3::RrpaaWifiManager") == 0)
     {
       std::ofstream outfilePower1 (("power-" + outputFileName + "-1.plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + "-1.eps").c_str (), "Average Transmit Power");

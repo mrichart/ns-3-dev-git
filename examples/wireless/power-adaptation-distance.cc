@@ -558,6 +558,7 @@ int main (int argc, char *argv[])
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
       manager.compare ("ns3::AparfWifiManager") == 0||
+      manager.compare ("ns3::RrpaaWifiManager") == 0||
       manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
       std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
