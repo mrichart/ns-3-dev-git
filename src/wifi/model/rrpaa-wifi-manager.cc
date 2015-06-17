@@ -79,7 +79,7 @@ RrpaaWifiManager::GetTypeId (void)
                    MakeBooleanChecker ())
     .AddAttribute ("Timeout",
                    "Timeout for the RRAA-BASIC loss estimation block (s).",
-                   TimeValue (Seconds (0.05)),
+                   TimeValue (Seconds (0.5)),
                    MakeTimeAccessor (&RrpaaWifiManager::m_timeout),
                    MakeTimeChecker ())
     .AddAttribute ("FrameLength",
@@ -311,7 +311,7 @@ RrpaaWifiManager::DoReportDataFailed (WifiRemoteStation *st)
   RrpaaWifiRemoteStation *station = (RrpaaWifiRemoteStation *) st;
   CheckInit(station);
   station->m_lastFrameFail = true;
-  //CheckTimeout (station);
+  CheckTimeout (station);
   station->m_counter--;
   station->m_nFailed++;
   RunBasicAlgorithm (station);
