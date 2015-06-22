@@ -81,7 +81,7 @@ public:
    * \param [in] power The new power.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (* PowerChangeTracedCallback)(const uint8_t power, const Mac48Address remoteAddress);
+  typedef void (*PowerChangeTracedCallback)(const uint8_t power, const Mac48Address remoteAddress);
 
   /**
    * TracedCallback signature for rate change events.
@@ -89,10 +89,9 @@ public:
    * \param [in] rate The new rate.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (* RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
+  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
 
 private:
-
   // overriden from base class
   virtual WifiRemoteStation * DoCreateStation (void) const;
   virtual void DoReportRxOk (WifiRemoteStation *station,
@@ -157,7 +156,7 @@ private:
    * \param mode
    * \return threshold
    */
-  Thresholds GetThresholds(RrpaaWifiRemoteStation *station, WifiMode mode) const;
+  Thresholds GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const;
 
   /**
    * Get the thresholds for the given station and mode index.
