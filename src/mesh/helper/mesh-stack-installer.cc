@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2012 Andrey Mazo
+ * Copyright (c) 2015, LLNL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,40 +15,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Andrey Mazo <ahippo@yandex.com>
+ * Author: Peter D. Barnes, Jr. <pdbarnes@llnl.gov>
  */
 
-#ifndef UNUSED_H
-#define UNUSED_H
+#include "ns3/mesh-stack-installer.h"
 
-/**
- * \file
- * \ingroup core
- * Definition of the NS_UNUSED NS_UNUSED_GLOBAL macros.
- */
+namespace ns3
+{
+NS_OBJECT_ENSURE_REGISTERED (MeshStack);
+  
+TypeId
+MeshStack::GetTypeId ()
+{
+  static TypeId tid = TypeId ("ns3::MeshStack")
+    .SetParent<Object> ()
+    .SetGroupName ("Mesh")
+    // No AddConstructor because this is an abstract class.
+    ;
+  return tid;
+}
 
-/**
- * \ingroup core
- * \def NS_UNUSED()
- * Mark a local variable as unused.
- */
-#ifndef NS_UNUSED
-# define NS_UNUSED(x) ((void)(x))
-#endif
-
-/**
- * \ingroup core
- * \def NS_UNUSED_GLOBAL()
- * Mark a variable at file scope as unused.
- */
-#ifndef NS_UNUSED_GLOBAL
-#if defined(__GNUC__)
-# define NS_UNUSED_GLOBAL(x) x __attribute__((unused))
-#elif defined(__LCLINT__)
-# define NS_UNUSED_GLOBAL(x) /*@unused@*/ x
-#else
-# define NS_UNUSED_GLOBAL(x) x
-#endif
-#endif
-
-#endif /* UNUSED_H */
+} // namespace ns3

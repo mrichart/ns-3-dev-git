@@ -32,7 +32,7 @@ struct RrpaaWifiRemoteStation;
  * Robust Rate and Power Adaptation Algorithm
  *
  * This class implements the RRPAA algorithm as described in <i>Self Management of Power,
- * Rate and Carrier Sense Threshold for Interference Mitigation in IEEE 802.11 Netwroks</i>
+ * Rate and Carrier Sense Threshold for Interference Mitigation in IEEE 802.11 Networks</i>
  * by Matías Richart; Jorge Visca and Javier Baliosian in Network and Service Management (CNSM),
  * 2014 10th International Conference on (pp. 264-267). IEEE.
  * http://www.cnsm-conf.org/2014/proceedings/pdf/36.pdf
@@ -117,7 +117,7 @@ private:
   void CheckInit (RrpaaWifiRemoteStation *station);
 
   /**
-   * Check if the counter should be resetted.
+   * Check if the counter should be reseted.
    *
    * \param station
    */
@@ -189,28 +189,28 @@ private:
    */
   typedef std::vector<std::pair<Time,WifiMode> > TxTime;
 
-  TxTime m_calcTxTime;  //!< To hold all the calculated TxTime for all modes.
-  Time m_sifs; //!< Value of SIFS configured in the device.
-  Time m_difs; //!< Value of DIFS configured in the device.
+  TxTime m_calcTxTime;     //!< To hold all the calculated TxTime for all modes.
+  Time m_sifs;             //!< Value of SIFS configured in the device.
+  Time m_difs;             //!< Value of DIFS configured in the device.
 
   uint32_t m_frameLength;  //!< Data frame length used for calculate mode TxTime.
-  uint32_t m_ackLength;  //!< Ack frame length used for calculate mode TxTime.
+  uint32_t m_ackLength;    //!< Ack frame length used for calculate mode TxTime.
 
-  bool m_basic; //!< If using the basic algorithm (without RTS/CTS).
-  Time m_timeout; //!< Timeout for the RRAA BASIC loss estimaton block.
-  double m_alpha; //!< Alpha value for RRPAA (value for calculating MTL threshold)
-  double m_beta; //!< Beta value for RRPAA (value for calculating ORI threshold).
-  double m_tau; //!< Tau value for RRPAA (value for calculating EWND size).
-  double m_gamma; //!< Gamma value for RRPAA (value for pdTable decrements).
-  double m_delta; //!< Delta value for RRPAA (value for pdTable increments).
+  bool m_basic;            //!< If using the basic algorithm (without RTS/CTS).
+  Time m_timeout;          //!< Timeout for the RRAA BASIC loss estimation block.
+  double m_alpha;          //!< Alpha value for RRPAA (value for calculating MTL threshold)
+  double m_beta;           //!< Beta value for RRPAA (value for calculating ORI threshold).
+  double m_tau;            //!< Tau value for RRPAA (value for calculating EWND size).
+  double m_gamma;          //!< Gamma value for RRPAA (value for pdTable decrements).
+  double m_delta;          //!< Delta value for RRPAA (value for pdTable increments).
 
   /**
    * Differently form rate, power levels do not depend on the remote station.
    * The levels depend only on the physical layer of the device.
    */
-  uint32_t m_minPower; //!< Minimal power level.
-  uint32_t m_maxPower; //!< Maximal power level.
-  uint32_t m_nPower; //!< Number of power levels.
+  uint32_t m_minPower;     //!< Minimal power level.
+  uint32_t m_maxPower;     //!< Maximal power level.
+  uint32_t m_nPower;       //!< Number of power levels.
 
   /**
    * The trace source fired when the transmission power change
