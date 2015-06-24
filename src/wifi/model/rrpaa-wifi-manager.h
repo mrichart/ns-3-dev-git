@@ -17,6 +17,7 @@
  *
  * Author: Matías Richart <mrichart@fing.edu.uy>
  */
+
 #ifndef RRPAA_WIFI_MANAGER_H
 #define RRPAA_WIFI_MANAGER_H
 
@@ -91,8 +92,9 @@ public:
    */
   typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
 
+
 private:
-  // overriden from base class
+  //overriden from base class
   virtual WifiRemoteStation * DoCreateStation (void) const;
   virtual void DoReportRxOk (WifiRemoteStation *station,
                              double rxSnr, WifiMode txMode);
@@ -154,6 +156,7 @@ private:
    *
    * \param station
    * \param mode
+   *
    * \return threshold
    */
   Thresholds GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const;
@@ -163,6 +166,7 @@ private:
    *
    * \param station
    * \param rate
+   *
    * \return threshold
    */
   Thresholds GetThresholds (RrpaaWifiRemoteStation *station, uint32_t rate) const;
@@ -171,6 +175,7 @@ private:
    * Get the estimated TxTime of a packet with a given mode.
    *
    * \param mode
+   *
    * \return time
    */
   Time GetCalcTxTime (WifiMode mode) const;
@@ -222,6 +227,6 @@ private:
   TracedCallback<uint32_t, Mac48Address> m_rateChange;
 };
 
-} // namespace ns3
+} //namespace ns3
 
 #endif /* RRPAA__WIFI_MANAGER_H */

@@ -103,7 +103,7 @@ using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("PowerAdaptationDistance");
 
-// packet size generated at the AP
+//packet size generated at the AP
 static const uint32_t packetSize = 1420;
 
 class NodeStatistics
@@ -123,6 +123,7 @@ public:
 
   Gnuplot2dDataset GetDatafile ();
   Gnuplot2dDataset GetPowerDatafile ();
+
 
 private:
   typedef std::vector<std::pair<Time,WifiMode> > TxTime;
@@ -335,7 +336,7 @@ int main (int argc, char *argv[])
 
   uint32_t simuTime = (steps + 1) * stepsTime;
 
-  // Define the APs
+  //Define the APs
   NodeContainer wifiApNodes;
   wifiApNodes.Create (1);
 
@@ -380,7 +381,7 @@ int main (int argc, char *argv[])
   wifiDevices.Add (wifiStaDevices);
   wifiDevices.Add (wifiApDevices);
 
-  // Configure the mobility.
+  //Configure the mobility.
   MobilityHelper mobility;
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   //Initial position of AP and STA
@@ -457,8 +458,8 @@ int main (int argc, char *argv[])
   gnuplot.GenerateOutput (outfile);
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0)
-      manager.compare ("ns3::RrpaaWifiManager") == 0||
+      manager.compare ("ns3::AparfWifiManager") == 0 ||
+      manager.compare ("ns3::RrpaaWifiManager") == 0)
     {
       std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");

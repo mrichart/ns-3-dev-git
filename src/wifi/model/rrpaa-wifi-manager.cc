@@ -134,6 +134,7 @@ RrpaaWifiManager::RrpaaWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
+
 RrpaaWifiManager::~RrpaaWifiManager ()
 {
   NS_LOG_FUNCTION (this);

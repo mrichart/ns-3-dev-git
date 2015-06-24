@@ -72,7 +72,7 @@ using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("PowerAdaptationInterference");
 
-// packet size generated at the AP
+//Packet size generated at the AP.
 static const uint32_t packetSize = 1420;
 
 class NodeStatistics
@@ -324,13 +324,13 @@ NodeStatistics::GetBusyTime ()
 void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " <<  (int)power);
-  // end PowerCallback
+  //end PowerCallback
 }
 
 void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
-  // end PowerCallback
+  //end PowerCallback
 }
 
 int main (int argc, char *argv[])
@@ -373,7 +373,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("STA2_y", "Position of STA2 in y coordinate", sta2_y);
   cmd.Parse (argc, argv);
 
-  // Define the APs
+  //Define the APs
   NodeContainer wifiApNodes;
   wifiApNodes.Create (2);
 
@@ -432,7 +432,7 @@ int main (int argc, char *argv[])
   wifiDevices.Add (wifiStaDevices);
   wifiDevices.Add (wifiApDevices);
 
-  // Configure the mobility.
+  //Configure the mobility.
   MobilityHelper mobility;
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   positionAlloc->Add (Vector (ap1_x, ap1_y, 0.0));
@@ -525,8 +525,7 @@ int main (int argc, char *argv[])
                    MakeCallback (RateCallback));
 
 
-  // Calculate Throughput using Flowmonitor
-  //
+  //Calculate Throughput using Flowmonitor
 
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
@@ -571,8 +570,8 @@ int main (int argc, char *argv[])
   gnuplot.GenerateOutput (outfileTh0);
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0)
-      manager.compare ("ns3::RrpaaWifiManager") == 0 ||
+      manager.compare ("ns3::AparfWifiManager") == 0 ||
+      manager.compare ("ns3::RrpaaWifiManager") == 0)
     {
       std::ofstream outfilePower0 (("power-" + outputFileName + "-0.plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + "-0.eps").c_str (), "Average Transmit Power");
