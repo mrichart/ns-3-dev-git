@@ -32,11 +32,11 @@ struct RrpaaWifiRemoteStation;
  * \ingroup wifi
  * Robust Rate and Power Adaptation Algorithm
  *
- * This class implements the RRPAA algorithm as described in <i>Self Management of Power,
- * Rate and Carrier Sense Threshold for Interference Mitigation in IEEE 802.11 Networks</i>
- * by Matías Richart; Jorge Visca and Javier Baliosian in Network and Service Management (CNSM),
- * 2014 10th International Conference on (pp. 264-267). IEEE.
- * http://www.cnsm-conf.org/2014/proceedings/pdf/36.pdf
+ * This class implements the RRPAA algorithm as described in <i>Rate, Power and Carrier-Sense 
+ * Threshold Coordinated Management for High-Density IEEE 802.11 Networks</i>
+ * by Matías Richart; Jorge Visca and Javier Baliosian in Integrated Network Management (IM),
+ * 2015 IFIP/IEEE International Symposium on (pp. 139-146). IEEE.
+ * http://dl.ifip.org/db/conf/im/im2015/137430.pdf
  *
  * RRPAA adds power control to the RRAA mechanism. RRAA is described in
  * <i>Robust rate adaptation for 802.11 wireless networks</i> by Starsky H. Y. Wong;
