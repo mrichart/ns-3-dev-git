@@ -364,6 +364,11 @@ void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
 }
 
+void CstCallback (std::string path, double cst, Mac48Address dest)
+{
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " CST " <<  cst);
+}
+
 void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
@@ -602,6 +607,11 @@ int main (int argc, char *argv[])
       Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
                        MakeCallback (RateCallback));
     }
+  if (manager.compare ("ns3::PrcsWifiManager") == 0)
+      {
+        Config::Connect ("/NodeList/[0-1]/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/CstChange",
+                         MakeCallback (CstCallback));
+      }
 
   if (enablePcap)
     {
@@ -657,6 +667,7 @@ int main (int argc, char *argv[])
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
       manager.compare ("ns3::AparfWifiManager") == 0 ||
       manager.compare ("ns3::RrpaaWifiManager") == 0 ||
+      manager.compare ("ns3::PrcsWifiManager") == 0 ||
       manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
       std::ofstream outfilePower0 (("power-" + outputFileName + "-0.plt").c_str ());
@@ -711,7 +722,8 @@ int main (int argc, char *argv[])
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
       manager.compare ("ns3::AparfWifiManager") == 0 ||
-      manager.compare ("ns3::RrpaaWifiManager") == 0)
+      manager.compare ("ns3::RrpaaWifiManager") == 0 ||
+      manager.compare ("ns3::PrcsWifiManager") == 0)
     {
       std::ofstream outfilePower1 (("power-" + outputFileName + "-1.plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + "-1.eps").c_str (), "Average Transmit Power");

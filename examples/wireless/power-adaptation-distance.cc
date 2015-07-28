@@ -336,6 +336,11 @@ void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
 }
 
+void CstCallback (std::string path, double cst, Mac48Address dest)
+{
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " CST " <<  cst);
+}
+
 void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
@@ -511,7 +516,6 @@ int main (int argc, char *argv[])
                          MakeCallback (&NodeStatistics::RateCallback, &statistics));
     }
 
-
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
                    MakeCallback (&NodeStatistics::PhyCallback, &statistics));
 
@@ -530,6 +534,11 @@ int main (int argc, char *argv[])
       Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
                        MakeCallback (RateCallback));
     }
+  if (manager.compare ("ns3::PrcsWifiManager") == 0)
+      {
+	Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/CstChange",
+			 MakeCallback (CstCallback));
+      }
 
   if (enablePcap)
     {
@@ -557,8 +566,9 @@ int main (int argc, char *argv[])
   gnuplot.GenerateOutput (outfile);
 
   if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0||
-      manager.compare ("ns3::RrpaaWifiManager") == 0||
+      manager.compare ("ns3::AparfWifiManager") == 0 ||
+      manager.compare ("ns3::RrpaaWifiManager") == 0 ||
+      manager.compare ("ns3::PrcsWifiManager") == 0 ||
       manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
       std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
