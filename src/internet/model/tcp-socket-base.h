@@ -198,10 +198,10 @@ protected:
   virtual uint32_t GetRcvBufSize (void) const;
   virtual void     SetSegSize (uint32_t size);
   virtual uint32_t GetSegSize (void) const;
-  virtual void     SetInitialSSThresh (uint32_t threshold) = 0;
-  virtual uint32_t GetInitialSSThresh (void) const = 0;
-  virtual void     SetInitialCwnd (uint32_t cwnd) = 0;
-  virtual uint32_t GetInitialCwnd (void) const = 0;
+  virtual void     SetInitialSSThresh (uint32_t threshold);
+  virtual uint32_t GetInitialSSThresh (void) const;
+  virtual void     SetInitialCwnd (uint32_t cwnd);
+  virtual uint32_t GetInitialCwnd (void) const;
   virtual void     SetConnTimeout (Time timeout);
   virtual Time     GetConnTimeout (void) const;
   virtual void     SetConnCount (uint32_t count);
@@ -293,23 +293,19 @@ protected:
   void ForwardUp6 (Ptr<Packet> packet, Ipv6Header header, uint16_t port, Ptr<Ipv6Interface> incomingInterface);
 
   /**
-   * \brief Called by TcpSocketBase::ForwardUp().
+   * \brief Called by TcpSocketBase::ForwardUp{,6}().
+   *
+   * Get a packet from L3. This is the real function to handle the
+   * incoming packet from lower layers. This is
+   * wrapped by ForwardUp() so that this function can be overloaded by daughter
+   * classes.
    *
    * \param packet the incoming packet
-   * \param header the packet's IPv4 header
-   * \param port the remote port
-   * \param incomingInterface the incoming interface
+   * \param fromAddress the address of the sender of packet
+   * \param toAddress the address of the receiver of packet (hopefully, us)
    */
-  virtual void DoForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> incomingInterface); //Get a pkt from L3
-
-  /**
-   * \brief Called by TcpSocketBase::ForwardUp6().
-   *
-   * \param packet the incoming packet
-   * \param header the packet's IPv6 header
-   * \param port the remote port
-   */
-  virtual void DoForwardUp (Ptr<Packet> packet, Ipv6Header header, uint16_t port);
+  virtual void DoForwardUp (Ptr<Packet> packet, const Address &fromAddress,
+                            const Address &toAddress);
 
   /**
    * \brief Called by the L3 protocol when it received an ICMP packet to pass on to TCP.
@@ -518,7 +514,7 @@ protected:
    * \brief Return the max possible number of unacked bytes
    * \returns the max possible number of unacked bytes
    */
-  virtual uint32_t Window (void) = 0;
+  virtual uint32_t Window (void);
 
   /**
    * \brief Return unfilled portion of window
@@ -697,7 +693,16 @@ protected:
    *
    * \param scaleFactor the sender scale factor
    */
-  virtual void ScaleSsThresh (uint8_t scaleFactor) = 0;
+  virtual void ScaleSsThresh (uint8_t scaleFactor);
+
+  /**
+   * \brief Initialize congestion window
+   *
+   * Default cWnd to 1 MSS (RFC2001, sec.1) and must
+   * not be larger than 2 MSS (RFC2581, sec.3.1). Both m_initiaCWnd and
+   * m_segmentSize are set by the attribute system in ns3::TcpSocket.
+   */
+  virtual void InitializeCwnd ();
 
 protected:
   // Counters and events
@@ -753,6 +758,12 @@ protected:
   TracedValue<uint32_t> m_rWnd;        //!< Receiver window (RCV.WND in RFC793)
   TracedValue<SequenceNumber32> m_highRxMark;     //!< Highest seqno received
   TracedValue<SequenceNumber32> m_highRxAckMark;  //!< Highest ack received
+
+  // Congestion control
+  TracedValue<uint32_t> m_cWnd;     //!< Congestion window
+  TracedValue<uint32_t> m_ssThresh; //!< Slow start threshold
+  uint32_t               m_initialCWnd;      //!< Initial cWnd value
+  uint32_t               m_initialSsThresh;  //!< Initial Slow Start Threshold value
 
   // Options
   bool    m_winScalingEnabled;    //!< Window Scale option enabled

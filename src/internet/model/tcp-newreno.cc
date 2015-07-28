@@ -49,14 +49,6 @@ TcpNewReno::GetTypeId (void)
                    BooleanValue (false),
                    MakeBooleanAccessor (&TcpNewReno::m_limitedTx),
                    MakeBooleanChecker ())
-    .AddTraceSource ("CongestionWindow",
-                     "The TCP connection's congestion window",
-                     MakeTraceSourceAccessor (&TcpNewReno::m_cWnd),
-                     "ns3::TracedValue::Uint32Callback")
-    .AddTraceSource ("SlowStartThreshold",
-                     "TCP slow start threshold (bytes)",
-                     MakeTraceSourceAccessor (&TcpNewReno::m_ssThresh),
-                     "ns3::TracedValue::Uint32Callback")
  ;
   return tid;
 }
@@ -71,10 +63,6 @@ TcpNewReno::TcpNewReno (void)
 
 TcpNewReno::TcpNewReno (const TcpNewReno& sock)
   : TcpSocketBase (sock),
-    m_cWnd (sock.m_cWnd),
-    m_ssThresh (sock.m_ssThresh),
-    m_initialCWnd (sock.m_initialCWnd),
-    m_initialSsThresh (sock.m_initialSsThresh),
     m_retxThresh (sock.m_retxThresh),
     m_inFastRec (false),
     m_limitedTx (sock.m_limitedTx)
@@ -85,32 +73,6 @@ TcpNewReno::TcpNewReno (const TcpNewReno& sock)
 
 TcpNewReno::~TcpNewReno (void)
 {
-}
-
-/* We initialize m_cWnd from this function, after attributes initialized */
-int
-TcpNewReno::Listen (void)
-{
-  NS_LOG_FUNCTION (this);
-  InitializeCwnd ();
-  return TcpSocketBase::Listen ();
-}
-
-/* We initialize m_cWnd from this function, after attributes initialized */
-int
-TcpNewReno::Connect (const Address & address)
-{
-  NS_LOG_FUNCTION (this << address);
-  InitializeCwnd ();
-  return TcpSocketBase::Connect (address);
-}
-
-/* Limit the size of in-flight data by cwnd and receiver's rxwin */
-uint32_t
-TcpNewReno::Window (void)
-{
-  NS_LOG_FUNCTION (this);
-  return std::min (m_rWnd.Get (), m_cWnd.Get ());
 }
 
 Ptr<TcpSocketBase>
@@ -218,57 +180,6 @@ TcpNewReno::Retransmit (void)
   NS_LOG_INFO ("RTO. Reset cwnd to " << m_cWnd <<
                ", ssthresh to " << m_ssThresh << ", restart from seqnum " << m_nextTxSequence);
   DoRetransmit ();                          // Retransmit the packet
-}
-
-void
-TcpNewReno::SetSegSize (uint32_t size)
-{
-  NS_ABORT_MSG_UNLESS (m_state == CLOSED, "TcpNewReno::SetSegSize() cannot change segment size after connection started.");
-  m_segmentSize = size;
-}
-
-void
-TcpNewReno::SetInitialSSThresh (uint32_t threshold)
-{
-  NS_ABORT_MSG_UNLESS (m_state == CLOSED, "TcpNewReno::SetSSThresh() cannot change initial ssThresh after connection started.");
-  m_initialSsThresh = threshold;
-}
-
-uint32_t
-TcpNewReno::GetInitialSSThresh (void) const
-{
-  return m_initialSsThresh;
-}
-
-void
-TcpNewReno::SetInitialCwnd (uint32_t cwnd)
-{
-  NS_ABORT_MSG_UNLESS (m_state == CLOSED, "TcpNewReno::SetInitialCwnd() cannot change initial cwnd after connection started.");
-  m_initialCWnd = cwnd;
-}
-
-uint32_t
-TcpNewReno::GetInitialCwnd (void) const
-{
-  return m_initialCWnd;
-}
-
-void 
-TcpNewReno::InitializeCwnd (void)
-{
-  /*
-   * Initialize congestion window, default to 1 MSS (RFC2001, sec.1) and must
-   * not be larger than 2 MSS (RFC2581, sec.3.1). Both m_initiaCWnd and
-   * m_segmentSize are set by the attribute system in ns3::TcpSocket.
-   */
-  m_cWnd = m_initialCWnd * m_segmentSize;
-  m_ssThresh = m_initialSsThresh;
-}
-
-void
-TcpNewReno::ScaleSsThresh (uint8_t scaleFactor)
-{
-  m_ssThresh <<= scaleFactor;
 }
 
 } // namespace ns3

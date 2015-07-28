@@ -150,6 +150,14 @@ TcpSocketBase::GetTypeId (void)
                      "Highest ack received from peer",
                      MakeTraceSourceAccessor (&TcpSocketBase::m_highRxAckMark),
                      "ns3::SequenceNumber32TracedValueCallback")
+    .AddTraceSource ("CongestionWindow",
+                     "The TCP connection's congestion window",
+                     MakeTraceSourceAccessor (&TcpSocketBase::m_cWnd),
+                     "ns3::TracedValue::Uint32Callback")
+    .AddTraceSource ("SlowStartThreshold",
+                     "TCP slow start threshold (bytes)",
+                     MakeTraceSourceAccessor (&TcpSocketBase::m_ssThresh),
+                     "ns3::TracedValue::Uint32Callback")
   ;
   return tid;
 }
@@ -221,6 +229,10 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_rWnd (sock.m_rWnd),
     m_highRxMark (sock.m_highRxMark),
     m_highRxAckMark (sock.m_highRxAckMark),
+    m_cWnd (sock.m_cWnd),
+    m_ssThresh (sock.m_ssThresh),
+    m_initialCWnd (sock.m_initialCWnd),
+    m_initialSsThresh (sock.m_initialSsThresh),
     m_winScalingEnabled (sock.m_winScalingEnabled),
     m_sndScaleFactor (sock.m_sndScaleFactor),
     m_rcvScaleFactor (sock.m_rcvScaleFactor),
@@ -331,10 +343,8 @@ TcpSocketBase::Bind (void)
       return -1;
     }
 
-  if (std::find(m_tcp->m_sockets.begin(), m_tcp->m_sockets.end(), this) == m_tcp->m_sockets.end())
-    {
-      m_tcp->m_sockets.push_back (this);
-    }
+  m_tcp->AddSocket(this);
+
   return SetupCallback ();
 }
 
@@ -349,10 +359,8 @@ TcpSocketBase::Bind6 (void)
       return -1;
     }
 
-  if (std::find(m_tcp->m_sockets.begin(), m_tcp->m_sockets.end(), this) == m_tcp->m_sockets.end())
-    {
-      m_tcp->m_sockets.push_back (this);
-    }
+  m_tcp->AddSocket(this);
+
   return SetupCallback ();
 }
 
@@ -421,13 +429,54 @@ TcpSocketBase::Bind (const Address &address)
       return -1;
     }
 
-  if (std::find(m_tcp->m_sockets.begin(), m_tcp->m_sockets.end(), this) == m_tcp->m_sockets.end())
-    {
-      m_tcp->m_sockets.push_back (this);
-    }
+  m_tcp->AddSocket(this);
+
   NS_LOG_LOGIC ("TcpSocketBase " << this << " got an endpoint: " << m_endPoint);
 
   return SetupCallback ();
+}
+
+void
+TcpSocketBase::InitializeCwnd (void)
+{
+  m_cWnd = m_initialCWnd * m_segmentSize;
+  m_ssThresh = m_initialSsThresh;
+}
+
+void
+TcpSocketBase::SetInitialSSThresh (uint32_t threshold)
+{
+  NS_ABORT_MSG_UNLESS (m_state == CLOSED,
+    "TcpSocketBase::SetSSThresh() cannot change initial ssThresh after connection started.");
+
+  m_initialSsThresh = threshold;
+}
+
+uint32_t
+TcpSocketBase::GetInitialSSThresh (void) const
+{
+  return m_initialSsThresh;
+}
+
+void
+TcpSocketBase::SetInitialCwnd (uint32_t cwnd)
+{
+  NS_ABORT_MSG_UNLESS (m_state == CLOSED,
+    "TcpSocketBase::SetInitialCwnd() cannot change initial cwnd after connection started.");
+
+  m_initialCWnd = cwnd;
+}
+
+uint32_t
+TcpSocketBase::GetInitialCwnd (void) const
+{
+  return m_initialCWnd;
+}
+
+void
+TcpSocketBase::ScaleSsThresh (uint8_t scaleFactor)
+{
+  m_ssThresh <<= scaleFactor;
 }
 
 /* Inherit from Socket class: Initiate connection to a remote address:port */
@@ -435,6 +484,8 @@ int
 TcpSocketBase::Connect (const Address & address)
 {
   NS_LOG_FUNCTION (this << address);
+
+  InitializeCwnd ();
 
   // If haven't do so, Bind() this socket first
   if (InetSocketAddress::IsMatchingType (address) && m_endPoint6 == 0)
@@ -507,6 +558,9 @@ int
 TcpSocketBase::Listen (void)
 {
   NS_LOG_FUNCTION (this);
+
+  InitializeCwnd ();
+
   // Linux quits EINVAL if we're not in CLOSED state, so match what they do
   if (m_state != CLOSED)
     {
@@ -891,13 +945,34 @@ void
 TcpSocketBase::ForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port,
                           Ptr<Ipv4Interface> incomingInterface)
 {
-  DoForwardUp (packet, header, port, incomingInterface);
+  NS_LOG_LOGIC ("Socket " << this << " forward up " <<
+                m_endPoint->GetPeerAddress () <<
+                ":" << m_endPoint->GetPeerPort () <<
+                " to " << m_endPoint->GetLocalAddress () <<
+                ":" << m_endPoint->GetLocalPort ());
+
+  Address fromAddress = InetSocketAddress (header.GetSource (), port);
+  Address toAddress = InetSocketAddress (header.GetDestination (),
+                                         m_endPoint->GetLocalPort ());
+
+  DoForwardUp (packet, fromAddress, toAddress);
 }
 
 void
-TcpSocketBase::ForwardUp6 (Ptr<Packet> packet, Ipv6Header header, uint16_t port, Ptr<Ipv6Interface> incomingInterface)
+TcpSocketBase::ForwardUp6 (Ptr<Packet> packet, Ipv6Header header, uint16_t port,
+                           Ptr<Ipv6Interface> incomingInterface)
 {
-  DoForwardUp (packet, header, port);
+  NS_LOG_LOGIC ("Socket " << this << " forward up " <<
+                m_endPoint6->GetPeerAddress () <<
+                ":" << m_endPoint6->GetPeerPort () <<
+                " to " << m_endPoint6->GetLocalAddress () <<
+                ":" << m_endPoint6->GetLocalPort ());
+
+  Address fromAddress = Inet6SocketAddress (header.GetSourceAddress (), port);
+  Address toAddress = Inet6SocketAddress (header.GetDestinationAddress (),
+                                          m_endPoint6->GetLocalPort ());
+
+  DoForwardUp (packet, fromAddress, toAddress);
 }
 
 void
@@ -926,21 +1001,10 @@ TcpSocketBase::ForwardIcmp6 (Ipv6Address icmpSource, uint8_t icmpTtl,
     }
 }
 
-/* The real function to handle the incoming packet from lower layers. This is
-    wrapped by ForwardUp() so that this function can be overloaded by daughter
-    classes. */
 void
-TcpSocketBase::DoForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port,
-                            Ptr<Ipv4Interface> incomingInterface)
+TcpSocketBase::DoForwardUp (Ptr<Packet> packet, const Address &fromAddress,
+                            const Address &toAddress)
 {
-  NS_LOG_LOGIC ("Socket " << this << " forward up " <<
-                m_endPoint->GetPeerAddress () <<
-                ":" << m_endPoint->GetPeerPort () <<
-                " to " << m_endPoint->GetLocalAddress () <<
-                ":" << m_endPoint->GetLocalPort ());
-  Address fromAddress = InetSocketAddress (header.GetSource (), port);
-  Address toAddress = InetSocketAddress (header.GetDestination (), m_endPoint->GetLocalPort ());
-
   // Peel off TCP header and do validity checking
   TcpHeader tcpHeader;
   uint32_t bytesRemoved = packet->RemoveHeader (tcpHeader);
@@ -1010,114 +1074,7 @@ TcpSocketBase::DoForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port
           h.SetDestinationPort (tcpHeader.GetSourcePort ());
           h.SetWindowSize (AdvertisedWindowSize ());
           AddOptions (h);
-          m_tcp->SendPacket (Create<Packet> (), h, header.GetDestination (), header.GetSource (), m_boundnetdevice);
-        }
-      break;
-    case SYN_SENT:
-      ProcessSynSent (packet, tcpHeader);
-      break;
-    case SYN_RCVD:
-      ProcessSynRcvd (packet, tcpHeader, fromAddress, toAddress);
-      break;
-    case FIN_WAIT_1:
-    case FIN_WAIT_2:
-    case CLOSE_WAIT:
-      ProcessWait (packet, tcpHeader);
-      break;
-    case CLOSING:
-      ProcessClosing (packet, tcpHeader);
-      break;
-    case LAST_ACK:
-      ProcessLastAck (packet, tcpHeader);
-      break;
-    default: // mute compiler
-      break;
-    }
-}
-
-// XXX this is duplicate code with the other DoForwardUp()
-void
-TcpSocketBase::DoForwardUp (Ptr<Packet> packet, Ipv6Header header, uint16_t port)
-{
-  NS_LOG_LOGIC ("Socket " << this << " forward up " <<
-                m_endPoint6->GetPeerAddress () <<
-                ":" << m_endPoint6->GetPeerPort () <<
-                " to " << m_endPoint6->GetLocalAddress () <<
-                ":" << m_endPoint6->GetLocalPort ());
-  Address fromAddress = Inet6SocketAddress (header.GetSourceAddress (), port);
-  Address toAddress = Inet6SocketAddress (header.GetDestinationAddress (), m_endPoint6->GetLocalPort ());
-
-  // Peel off TCP header and do validity checking
-  TcpHeader tcpHeader;
-  uint32_t bytesRemoved = packet->RemoveHeader (tcpHeader);
-  if (bytesRemoved == 0 || bytesRemoved > 60)
-    {
-      NS_LOG_ERROR ("Bytes removed: " << bytesRemoved << " invalid");
-      return; // Discard invalid packet
-    }
-
-  ReadOptions (tcpHeader);
-
-  if (tcpHeader.GetFlags () & TcpHeader::ACK)
-    {
-      EstimateRtt (tcpHeader);
-    }
-
-  // Discard fully out of range packets
-  if (packet->GetSize ()
-      && OutOfRange (tcpHeader.GetSequenceNumber (), tcpHeader.GetSequenceNumber () + packet->GetSize ()))
-    {
-      NS_LOG_LOGIC ("At state " << TcpStateName[m_state] <<
-                    " received packet of seq [" << tcpHeader.GetSequenceNumber () <<
-                    ":" << tcpHeader.GetSequenceNumber () + packet->GetSize () <<
-                    ") out of range [" << m_rxBuffer->NextRxSequence () << ":" <<
-                    m_rxBuffer->MaxRxSequence () << ")");
-      // Acknowledgement should be sent for all unacceptable packets (RFC793, p.69)
-      if (m_state == ESTABLISHED && !(tcpHeader.GetFlags () & TcpHeader::RST))
-        {
-          SendEmptyPacket (TcpHeader::ACK);
-        }
-      return;
-    }
-
-  // Update Rx window size, i.e. the flow control window
-  if (m_rWnd.Get () == 0 && tcpHeader.GetWindowSize () != 0 && m_persistEvent.IsRunning ())
-    { // persist probes end
-      NS_LOG_LOGIC (this << " Leaving zerowindow persist state");
-      m_persistEvent.Cancel ();
-    }
-
-  if (tcpHeader.GetFlags () & TcpHeader::ACK)
-    {
-      UpdateWindowSize (tcpHeader);
-    }
-
-  // TCP state machine code in different process functions
-  // C.f.: tcp_rcv_state_process() in tcp_input.c in Linux kernel
-  switch (m_state)
-    {
-    case ESTABLISHED:
-      ProcessEstablished (packet, tcpHeader);
-      break;
-    case LISTEN:
-      ProcessListen (packet, tcpHeader, fromAddress, toAddress);
-      break;
-    case TIME_WAIT:
-      // Do nothing
-      break;
-    case CLOSED:
-      // Send RST if the incoming packet is not a RST
-      if ((tcpHeader.GetFlags () & ~(TcpHeader::PSH | TcpHeader::URG)) != TcpHeader::RST)
-        { // Since m_endPoint is not configured yet, we cannot use SendRST here
-          TcpHeader h;
-          h.SetFlags (TcpHeader::RST);
-          h.SetSequenceNumber (m_nextTxSequence);
-          h.SetAckNumber (m_rxBuffer->NextRxSequence ());
-          h.SetSourcePort (tcpHeader.GetDestinationPort ());
-          h.SetDestinationPort (tcpHeader.GetSourcePort ());
-          h.SetWindowSize (AdvertisedWindowSize ());
-          AddOptions (h);
-          m_tcp->SendPacket (Create<Packet> (), h, header.GetDestinationAddress (), header.GetSourceAddress (), m_boundnetdevice);
+          m_tcp->SendPacket (Create<Packet> (), h, toAddress, fromAddress, m_boundnetdevice);
         }
       break;
     case SYN_SENT:
@@ -1181,7 +1138,7 @@ TcpSocketBase::ProcessEstablished (Ptr<Packet> packet, const TcpHeader& tcpHeade
     { // Received RST or the TCP flags is invalid, in either case, terminate this socket
       if (tcpflags != TcpHeader::RST)
         { // this must be an invalid flag, send reset
-          NS_LOG_LOGIC ("Illegal flag " << tcpflags << " received. Reset packet is sent.");
+          NS_LOG_LOGIC ("Illegal flag " << TcpHeader::FlagsToString (tcpflags) << " received. Reset packet is sent.");
           SendRST ();
         }
       CloseAndNotify ();
@@ -1306,7 +1263,8 @@ TcpSocketBase::ProcessSynSent (Ptr<Packet> packet, const TcpHeader& tcpHeader)
     { // Other in-sequence input
       if (tcpflags != TcpHeader::RST)
         { // When (1) rx of FIN+ACK; (2) rx of FIN; (3) rx of bad flags
-          NS_LOG_LOGIC ("Illegal flag " << std::hex << static_cast<uint32_t> (tcpflags) << std::dec << " received. Reset packet is sent.");
+          NS_LOG_LOGIC ("Illegal flag " << TcpHeader::FlagsToString (tcpflags) <<
+                        " received. Reset packet is sent.");
           SendRST ();
         }
       CloseAndNotify ();
@@ -1386,7 +1344,8 @@ TcpSocketBase::ProcessSynRcvd (Ptr<Packet> packet, const TcpHeader& tcpHeader,
     { // Other in-sequence input
       if (tcpflags != TcpHeader::RST)
         { // When (1) rx of SYN+ACK; (2) rx of FIN; (3) rx of bad flags
-          NS_LOG_LOGIC ("Illegal flag " << tcpflags << " received. Reset packet is sent.");
+          NS_LOG_LOGIC ("Illegal flag " << TcpHeader::FlagsToString (tcpflags) <<
+                        " received. Reset packet is sent.");
           if (m_endPoint)
             {
               m_endPoint->SetPeer (InetSocketAddress::ConvertFrom (fromAddress).GetIpv4 (),
@@ -1442,7 +1401,8 @@ TcpSocketBase::ProcessWait (Ptr<Packet> packet, const TcpHeader& tcpHeader)
     { // This is a RST or bad flags
       if (tcpflags != TcpHeader::RST)
         {
-          NS_LOG_LOGIC ("Illegal flag " << tcpflags << " received. Reset packet is sent.");
+          NS_LOG_LOGIC ("Illegal flag " << TcpHeader::FlagsToString (tcpflags) <<
+                        " received. Reset packet is sent.");
           SendRST ();
         }
       CloseAndNotify ();
@@ -1499,7 +1459,7 @@ TcpSocketBase::ProcessClosing (Ptr<Packet> packet, const TcpHeader& tcpHeader)
         }
       else if (tcpflags != TcpHeader::RST)
         { // Receive of SYN or SYN+ACK or bad flags or pure data
-          NS_LOG_LOGIC ("Illegal flag " << tcpflags << " received. Reset packet is sent.");
+          NS_LOG_LOGIC ("Illegal flag " << TcpHeader::FlagsToString (tcpflags) << " received. Reset packet is sent.");
           SendRST ();
         }
       CloseAndNotify ();
@@ -1536,7 +1496,7 @@ TcpSocketBase::ProcessLastAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
     }
   else
     { // Received a SYN or SYN+ACK or bad flags
-      NS_LOG_LOGIC ("Illegal flag " << tcpflags << " received. Reset packet is sent.");
+      NS_LOG_LOGIC ("Illegal flag " << TcpHeader::FlagsToString (tcpflags) << " received. Reset packet is sent.");
       SendRST ();
       CloseAndNotify ();
     }
@@ -1626,12 +1586,7 @@ TcpSocketBase::Destroy (void)
   m_endPoint = 0;
   if (m_tcp != 0)
     {
-      std::vector<Ptr<TcpSocketBase> >::iterator it
-        = std::find (m_tcp->m_sockets.begin (), m_tcp->m_sockets.end (), this);
-      if (it != m_tcp->m_sockets.end ())
-        {
-          m_tcp->m_sockets.erase (it);
-        }
+      m_tcp->RemoveSocket(this);
     }
   NS_LOG_LOGIC (this << " Cancelled ReTxTimeout event which was set to expire at " <<
                 (Simulator::Now () + Simulator::GetDelayLeft (m_retxEvent)).GetSeconds ());
@@ -1647,12 +1602,7 @@ TcpSocketBase::Destroy6 (void)
   m_endPoint6 = 0;
   if (m_tcp != 0)
     {
-      std::vector<Ptr<TcpSocketBase> >::iterator it
-        = std::find (m_tcp->m_sockets.begin (), m_tcp->m_sockets.end (), this);
-      if (it != m_tcp->m_sockets.end ())
-        {
-          m_tcp->m_sockets.erase (it);
-        }
+      m_tcp->RemoveSocket(this);
     }
   NS_LOG_LOGIC (this << " Cancelled ReTxTimeout event which was set to expire at " <<
                 (Simulator::Now () + Simulator::GetDelayLeft (m_retxEvent)).GetSeconds ());
@@ -1798,12 +1748,7 @@ TcpSocketBase::DeallocateEndPoint (void)
       m_endPoint->SetDestroyCallback (MakeNullCallback<void> ());
       m_tcp->DeAllocate (m_endPoint);
       m_endPoint = 0;
-      std::vector<Ptr<TcpSocketBase> >::iterator it
-        = std::find (m_tcp->m_sockets.begin (), m_tcp->m_sockets.end (), this);
-      if (it != m_tcp->m_sockets.end ())
-        {
-          m_tcp->m_sockets.erase (it);
-        }
+      m_tcp->RemoveSocket(this);
     }
   else if (m_endPoint6 != 0)
     {
@@ -1811,12 +1756,7 @@ TcpSocketBase::DeallocateEndPoint (void)
       m_endPoint6->SetDestroyCallback (MakeNullCallback<void> ());
       m_tcp->DeAllocate (m_endPoint6);
       m_endPoint6 = 0;
-      std::vector<Ptr<TcpSocketBase> >::iterator it
-        = std::find (m_tcp->m_sockets.begin (), m_tcp->m_sockets.end (), this);
-      if (it != m_tcp->m_sockets.end ())
-        {
-          m_tcp->m_sockets.erase (it);
-        }
+      m_tcp->RemoveSocket(this);
     }
 }
 
@@ -1905,7 +1845,7 @@ TcpSocketBase::CompleteFork (Ptr<Packet> p, const TcpHeader& h,
                                       Inet6SocketAddress::ConvertFrom (fromAddress).GetPort ());
       m_endPoint = 0;
     }
-  m_tcp->m_sockets.push_back (this);
+  m_tcp->AddSocket(this);
 
   // Change the cloned socket from LISTEN state to SYN_RCVD
   NS_LOG_INFO ("LISTEN -> SYN_RCVD");
@@ -2034,7 +1974,8 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
                     (Simulator::Now () + m_rto.Get ()).GetSeconds () );
       m_retxEvent = Simulator::Schedule (m_rto, &TcpSocketBase::ReTxTimeout, this);
     }
-  NS_LOG_LOGIC ("Send packet via TcpL4Protocol with flags 0x" << std::hex << static_cast<uint32_t> (flags) << std::dec);
+  NS_LOG_LOGIC ("Send packet via TcpL4Protocol with flags" <<
+                TcpHeader::FlagsToString (flags));
   if (m_endPoint)
     {
       m_tcp->SendPacket (p, header, m_endPoint->GetLocalAddress (),
@@ -2137,6 +2078,13 @@ TcpSocketBase::BytesInFlight ()
 {
   NS_LOG_FUNCTION (this);
   return m_highTxMark.Get () - m_txBuffer->HeadSequence ();
+}
+
+uint32_t
+TcpSocketBase::Window (void)
+{
+  NS_LOG_FUNCTION (this);
+  return std::min (m_rWnd.Get (), m_cWnd.Get ());
 }
 
 uint32_t

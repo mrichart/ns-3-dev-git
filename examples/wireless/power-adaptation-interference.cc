@@ -261,10 +261,10 @@ NodeStatistics::CheckStatistics (double time)
 {
   double mbs = ((m_bytesTotal * 8.0) / (1000000 * time));
   m_bytesTotal = 0;
-  double atm = totalEnergy / time;
+  double atp = totalEnergy / time;
   totalEnergy = 0;
   totalTime = 0;
-  m_output_power.Add ((Simulator::Now ()).GetSeconds (), atm);
+  m_output_power.Add ((Simulator::Now ()).GetSeconds (), atp);
   m_output.Add ((Simulator::Now ()).GetSeconds (), mbs);
 
   m_output_idle.Add ((Simulator::Now ()).GetSeconds (), idleTime * 100);

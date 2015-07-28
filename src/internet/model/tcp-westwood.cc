@@ -55,13 +55,6 @@ TcpWestwood::GetTypeId (void)
       .SetParent<TcpSocketBase>()
       .SetGroupName ("Internet")
       .AddConstructor<TcpWestwood>()
-      .AddTraceSource("CongestionWindow", "The TCP connection's congestion window",
-                      MakeTraceSourceAccessor(&TcpWestwood::m_cWnd),
-                      "ns3::TracedValue::Uint32Callback")
-      .AddTraceSource ("SlowStartThreshold",
-                       "TCP slow start threshold (bytes)",
-                       MakeTraceSourceAccessor (&TcpWestwood::m_ssThresh),
-                       "ns3::TracedValue::Uint32Callback")
       .AddAttribute("FilterType", "Use this to choose no filter or Tustin's approximation filter",
                     EnumValue(TcpWestwood::TUSTIN), MakeEnumAccessor(&TcpWestwood::m_fType),
                     MakeEnumChecker(TcpWestwood::NONE, "None", TcpWestwood::TUSTIN, "Tustin"))
@@ -92,10 +85,6 @@ TcpWestwood::TcpWestwood (void) :
 
 TcpWestwood::TcpWestwood (const TcpWestwood& sock) :
   TcpSocketBase(sock),
-  m_cWnd(sock.m_cWnd),
-  m_ssThresh(sock.m_ssThresh),
-  m_initialCWnd(sock.m_initialCWnd),
-  m_initialSsThresh (sock.m_initialSsThresh),
   m_inFastRec(false),
   m_currentBW(sock.m_currentBW),
   m_lastSampleBW(sock.m_lastSampleBW),
@@ -115,29 +104,6 @@ TcpWestwood::TcpWestwood (const TcpWestwood& sock) :
 
 TcpWestwood::~TcpWestwood (void)
 {
-}
-
-int
-TcpWestwood::Listen (void)
-{
-  NS_LOG_FUNCTION (this);
-  InitializeCwnd();
-  return TcpSocketBase::Listen();
-}
-
-int
-TcpWestwood::Connect (const Address & address)
-{
-  NS_LOG_FUNCTION (this << address);
-  InitializeCwnd();
-  return TcpSocketBase::Connect(address);
-}
-
-uint32_t
-TcpWestwood::Window (void)
-{
-  NS_LOG_FUNCTION (this);
-  return std::min (m_rWnd.Get (), m_cWnd.Get ());
 }
 
 Ptr<TcpSocketBase>
@@ -379,61 +345,5 @@ TcpWestwood::Filtering ()
       m_lastBW = m_currentBW;
     }
 }
-
-void
-TcpWestwood::SetSegSize (uint32_t size)
-{
-  NS_ABORT_MSG_UNLESS(m_state == CLOSED, "TcpWestwood::SetSegSize() cannot change segment size after connection started.");
-  m_segmentSize = size;
-}
-
-void
-TcpWestwood::SetInitialSSThresh (uint32_t threshold)
-{
-  NS_LOG_FUNCTION (this);
-  NS_ABORT_MSG_UNLESS (m_state == CLOSED, "TcpWestwood::SetSSThresh() cannot change initial ssThresh after connection started.");
-  m_initialSsThresh = threshold;
-}
-
-uint32_t
-TcpWestwood::GetInitialSSThresh (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return m_initialSsThresh;
-}
-
-void
-TcpWestwood::SetInitialCwnd (uint32_t cwnd)
-{
-  NS_ABORT_MSG_UNLESS(m_state == CLOSED, "TcpWestwood::SetInitialCwnd() cannot change initial cwnd after connection started.");
-  m_initialCWnd = cwnd;
-}
-
-uint32_t
-TcpWestwood::GetInitialCwnd (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return m_initialCWnd;
-}
-
-void
-TcpWestwood::InitializeCwnd(void)
-{
-  NS_LOG_FUNCTION (this);
-  /*
-   * Initialize congestion window, default to 1 MSS (RFC2001, sec.1) and must
-   * not be larger than 2 MSS (RFC2581, sec.3.1). Both m_initiaCWnd and
-   * m_segmentSize are set by the attribute system in ns3::TcpSocket.
-   */
-  m_cWnd = m_initialCWnd * m_segmentSize;
-  m_ssThresh = m_initialSsThresh;
-}
-
-void
-TcpWestwood::ScaleSsThresh (uint8_t scaleFactor)
-{
-  m_ssThresh <<= scaleFactor;
-}
-
 
 } // namespace ns3

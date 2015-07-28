@@ -251,7 +251,7 @@ def _check_compilation_flag(conf, flag, mode='cxx', linkflags=None):
         env.append_value("LINKFLAGS", linkflags)
 
     try:
-        retval = conf.check(compiler=mode, fragment='int main() { return 0; }', features='c')
+        retval = conf.check(compiler=mode, fragment='int main() { return 0; }', features='c', env=env)
     except Errors.ConfigurationError:
         ok = False
     else:
@@ -469,13 +469,6 @@ def configure(conf):
         else:
             why_not_examples = "defaults to disabled"
 
-    env['EXAMPLE_DIRECTORIES'] = []
-    for dir in os.listdir('examples'):
-        if dir.startswith('.') or dir == 'CVS':
-            continue
-        if os.path.isdir(os.path.join('examples', dir)):
-            env['EXAMPLE_DIRECTORIES'].append(dir)
-
     conf.report_optional_feature("ENABLE_EXAMPLES", "Build examples", env['ENABLE_EXAMPLES'], 
                                  why_not_examples)
 
@@ -631,32 +624,38 @@ def register_ns3_script(bld, name, dependencies=('core',)):
 def add_examples_programs(bld):
     env = bld.env
     if env['ENABLE_EXAMPLES']:
-        for dir in os.listdir('examples'):
-            if dir.startswith('.') or dir == 'CVS':
-                continue
-            if os.path.isdir(os.path.join('examples', dir)):
-                bld.recurse(os.path.join('examples', dir))
+        try:
+            for dir in os.listdir('examples'):
+                if dir.startswith('.') or dir == 'CVS':
+                    continue
+                if os.path.isdir(os.path.join('examples', dir)):
+                    bld.recurse(os.path.join('examples', dir))
+        except OSError:
+            return
 
 def add_scratch_programs(bld):
     all_modules = [mod[len("ns3-"):] for mod in bld.env['NS3_ENABLED_MODULES']]
-    for filename in os.listdir("scratch"):
-        if filename.startswith('.') or filename == 'CVS':
-	    continue
-        if os.path.isdir(os.path.join("scratch", filename)):
-            obj = bld.create_ns3_program(filename, all_modules)
-            obj.path = obj.path.find_dir('scratch').find_dir(filename)
-            obj.source = obj.path.ant_glob('*.cc')
-            obj.target = filename
-            obj.name = obj.target
-            obj.install_path = None
-        elif filename.endswith(".cc"):
-            name = filename[:-len(".cc")]
-            obj = bld.create_ns3_program(name, all_modules)
-            obj.path = obj.path.find_dir('scratch')
-            obj.source = filename
-            obj.target = name
-            obj.name = obj.target
-            obj.install_path = None
+    try:
+        for filename in os.listdir("scratch"):
+            if filename.startswith('.') or filename == 'CVS':
+                continue
+            if os.path.isdir(os.path.join("scratch", filename)):
+                obj = bld.create_ns3_program(filename, all_modules)
+                obj.path = obj.path.find_dir('scratch').find_dir(filename)
+                obj.source = obj.path.ant_glob('*.cc')
+                obj.target = filename
+                obj.name = obj.target
+                obj.install_path = None
+            elif filename.endswith(".cc"):
+                name = filename[:-len(".cc")]
+                obj = bld.create_ns3_program(name, all_modules)
+                obj.path = obj.path.find_dir('scratch')
+                obj.source = filename
+                obj.target = name
+                obj.name = obj.target
+                obj.install_path = None
+    except OSError:
+        return
 
 def _get_all_task_gen(self):
     for group in self.groups:
@@ -1120,7 +1119,7 @@ def _doxygen(bld):
 
     _getVersion()
     doxygen_config = os.path.join('doc', 'doxygen.conf')
-    if subprocess.Popen([env['DOXYGEN'], doxygen_config]).wait():
+    if subprocess.Popen(env['DOXYGEN'] + [doxygen_config]).wait():
         Logs.error("Doxygen build returned an error.")
         raise SystemExit(1)
 
