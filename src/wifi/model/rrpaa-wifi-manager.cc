@@ -37,30 +37,30 @@ NS_LOG_COMPONENT_DEFINE ("RrpaaWifiManager");
 namespace ns3 {
 
 /**
- * Hold per-remote-station state for APARF Wifi manager.
+ * Hold per-remote-station state for RRPAA Wifi manager.
  *
  * This struct extends from WifiRemoteStation struct to hold additional
  * information required by the APARF Wifi manager
  */
 struct RrpaaWifiRemoteStation : public WifiRemoteStation
 {
-  uint32_t m_counter; //!< Counter for transmission attempts.
-  uint32_t m_nFailed; //!< Number of failed transmission attempts.
-  uint32_t m_rtsWnd; //!< Window size for the ARts mechanism.
-  uint32_t m_rtsCounter; //!< Counter for rts transmission attempts.
-  Time m_lastReset; //!< Time of the last reset.
-  bool m_rtsOn; //!< Check if ARts mechanism is on.
-  bool m_lastFrameFail; //!< Flag if the last frame sent has failed.
-  bool m_initialized;  //!< For initializing variables.
+  uint32_t m_counter;            //!< Counter for transmission attempts.
+  uint32_t m_nFailed;            //!< Number of failed transmission attempts.
+  uint32_t m_rtsWnd;             //!< Window size for the ARts mechanism.
+  uint32_t m_rtsCounter;         //!< Counter for rts transmission attempts.
+  Time m_lastReset;              //!< Time of the last reset.
+  bool m_rtsOn;                  //!< Check if ARts mechanism is on.
+  bool m_lastFrameFail;          //!< Flag if the last frame sent has failed.
+  bool m_initialized;            //!< For initializing variables.
 
-  uint32_t m_nRate; //!< Number of supported rates.
+  uint32_t m_nRate;              //!< Number of supported rates.
 
-  uint32_t m_rate; //!< Current rate.
-  uint8_t m_power; //!< Current power.
+  uint32_t m_rate;               //!< Current rate.
+  uint8_t m_power;               //!< Current power.
 
-  RrpaaThresholds m_thresholds; //!< Rrpaa thresholds for this station.
+  RrpaaThresholds m_thresholds;  //!< Rrpaa thresholds for this station.
 
-  double** m_pdTable; //!< Probability table for power and rate changes.
+  double** m_pdTable;            //!< Probability table for power and rate changes.
 };
 
 NS_OBJECT_ENSURE_REGISTERED (RrpaaWifiManager);
@@ -224,11 +224,11 @@ RrpaaWifiManager::CheckInit (RrpaaWifiRemoteStation *station)
   NS_LOG_FUNCTION (this << station);
   if (!station->m_initialized)
     {
-      // Note: we appear to be doing late initialization of the table
-      // to make sure that the set of supported rates has been initialized
-      // before we perform our own initialization.
+      //Note: we appear to be doing late initialization of the table
+      //to make sure that the set of supported rates has been initialized
+      //before we perform our own initialization.
       station->m_nRate = GetNSupported (station);
-      // Initialize at minimal rate and maximal power.
+      //Initialize at minimal rate and maximal power.
       station->m_rate = 0;
       station->m_power = m_maxPower;
       m_rateChange (station->m_rate, station->m_state->m_address);
