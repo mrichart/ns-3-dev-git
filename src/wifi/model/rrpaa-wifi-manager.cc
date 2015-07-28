@@ -365,7 +365,7 @@ RrpaaWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
   NS_LOG_FUNCTION (this << st << size);
   RrpaaWifiRemoteStation *station = (RrpaaWifiRemoteStation *) st;
   CheckInit (station);
-  return WifiTxVector (GetSupported (station, station->m_rate), station->m_power, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetStbc (station));
+  return WifiTxVector (GetSupported (station, station->m_rate), station->m_power, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetAggregation (station), GetStbc (station));
 }
 WifiTxVector
 RrpaaWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
@@ -373,7 +373,7 @@ RrpaaWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
   NS_LOG_FUNCTION (this << st);
   RrpaaWifiRemoteStation *station = (RrpaaWifiRemoteStation *) st;
   CheckInit (station);
-  return WifiTxVector (GetSupported (st, 0), GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetStbc (station));
+  return WifiTxVector (GetSupported (st, 0), GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetAggregation (station), GetStbc (station));
 }
 
 bool
