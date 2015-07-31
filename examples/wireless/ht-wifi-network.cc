@@ -266,8 +266,7 @@ int main (int argc, char *argv[])
           datarate = 150;
         }
 
-      wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager","DataMode", DataRate,
-                                    "ControlMode", DataRate);
+      wifi.SetRemoteStationManager ("ns3::MinstrelHtWifiManager");
       mac.SetType ("ns3::StaWifiMac",
                    "Ssid", SsidValue (ssid),
                    "ActiveProbing", BooleanValue (false));

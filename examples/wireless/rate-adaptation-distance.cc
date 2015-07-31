@@ -176,11 +176,12 @@ int main (int argc, char *argv[])
   wifiStaNodes.Create (1);
 
   WifiHelper wifi = WifiHelper::Default ();
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
-  NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+  HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+  wifiPhy.Set("ChannelBonding", BooleanValue(true));
+  wifiPhy.Set("ShortGuardEnabled", BooleanValue(true));
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
-
   wifiPhy.SetChannel (wifiChannel.Create ());
 
   NetDeviceContainer wifiApDevices;
@@ -239,7 +240,7 @@ int main (int argc, char *argv[])
   ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
 
   OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
-  onoff.SetConstantRate (DataRate ("54Mb/s"), 1420);
+  onoff.SetConstantRate (DataRate ("200Mb/s"), 1420);
   onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   ApplicationContainer apps_source = onoff.Install (wifiApNodes.Get (0));
