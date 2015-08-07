@@ -36,6 +36,7 @@
 #include "wifi-mode.h"
 #include "wifi-preamble.h"
 #include "wifi-phy-standard.h"
+#include "wifi-phy-power-limitation.h"
 #include "interference-helper.h"
 
 namespace ns3 {
@@ -303,6 +304,8 @@ public:
 
   virtual void ConfigureStandard (enum WifiPhyStandard standard);
 
+  virtual void ConfigurePowerLimitation (enum WifiPhyPowerLimitation powerLimitation);
+
   /**
    * Assign a fixed random variable stream number to the random variables
    * used by this model.  Return the number of streams (possibly zero) that
@@ -446,6 +449,8 @@ private:
    * supported rates for 802.11n standard.
    */
   void Configure80211n (void);
+
+  void ConfigureDCMA_82_80211a (void);
   /**
    * Return the energy detection threshold.
    *
@@ -492,7 +497,7 @@ private:
    *
    * \return the transmission power in dBm at the given power level
    */
-  double GetPowerDbm (uint8_t power) const;
+  double GetPowerDbm (uint8_t power, WifiMode mode) const;
   /**
    * The last bit of the packet has arrived.
    *
@@ -564,6 +569,8 @@ private:
    * mandatory rates".
    */
   WifiModeList m_deviceRateSet;
+
+  WifiPowerLimitationList m_devicePowerLimitation;
 
   std::vector<uint32_t> m_bssMembershipSelectorSet;
   std::vector<uint8_t> m_deviceMcsSet;

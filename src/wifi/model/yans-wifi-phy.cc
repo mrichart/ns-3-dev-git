@@ -253,6 +253,24 @@ YansWifiPhy::ConfigureStandard (enum WifiPhyStandard standard)
 }
 
 void
+YansWifiPhy::ConfigurePowerLimitation (enum WifiPhyPowerLimitation powerLimitation)
+{
+  NS_LOG_FUNCTION (this << powerLimitation);
+  switch (powerLimitation)
+    {
+    case WIFI_PHY_POWER_LIMITATION_WISTRON_DCMA_82_80211a:
+      ConfigureDCMA_82_80211a ();
+      break;
+    case WIFI_PHY_POWER_LIMITATION_WISTRON_CM9_80211a:
+      ConfigureDCMA_82_80211a ();
+      break;
+    default:
+      NS_ASSERT (false);
+      break;
+    }
+}
+
+void
 YansWifiPhy::SetRxNoiseFigure (double noiseFigureDb)
 {
   NS_LOG_FUNCTION (this << noiseFigureDb);
@@ -792,8 +810,8 @@ YansWifiPhy::SendPacket (Ptr<const Packet> packet, WifiTxVector txVector, WifiPr
   aMpdu.packetType = packetType;
   aMpdu.referenceNumber = mpduReferenceNumber;
   NotifyMonitorSniffTx (packet, (uint16_t)GetChannelFrequencyMhz (), GetChannelNumber (), dataRate500KbpsUnits, preamble, txVector, aMpdu);
-  m_state->SwitchToTx (txDuration, packet, GetPowerDbm (txVector.GetTxPowerLevel ()), txVector, preamble);
-  m_channel->Send (this, packet, GetPowerDbm (txVector.GetTxPowerLevel ()) + m_txGainDb, txVector, preamble, aMpdu, txDuration);
+  m_state->SwitchToTx (txDuration, packet, GetPowerDbm (txVector.GetTxPowerLevel (), txVector.GetMode()), txVector, preamble);
+  m_channel->Send (this, packet, GetPowerDbm (txVector.GetTxPowerLevel (), txVector.GetMode()) + m_txGainDb, txVector, preamble, aMpdu, txDuration);
 }
 
 uint32_t
@@ -959,6 +977,30 @@ YansWifiPhy::Configure80211n (void)
 }
 
 void
+YansWifiPhy::ConfigureDCMA_82_80211a (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_channelStartingFrequency = 5e3; //5.000 GHz
+
+  WifiPowerLimitationElement mode6 = {WifiPhy::GetOfdmRate6Mbps (),0,17};
+  m_devicePowerLimitation.push_back (mode6);
+  WifiPowerLimitationElement mode9 = {WifiPhy::GetOfdmRate9Mbps (),0,17};
+  m_devicePowerLimitation.push_back (mode9);
+  WifiPowerLimitationElement mode12 = {WifiPhy::GetOfdmRate12Mbps (),0,17};
+  m_devicePowerLimitation.push_back (mode12);
+  WifiPowerLimitationElement mode18 = {WifiPhy::GetOfdmRate18Mbps (),0,17};
+  m_devicePowerLimitation.push_back (mode18);
+  WifiPowerLimitationElement mode24 = {WifiPhy::GetOfdmRate24Mbps (),0,17};
+  m_devicePowerLimitation.push_back (mode24);
+  WifiPowerLimitationElement mode36 = {WifiPhy::GetOfdmRate6Mbps (),0,15};
+  m_devicePowerLimitation.push_back (mode36);
+  WifiPowerLimitationElement mode48 = {WifiPhy::GetOfdmRate48Mbps (),0,13};
+  m_devicePowerLimitation.push_back (mode48);
+  WifiPowerLimitationElement mode54 = {WifiPhy::GetOfdmRate54Mbps (),0,12};
+  m_devicePowerLimitation.push_back (mode54);
+}
+
+void
 YansWifiPhy::RegisterListener (WifiPhyListener *listener)
 {
   m_state->RegisterListener (listener);
@@ -1063,7 +1105,7 @@ YansWifiPhy::GetEdThresholdW (void) const
 }
 
 double
-YansWifiPhy::GetPowerDbm (uint8_t power) const
+YansWifiPhy::GetPowerDbm (uint8_t power, WifiMode mode) const
 {
   NS_ASSERT (m_txPowerBaseDbm <= m_txPowerEndDbm);
   NS_ASSERT (m_nTxPower > 0);
@@ -1077,6 +1119,17 @@ YansWifiPhy::GetPowerDbm (uint8_t power) const
       NS_ASSERT_MSG (m_txPowerBaseDbm == m_txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
       dbm = m_txPowerBaseDbm;
     }
+  uint8_t maxPower = m_txPowerEndDbm;
+  WifiPowerLimitationList::const_iterator i;
+  for (i = m_devicePowerLimitation.begin (); i != m_devicePowerLimitation.end (); i++)
+   {
+     if (i->mode == mode)
+       {
+	 maxPower = i->powerLimit;
+	 break;
+       }
+   }
+  dbm = dbm < maxPower ? dbm : maxPower;
   return dbm;
 }
 

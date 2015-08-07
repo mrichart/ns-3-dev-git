@@ -101,6 +101,7 @@ def build(bld):
         'model/ssid.h',
         'model/wifi-preamble.h',
         'model/wifi-phy-standard.h',
+        'model/wifi-phy-power-limitation.h',
         'model/yans-wifi-phy.h',
         'model/yans-wifi-channel.h',
         'model/wifi-phy.h',
