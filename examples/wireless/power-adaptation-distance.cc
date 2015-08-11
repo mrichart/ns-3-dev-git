@@ -345,6 +345,7 @@ int main (int argc, char *argv[])
 
   WifiHelper wifi = WifiHelper::Default ();
   wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
+  wifi.SetPowerLimitation(WIFI_PHY_POWER_LIMITATION_WISTRON_DCMA_82_80211a);
   NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
