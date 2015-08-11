@@ -20,6 +20,8 @@
 #ifndef WIFI_PHY_POWER_LIMITATION_H
 #define WIFI_PHY_POWER_LIMITATION_H
 
+#include "wifi-mode.h"
+
 namespace ns3 {
 
 

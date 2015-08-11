@@ -449,8 +449,22 @@ private:
    * supported rates for 802.11n standard.
    */
   void Configure80211n (void);
-
+  /**
+   * Configure YansWifiPhy with the power limitation model
+   * from the Wistron DCMA_82 card for the 802.11a standard
+   * based on measurements from: <i>A Measurement-Based
+   * Joint Power and Rate Controller for IEEE 802.11 Networks<i>
+   * by Thomas Huehn.
+   */
   void ConfigureDCMA_82_80211a (void);
+  /**
+   * Configure YansWifiPhy with the power limitation model
+   * from the Wistron CM9 card for the 802.11a standard
+   * based on measurements from: <i>A Measurement-Based
+   * Joint Power and Rate Controller for IEEE 802.11 Networks<i>
+   * by Thomas Huehn.
+   */
+  void ConfigureCM9_80211a (void);
   /**
    * Return the energy detection threshold.
    *

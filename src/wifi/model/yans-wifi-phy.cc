@@ -980,7 +980,6 @@ void
 YansWifiPhy::ConfigureDCMA_82_80211a (void)
 {
   NS_LOG_FUNCTION (this);
-  m_channelStartingFrequency = 5e3; //5.000 GHz
 
   WifiPowerLimitationElement mode6 = {WifiPhy::GetOfdmRate6Mbps (),0,17};
   m_devicePowerLimitation.push_back (mode6);
@@ -997,6 +996,29 @@ YansWifiPhy::ConfigureDCMA_82_80211a (void)
   WifiPowerLimitationElement mode48 = {WifiPhy::GetOfdmRate48Mbps (),0,13};
   m_devicePowerLimitation.push_back (mode48);
   WifiPowerLimitationElement mode54 = {WifiPhy::GetOfdmRate54Mbps (),0,12};
+  m_devicePowerLimitation.push_back (mode54);
+}
+
+void
+YansWifiPhy::ConfigureCM9_80211a (void)
+{
+  NS_LOG_FUNCTION (this);
+
+  WifiPowerLimitationElement mode6 = {WifiPhy::GetOfdmRate6Mbps (),0,23};
+  m_devicePowerLimitation.push_back (mode6);
+  WifiPowerLimitationElement mode9 = {WifiPhy::GetOfdmRate9Mbps (),0,23};
+  m_devicePowerLimitation.push_back (mode9);
+  WifiPowerLimitationElement mode12 = {WifiPhy::GetOfdmRate12Mbps (),0,23};
+  m_devicePowerLimitation.push_back (mode12);
+  WifiPowerLimitationElement mode18 = {WifiPhy::GetOfdmRate18Mbps (),0,23};
+  m_devicePowerLimitation.push_back (mode18);
+  WifiPowerLimitationElement mode24 = {WifiPhy::GetOfdmRate24Mbps (),0,23};
+  m_devicePowerLimitation.push_back (mode24);
+  WifiPowerLimitationElement mode36 = {WifiPhy::GetOfdmRate6Mbps (),0,22};
+  m_devicePowerLimitation.push_back (mode36);
+  WifiPowerLimitationElement mode48 = {WifiPhy::GetOfdmRate48Mbps (),0,19};
+  m_devicePowerLimitation.push_back (mode48);
+  WifiPowerLimitationElement mode54 = {WifiPhy::GetOfdmRate54Mbps (),0,18};
   m_devicePowerLimitation.push_back (mode54);
 }
 

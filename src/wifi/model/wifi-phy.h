@@ -30,6 +30,7 @@
 #include "wifi-mode.h"
 #include "wifi-preamble.h"
 #include "wifi-phy-standard.h"
+#include "wifi-phy-power-limitation.h"
 #include "ns3/traced-callback.h"
 #include "wifi-tx-vector.h"
 
@@ -533,6 +534,13 @@ public:
    * \param standard the Wi-Fi standard
    */
   virtual void ConfigureStandard (enum WifiPhyStandard standard) = 0;
+
+  /**
+   * Configure the PHY device power limitations per rate.
+   *
+   * \param powerLimitation the power limitation model
+   */
+  virtual void ConfigurePowerLimitation (enum WifiPhyPowerLimitation powerLimitation) = 0;
 
   /**
    * Return the WifiChannel this WifiPhy is connected to.
