@@ -262,7 +262,7 @@ YansWifiPhy::ConfigurePowerLimitation (enum WifiPhyPowerLimitation powerLimitati
       ConfigureDCMA_82_80211a ();
       break;
     case WIFI_PHY_POWER_LIMITATION_WISTRON_CM9_80211a:
-      ConfigureDCMA_82_80211a ();
+      ConfigureCM9_80211a ();
       break;
     default:
       NS_ASSERT (false);
@@ -977,7 +977,7 @@ YansWifiPhy::Configure80211n (void)
 }
 
 void
-YansWifiPhy::ConfigureDCMA_82_80211a (void)
+YansWifiPhy::ConfigureCM9_80211a (void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -1000,7 +1000,7 @@ YansWifiPhy::ConfigureDCMA_82_80211a (void)
 }
 
 void
-YansWifiPhy::ConfigureCM9_80211a (void)
+YansWifiPhy::ConfigureDCMA_82_80211a (void)
 {
   NS_LOG_FUNCTION (this);
 
