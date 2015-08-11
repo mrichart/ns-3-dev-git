@@ -27,6 +27,7 @@
 #include "ns3/double.h"
 #include "ns3/wifi-mac.h"
 #include "ns3/assert.h"
+#include "ns3/boolean.h"
 #include <vector>
 #include <stdio.h>
 #include <fstream>
@@ -173,6 +174,11 @@ MinstrelBluesWifiManager::GetTypeId (void)
 		    DoubleValue (10),
 		    MakeDoubleAccessor (&MinstrelBluesWifiManager::m_bluesUilityWeight),
 		    MakeDoubleChecker <double> ())
+    .AddAttribute ("PerStagePower",
+		   "Use different power levels for each rate-retry chain stage.",
+		    BooleanValue (false),
+		    MakeBooleanAccessor (&MinstrelBluesWifiManager::m_perStagePower),
+		    MakeBooleanChecker ())
     .AddTraceSource ("PowerChange",
                     "The transmission power has change",
                     MakeTraceSourceAccessor (&MinstrelBluesWifiManager::m_powerChange),
@@ -449,7 +455,7 @@ MinstrelBluesWifiManager::DoReportDataOk (WifiRemoteStation *st,
   station->m_minstrelBluesTable[station->m_currentRate].numRateSuccess++;
   station->m_minstrelBluesTable[station->m_currentRate].numRateAttempt++;
 
-  //TODO esto es lo que no funciona bien, si no estanbien separados los powers.
+  //TODO this doesn't work well if powers are not separated
   if (station->m_currentPower == station->m_minstrelBluesTable[station->m_currentRate].refPower)
     {
       station->m_minstrelBluesTable[station->m_currentRate].numRefSuccess++;
@@ -703,11 +709,20 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
            * Use the same power for all rates in the retry chain.
            */
 	  station->m_chain[0].power = station->m_minstrelBluesTable[station->m_chain[0].rate].refPower;
-          station->m_chain[1].power = station->m_minstrelBluesTable[station->m_chain[1].rate].refPower;
-          station->m_chain[2].rate = station->m_maxProbRate;
-          station->m_chain[2].power = station->m_minstrelBluesTable[station->m_maxProbRate].refPower;
-          station->m_chain[3].rate = 0;
-          station->m_chain[3].power = station->m_minstrelBluesTable[0].refPower;
+	  station->m_chain[2].rate = station->m_maxProbRate;
+	  station->m_chain[3].rate = 0;
+	  if (m_perStagePower)
+	    {
+	      station->m_chain[1].power = station->m_minstrelBluesTable[station->m_chain[1].rate].refPower;
+	      station->m_chain[2].power = station->m_minstrelBluesTable[station->m_maxProbRate].refPower;
+	      station->m_chain[3].power = station->m_minstrelBluesTable[0].refPower;
+	    }
+	  else
+	    {
+	      station->m_chain[1].power = station->m_chain[0].power;
+	      station->m_chain[2].power = station->m_chain[0].power;
+	      station->m_chain[3].power = station->m_chain[0].power;
+	    }
 
           m_powerChange("ref", station->m_chain[0].power, station->m_state->m_address);
           m_rateChange("minstrel", station->m_chain[0].rate, station->m_state->m_address);
@@ -721,11 +736,20 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	  station->m_chain[0].rate = station->m_maxURate;
           station->m_chain[0].power = station->m_minstrelBluesTable[station->m_maxURate].dataPower;
           station->m_chain[1].rate = station->m_maxURate2;
-          station->m_chain[1].power = station->m_minstrelBluesTable[station->m_maxURate2].dataPower;
           station->m_chain[2].rate = station->m_maxProbRate;
-          station->m_chain[2].power = station->m_minstrelBluesTable[station->m_maxProbRate].dataPower;
           station->m_chain[3].rate = 0;
-          station->m_chain[3].power = station->m_minstrelBluesTable[0].dataPower;
+          if (m_perStagePower)
+            {
+              station->m_chain[1].power = station->m_minstrelBluesTable[station->m_maxURate2].dataPower;
+              station->m_chain[2].power = station->m_minstrelBluesTable[station->m_maxProbRate].dataPower;
+              station->m_chain[3].power = station->m_minstrelBluesTable[0].dataPower;
+            }
+          else
+            {
+	      station->m_chain[1].power = station->m_chain[0].power;
+	      station->m_chain[2].power = station->m_chain[0].power;
+	      station->m_chain[3].power = station->m_chain[0].power;
+            }
 	  m_rateChange("normal", station->m_chain[0].rate, station->m_state->m_address);
 	  m_powerChange("data", station->m_chain[0].power, station->m_state->m_address);
 	  NS_LOG_DEBUG("Data packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << (int)station->m_chain[0].power);
@@ -783,11 +807,20 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
           station->m_chain[0].rate = sampleRate;
           station->m_chain[0].power = samplePower;
           station->m_chain[1].rate = station->m_maxThRate;
-          station->m_chain[1].power = station->m_minstrelBluesTable[station->m_maxThRate].dataPower;
           station->m_chain[2].rate = station->m_maxProbRate;
-          station->m_chain[2].power = station->m_minstrelBluesTable[station->m_maxProbRate].dataPower;
           station->m_chain[3].rate = 0;
-          station->m_chain[3].power = station->m_minstrelBluesTable[0].dataPower;
+          if (m_perStagePower)
+            {
+              station->m_chain[1].power = station->m_minstrelBluesTable[station->m_maxThRate].dataPower;
+              station->m_chain[2].power = station->m_minstrelBluesTable[station->m_maxProbRate].dataPower;
+              station->m_chain[3].power = station->m_minstrelBluesTable[0].dataPower;
+            }
+          else
+            {
+	      station->m_chain[1].power = station->m_chain[0].power;
+	      station->m_chain[2].power = station->m_chain[0].power;
+	      station->m_chain[3].power = station->m_chain[0].power;
+            }
 
           m_rateChange("blues", station->m_chain[0].rate, station->m_state->m_address);
 	  NS_LOG_DEBUG("Sample power packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << (int)station->m_chain[0].power);
@@ -1129,7 +1162,7 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
    * set the power level of the lower data-rates.
    * Thomas tell me that the validity timer is 10 seconds.
    */
-// TODO revisar si esto es lo que se pretende
+// TODO check if this is what is intended by previous comment
   for (uint32_t i = 0; i<station->m_nSupported; i++)
     {
       if (station->m_minstrelBluesTable[i].validityTimer > Simulator::Now() + Seconds(10))

@@ -296,6 +296,8 @@ private:
 
   double m_bluesUilityWeight;
 
+  bool m_perStagePower; //!< If true, use different power levels for each rate-retry chain stage.
+
   Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
 
   /**
