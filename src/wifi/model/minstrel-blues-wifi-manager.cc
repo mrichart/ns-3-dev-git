@@ -523,7 +523,7 @@ MinstrelBluesWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
                                        GetLongRetryCount (station),
                                        GetShortGuardInterval (station),
                                        Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas()),
-                                       GetNumberOfTransmitAntennas (station),
+                                       GetNumberOfTransmitAntennas (station), GetAggregation (station),
                                        GetStbc (station));
   return vector;
 }
@@ -540,7 +540,7 @@ MinstrelBluesWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
                         GetShortRetryCount (station),
                         GetShortGuardInterval (station),
                         Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas()),
-                        GetNumberOfTransmitAntennas (station),
+                        GetNumberOfTransmitAntennas (station), GetAggregation (station),
                         GetStbc (station));
 }
 
