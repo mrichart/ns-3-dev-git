@@ -29,6 +29,7 @@
 #include "ns3/node-container.h"
 #include "ns3/net-device-container.h"
 #include "ns3/wifi-phy-standard.h"
+#include "ns3/wifi-phy-power-limitation.h"
 #include "ns3/trace-helper.h"
 
 namespace ns3 {
@@ -195,6 +196,20 @@ public:
   virtual void SetStandard (enum WifiPhyStandard standard);
 
   /**
+   * \param powerLimitation the phy power limitation model to configure during installation
+   *
+   * This method sets power limitations per rate following a model
+   * obtained from real measurements. It results in
+   * WifiPhy::ConfigurePowerLimitation(powerLimitation) being called on each
+   * installed phy object.
+   *
+   * The default model will be applied if SetPowerLimitation() is not called.
+   * The default model consists in no power limitations to the device.
+   *
+   */
+  virtual void SetPowerLimitation (enum WifiPhyPowerLimitation powerLimitation);
+
+  /**
    * Helper to enable all WifiNetDevice log components with one statement
    */
   static void EnableLogComponents (void);
@@ -219,6 +234,7 @@ public:
 protected:
   ObjectFactory m_stationManager;
   enum WifiPhyStandard m_standard;
+  enum WifiPhyPowerLimitation m_powerLimitation;
 };
 
 } //namespace ns3

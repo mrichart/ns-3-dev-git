@@ -99,6 +99,12 @@ WifiHelper::SetStandard (enum WifiPhyStandard standard)
   m_standard = standard;
 }
 
+void
+WifiHelper::SetPowerLimitation (enum WifiPhyPowerLimitation powerLimitation)
+{
+  m_powerLimitation = powerLimitation;
+}
+
 NetDeviceContainer
 WifiHelper::Install (const WifiPhyHelper &phyHelper,
                      const WifiMacHelper &macHelper, NodeContainer c) const
@@ -114,6 +120,7 @@ WifiHelper::Install (const WifiPhyHelper &phyHelper,
       mac->SetAddress (Mac48Address::Allocate ());
       mac->ConfigureStandard (m_standard);
       phy->ConfigureStandard (m_standard);
+      phy->ConfigurePowerLimitation(m_powerLimitation);
       device->SetMac (mac);
       device->SetPhy (phy);
       device->SetRemoteStationManager (manager);
