@@ -298,6 +298,9 @@ private:
 
   bool m_perStagePower; //!< If true, use different power levels for each rate-retry chain stage.
 
+  bool m_fixedRate;     //!< If true, use different the same rate for all data frames (the algorithm will only do power control).
+  WifiMode m_dataMode;  //!< The rate to use when fixed rate is enabled.
+
   Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
 
   /**

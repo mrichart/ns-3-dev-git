@@ -28,6 +28,7 @@
 #include "ns3/wifi-mac.h"
 #include "ns3/assert.h"
 #include "ns3/boolean.h"
+#include "ns3/string.h"
 #include <vector>
 #include <stdio.h>
 #include <fstream>
@@ -179,6 +180,16 @@ MinstrelBluesWifiManager::GetTypeId (void)
 		    BooleanValue (false),
 		    MakeBooleanAccessor (&MinstrelBluesWifiManager::m_perStagePower),
 		    MakeBooleanChecker ())
+    .AddAttribute ("FixedRate",
+		   "Use a fixed rate for all frames (only does power control).",
+		    BooleanValue (false),
+		    MakeBooleanAccessor (&MinstrelBluesWifiManager::m_fixedRate),
+		    MakeBooleanChecker ())
+    .AddAttribute ("DataMode",
+                   "The transmission mode to use for every data frame transmission (only if FixedRate enabled).",
+		   StringValue ("OfdmRate6Mbps"),
+		   MakeWifiModeAccessor (&MinstrelBluesWifiManager::m_dataMode),
+		   MakeWifiModeChecker ())
     .AddTraceSource ("PowerChange",
                     "The transmission power has change",
                     MakeTraceSourceAccessor (&MinstrelBluesWifiManager::m_powerChange),
@@ -288,7 +299,7 @@ MinstrelBluesWifiManager::CheckInit (MinstrelBluesWifiRemoteStation *station)
       // Note: we appear to be doing late initialization of the table
       // to make sure that the set of supported rates has been initialized
       // before we perform our own initialization.
-      station->m_nSupported = GetNSupported (station);
+      station->m_nSupported = m_fixedRate ? 1 : GetNSupported (station);
       station->m_minstrelBluesTable = MinstrelBluesRate (station->m_nSupported);
       station->m_sampleTable = SampleRate (station->m_nSupported, std::vector<uint32_t> (m_nSampleColumns));
       RateInit (station);
@@ -524,7 +535,7 @@ MinstrelBluesWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
       CheckInit (station);
     }
 
-  WifiTxVector vector =  WifiTxVector (GetSupported (station, station->m_currentRate),
+  WifiTxVector vector =  WifiTxVector (m_fixedRate ? m_dataMode : GetSupported (station, station->m_currentRate),
                                        station->m_currentPower,
                                        GetLongRetryCount (station),
                                        GetShortGuardInterval (station),
