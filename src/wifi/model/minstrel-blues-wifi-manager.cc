@@ -236,6 +236,24 @@ MinstrelBluesWifiManager::SetupPhy (Ptr<WifiPhy> phy)
   WifiRemoteStationManager::SetupPhy (phy);
 }
 
+double
+MinstrelBluesWifiManager::GetOutputPower (uint8_t powerLevel)
+{
+  NS_ASSERT (m_minPower <= m_maxPower);
+  NS_ASSERT (m_nPower > 0);
+  double dbm;
+  if (m_nPower > 1)
+    {
+      dbm = m_minPower + powerLevel * (m_maxPower - m_minPower) / (m_nPower - 1);
+    }
+  else
+    {
+      NS_ASSERT_MSG (m_minPower == m_maxPower, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
+      dbm = m_minPower;
+    }
+  return dbm;
+}
+
 int64_t
 MinstrelBluesWifiManager::AssignStreams (int64_t stream)
 {
@@ -311,7 +329,7 @@ MinstrelBluesWifiManager::CheckInit (MinstrelBluesWifiRemoteStation *station)
       RateInit (station);
       InitSampleTable (station);
       SetRatePower(station);
-      m_powerChange("init", station->m_currentPower, station->m_state->m_address);
+      m_powerChange("init", GetOutputPower(station->m_currentPower), station->m_state->m_address);
       m_rateChange("init", station->m_currentRate, station->m_state->m_address);
       PrintTable (station);
       PrintSampleTable (station);
@@ -741,7 +759,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	      station->m_chain[3].power = station->m_chain[0].power;
 	    }
 
-          m_powerChange("ref", station->m_chain[0].power, station->m_state->m_address);
+          m_powerChange("ref", GetOutputPower(station->m_chain[0].power), station->m_state->m_address);
           m_rateChange("minstrel", station->m_chain[0].rate, station->m_state->m_address);
           NS_LOG_DEBUG ("With sample rate use reference power: " << (int) station->m_chain[0].power);
         }
@@ -768,7 +786,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	      station->m_chain[3].power = station->m_chain[0].power;
             }
 	  m_rateChange("normal", station->m_chain[0].rate, station->m_state->m_address);
-	  m_powerChange("data", station->m_chain[0].power, station->m_state->m_address);
+	  m_powerChange("data", GetOutputPower(station->m_chain[0].power), station->m_state->m_address);
 	  NS_LOG_DEBUG("Data packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << (int)station->m_chain[0].power);
 	}
       else
@@ -814,12 +832,12 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	  if (station->m_minstrelBluesTable[sampleRate].numRefAttempt > station->m_minstrelBluesTable[sampleRate].numSampleAttempt)
 	    {
 	      samplePower = station->m_minstrelBluesTable[sampleRate].samplePower;
-	      m_powerChange("sample", samplePower, station->m_state->m_address);
+	      m_powerChange("sample", GetOutputPower(samplePower), station->m_state->m_address);
 	    }
 	  else
 	    {
 	      samplePower = station->m_minstrelBluesTable[sampleRate].refPower;
-	      m_powerChange("ref", samplePower, station->m_state->m_address);
+	      m_powerChange("ref", GetOutputPower(samplePower), station->m_state->m_address);
 	    }
           station->m_chain[0].rate = sampleRate;
           station->m_chain[0].power = samplePower;

@@ -199,6 +199,11 @@ private:
 
   void SetupPhyMPListener (Ptr<WifiPhy> phy);
 
+  /* Return the power in dBm which will generate the device for a given power level.
+   * Based on GetPowerDbm from YansWifiPhy.
+   */
+  double GetOutputPower (uint8_t powerLevel);
+
   /// for estimating the TxTime of a packet with a given mode
   Time GetCalcTxTime (WifiMode mode) const;
   void AddCalcTxTime (WifiMode mode, Time t);
