@@ -218,7 +218,7 @@ MinstrelBluesWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
   NS_LOG_FUNCTION (this);
   m_minPower = phy->GetTxPowerStart();
-  m_maxPower = phy->GetTxPowerEnd();
+  m_maxPower = phy->GetNTxPower() - 1;
   uint32_t nModes = phy->GetNModes ();
   for (uint32_t i = 0; i < nModes; i++)
     {
