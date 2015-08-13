@@ -287,8 +287,11 @@ private:
    * Differently form rate, power levels do not depend on the remote station.
    * The levels depend only on the physical layer of the device.
    */
-  uint32_t m_minPower; //!< Minimal power level.
-  uint32_t m_maxPower; //! Maximal power level.
+  double m_minPower; //!< Minimal power in dBm.
+  double m_maxPower; //! Maximal power in dBm.
+  uint32_t m_nPower; //! Number of power levels.
+  uint8_t m_maxPowerLevel; //! Maximal power level.
+
 
   double m_thIncPower; //!< Threshold for increasing power.
   double m_thDecPower; //!< Threshold for decreasing power.

@@ -203,6 +203,10 @@ MinstrelBluesWifiManager::GetTypeId (void)
 }
 
 MinstrelBluesWifiManager::MinstrelBluesWifiManager ()
+  : m_minPower (0),
+    m_maxPower (0),
+    m_nPower (1),
+    m_maxPowerLevel (0)
 {
   NS_LOG_FUNCTION (this);
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
@@ -218,7 +222,9 @@ MinstrelBluesWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
   NS_LOG_FUNCTION (this);
   m_minPower = phy->GetTxPowerStart();
-  m_maxPower = phy->GetNTxPower() - 1;
+  m_maxPower = phy->GetTxPowerEnd();
+  m_nPower = phy->GetNTxPower();
+  m_maxPowerLevel = m_nPower - 1;
   uint32_t nModes = phy->GetNModes ();
   for (uint32_t i = 0; i < nModes; i++)
     {
@@ -283,7 +289,7 @@ MinstrelBluesWifiManager::DoCreateStation (void) const
   station->m_initialized = false;
   station->m_bluesSampleCount = 100 / m_bluesSamplingRatio;
   station->m_bluesRoundRobinIndex = 0;
-  station->m_currentPower = m_maxPower;
+  station->m_currentPower = m_maxPowerLevel;
   station->m_maxURate = 0;
   station->m_maxURate2 = 0;
 
@@ -650,13 +656,13 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
   if ((station->m_minstrelSampleCount + station->m_frameCount) == 0)
     {
       station->m_chain[0].rate = 0;
-      station->m_chain[0].power = m_maxPower;
+      station->m_chain[0].power = m_maxPowerLevel;
       station->m_chain[1].rate = 0;
-      station->m_chain[1].power = m_maxPower;
+      station->m_chain[1].power = m_maxPowerLevel;
       station->m_chain[2].rate = 0;
-      station->m_chain[2].power = m_maxPower;
+      station->m_chain[2].power = m_maxPowerLevel;
       station->m_chain[3].rate = 0;
-      station->m_chain[3].power = m_maxPower;
+      station->m_chain[3].power = m_maxPowerLevel;
     }
   else
     {
@@ -1126,7 +1132,7 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
 
           if (station->m_minstrelBluesTable[i].ewmaRefProb < (18000 - m_thIncPower*18000))
             {
-              station->m_minstrelBluesTable[i].refPower = Min((m_maxPower),(station->m_minstrelBluesTable[i].refPower + m_deltaIncPower));
+              station->m_minstrelBluesTable[i].refPower = Min((m_maxPowerLevel),(station->m_minstrelBluesTable[i].refPower + m_deltaIncPower));
             }
 
           if (station->m_minstrelBluesTable[i].ewmaRefProb > (18000 - m_thDecPower*18000))
@@ -1196,8 +1202,8 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
             }
           else
             {
-              station->m_minstrelBluesTable[i].dataPower = m_maxPower;
-              station->m_minstrelBluesTable[i].refPower = m_maxPower;
+              station->m_minstrelBluesTable[i].dataPower = m_maxPowerLevel;
+              station->m_minstrelBluesTable[i].refPower = m_maxPowerLevel;
             }
         }
     }
@@ -1251,8 +1257,8 @@ MinstrelBluesWifiManager::RateInit (MinstrelBluesWifiRemoteStation *station)
       station->m_minstrelBluesTable[i].numSampleAttempt = 0;
       station->m_minstrelBluesTable[i].numSampleSuccess = 0;
       station->m_minstrelBluesTable[i].ewmaSampleProb = 0;
-      station->m_minstrelBluesTable[i].dataPower = m_maxPower;
-      station->m_minstrelBluesTable[i].refPower = m_maxPower;
+      station->m_minstrelBluesTable[i].dataPower = m_maxPowerLevel;
+      station->m_minstrelBluesTable[i].refPower = m_maxPowerLevel;
       station->m_minstrelBluesTable[i].samplePower = station->m_minstrelBluesTable[i].refPower - m_bluesPowerStep;
       station->m_minstrelBluesTable[i].validityTimer = Simulator::Now();
     }
@@ -1298,8 +1304,8 @@ MinstrelBluesWifiManager::Reset (MinstrelBluesWifiRemoteStation *station, uint32
   station->m_minstrelBluesTable[rate].numSampleAttempt = 0;
   station->m_minstrelBluesTable[rate].numSampleSuccess = 0;
   station->m_minstrelBluesTable[rate].ewmaSampleProb = 0;
-  station->m_minstrelBluesTable[rate].dataPower = m_maxPower;
-  station->m_minstrelBluesTable[rate].refPower = m_maxPower;
+  station->m_minstrelBluesTable[rate].dataPower = m_maxPowerLevel;
+  station->m_minstrelBluesTable[rate].refPower = m_maxPowerLevel;
   station->m_minstrelBluesTable[rate].samplePower = station->m_minstrelBluesTable[rate].refPower - m_bluesPowerStep;
   station->m_minstrelBluesTable[rate].validityTimer = Simulator::Now();
 }
