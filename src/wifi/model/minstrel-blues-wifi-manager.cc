@@ -605,7 +605,7 @@ MinstrelBluesWifiManager::GetNextSample (MinstrelBluesWifiRemoteStation *station
   station->m_index++;
 
   /// bookeeping for m_index and m_col variables
-  if (station->m_index > (station->m_nSupported - 2))
+  if (station->m_nSupported < 2 || station->m_index > (station->m_nSupported - 2))
     {
       station->m_index = 0;
       station->m_col++;
