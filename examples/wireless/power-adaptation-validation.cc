@@ -339,6 +339,7 @@ int main (int argc, char *argv[])
   uint32_t rtsThreshold = 2346;
   std::string manager = "ns3::ConstantRateWifiManager";
   std::string mode = "OfdmRate48Mbps";
+  bool fixedRate = false;
   std::string outputFileName = "validation";
   int ap1_x = 0;
   int ap1_y = 0;
@@ -350,6 +351,7 @@ int main (int argc, char *argv[])
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager", manager);
   cmd.AddValue ("mode", "Data mode", mode);
+  cmd.AddValue ("fixedRate", "Use a fixed rate with Minstrel Blues", fixedRate);
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
   cmd.AddValue ("outputFileName", "Output filename", outputFileName);
   cmd.AddValue ("maxPower", "Maximum available transmission level (dbm).", maxPower);
@@ -387,15 +389,15 @@ int main (int argc, char *argv[])
   //Configure the AP and STA node
   if (manager.compare ("ns3::ConstantRateWifiManager") == 0)
     {
-      wifi.SetRemoteStationManager (manager, "DataMode", StringValue (mode), "DefaultTxPowerLevel", UintegerValue (maxPower), "RtsCtsThreshold", UintegerValue (rtsThreshold));
+      wifi.SetRemoteStationManager (manager, "DataMode", StringValue (mode), "DefaultTxPowerLevel", UintegerValue (powerLevels-1), "RtsCtsThreshold", UintegerValue (rtsThreshold));
     }
   else if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
-      wifi.SetRemoteStationManager (manager, "FixedRate", BooleanValue (true), "DefaultTxPowerLevel", UintegerValue (maxPower), "RtsCtsThreshold", UintegerValue (rtsThreshold));
+      wifi.SetRemoteStationManager (manager, "FixedRate", BooleanValue (fixedRate), "DataMode", StringValue (mode), "DefaultTxPowerLevel", UintegerValue (powerLevels-1), "RtsCtsThreshold", UintegerValue (rtsThreshold));
     }
   else
     {
-      wifi.SetRemoteStationManager (manager, "DefaultTxPowerLevel", UintegerValue (maxPower), "RtsCtsThreshold", UintegerValue (rtsThreshold));
+      wifi.SetRemoteStationManager (manager, "DefaultTxPowerLevel", UintegerValue (powerLevels-1), "RtsCtsThreshold", UintegerValue (rtsThreshold));
     }
   wifiPhy.Set ("TxPowerStart", DoubleValue (minPower));
   wifiPhy.Set ("TxPowerEnd", DoubleValue (maxPower));
