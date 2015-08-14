@@ -81,3 +81,6 @@ def build(bld):
     
     obj = bld.create_ns3_program('power-adaptation-validation', ['core', 'mobility', 'wifi', 'applications', 'flow-monitor'])
     obj.source = 'power-adaptation-validation.cc'
+    
+    obj = bld.create_ns3_program('minstrel-blues-validation', ['core', 'mobility', 'wifi', 'applications', 'flow-monitor'])
+    obj.source = 'minstrel-blues-validation.cc'
