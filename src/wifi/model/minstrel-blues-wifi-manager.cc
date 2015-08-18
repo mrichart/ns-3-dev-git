@@ -1131,15 +1131,6 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           station->m_minstrelBluesTable[i].numSampleSuccess = 0;
           station->m_minstrelBluesTable[i].numSampleAttempt = 0;
 
-          /**
-           * If throughput collapse, reset to initial settings.
-           */
-          if ((station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
-            {
-	      NS_LOG_UNCOND("Throughput collapse at rate: " << i << " " << station->m_minstrelBluesTable[i].ewmaDataProb << " " << station->m_minstrelBluesTable[i].throughput);
-	      Reset(station, i);
-            }
-
           // Update powers.
           if (station->m_minstrelBluesTable[i].ewmaSampleProb < (station->m_minstrelBluesTable[i].ewmaRefProb - m_thIncPower*18000))
             {
@@ -1181,15 +1172,16 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
           station->m_minstrelBluesTable[i].ewmaDataProb = dataTempProb;
           station->m_minstrelBluesTable[i].numDataSuccess = 0;
           station->m_minstrelBluesTable[i].numDataAttempt = 0;
-          /**
-	   * If throughput collapse, reset to initial settings.
-	   */
-          if ((station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
-	    {
-	      NS_LOG_UNCOND("Throughput collapse at rate: " << i << " " << station->m_minstrelBluesTable[i].ewmaDataProb << " " << station->m_minstrelBluesTable[i].throughput);
-	      Reset(station, i);
-	    }
         }
+
+      /**
+       * If throughput collapse, reset to initial settings.
+       */
+      if ((station->m_minstrelBluesTable[i].numDataAttempt > m_bluesUpdateStatsThreshold && station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
+	{
+	  NS_LOG_UNCOND("Throughput collapse at rate: " << i << " " << station->m_minstrelBluesTable[i].ewmaDataProb << " " << station->m_minstrelBluesTable[i].throughput);
+	  Reset(station, i);
+	}
     }
   /**
    * Blues maintains a validity timer for the power statistics at each sampled rate
