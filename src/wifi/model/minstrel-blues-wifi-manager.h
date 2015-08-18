@@ -309,6 +309,8 @@ private:
   bool m_fixedRate;     //!< If true, use different the same rate for all data frames (the algorithm will only do power control).
   WifiMode m_dataMode;  //!< The rate to use when fixed rate is enabled.
 
+  bool m_printTable;     //!< If true, print the table of statistics each time an the values are updated.
+
   Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
 
   /**
