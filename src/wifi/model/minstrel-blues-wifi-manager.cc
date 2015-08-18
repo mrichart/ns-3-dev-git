@@ -871,6 +871,12 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
   station->m_chainIndex = 0;
   station->m_currentRate = station->m_chain[0].rate;
   station->m_currentPower = station->m_chain[0].power;
+
+  NS_LOG_DEBUG ("MRR-Chain[0]= Rate: " << station->m_chain[0].rate << " Power: " << GetOutputPower(station->m_chain[0].power) << "\n" <<
+                "MRR-Chain[1]= Rate: " << station->m_chain[1].rate << " Power: " << GetOutputPower(station->m_chain[1].power) << "\n" <<
+                "MRR-Chain[2]= Rate: " << station->m_chain[2].rate << " Power: " << GetOutputPower(station->m_chain[2].power) << "\n" <<
+                "MRR-Chain[3]= Rate: " << station->m_chain[3].rate << " Power: " << GetOutputPower(station->m_chain[3].power) << "\n");
+
 }
 
 double
