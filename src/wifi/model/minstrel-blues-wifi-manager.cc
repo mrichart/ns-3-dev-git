@@ -1198,12 +1198,12 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
    * (1) all higher data-rates above the highest throughput rate are assigned the maximum
    * power level and (2) the power level of the fourth highest throughput rate is used to
    * set the power level of the lower data-rates.
-   * Thomas tell me that the validity timer is 10 seconds.
+   * Thomas told me that the validity timer is 10 seconds.
    */
 // TODO check if this is what is intended by previous comment
   for (uint32_t i = 0; i<station->m_nSupported; i++)
     {
-      if (station->m_minstrelBluesTable[i].validityTimer > Simulator::Now() + Seconds(10))
+      if (station->m_minstrelBluesTable[i].validityTimer < Simulator::Now() - Seconds(10))
         {
           if (i < station->m_sortedThRates[3] && station->m_minstrelBluesTable[station->m_sortedThRates[3]].validityTimer <= Seconds(10))
             {
@@ -1226,6 +1226,7 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
               station->m_minstrelBluesTable[i].dataPower = m_maxPowerLevel;
               station->m_minstrelBluesTable[i].refPower = m_maxPowerLevel;
             }
+          station->m_minstrelBluesTable[i].validityTimer = Simulator::Now();
         }
     }
 }
@@ -1404,7 +1405,7 @@ MinstrelBluesWifiManager::PrintSampleTable (MinstrelBluesWifiRemoteStation *stat
     {
       for (uint32_t j = 0; j < m_nSampleColumns; j++)
         {
-	  NS_LOG_DEBUG(station->m_sampleTable[i][j] << "\t");
+	   NS_LOG_DEBUG(station->m_sampleTable[i][j] << "\t");
         }
       NS_LOG_DEBUG("\n");
     }
