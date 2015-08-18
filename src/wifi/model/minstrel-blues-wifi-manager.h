@@ -98,6 +98,8 @@ struct BluesRatePowerInfo
   uint32_t prevNumSampleAttempt;  ///< from last rate
   uint32_t prevNumSampleSuccess;  ///< from last rate
 
+  uint32_t sampleSkipped; ///< How many times the rate has not been used.
+
   /*
   * Powers for this rate
   */

@@ -734,7 +734,8 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	  */
 
 	  /// using the best rate instead
-	  if (station->m_minstrelBluesTable[sampleRate].perfectTxTime > station->m_minstrelBluesTable[station->m_maxThRate].perfectTxTime)
+	  if (station->m_minstrelBluesTable[sampleRate].perfectTxTime > station->m_minstrelBluesTable[station->m_maxThRate].perfectTxTime &&
+	      station->m_minstrelBluesTable[sampleRate].sampleSkipped < 20)
 	    {
 	      NS_LOG_DEBUG ("The next look around rate is slower than the maximum throughput rate, continue with the maximum throughput rate: " <<
 			    station->m_maxThRate << "(" << GetSupported (station, station->m_maxThRate) << ")");
@@ -790,7 +791,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
             }
 	  m_rateChange("normal", station->m_chain[0].rate, station->m_state->m_address);
 	  m_powerChange("data", GetOutputPower(station->m_chain[0].power), station->m_state->m_address);
-	  NS_LOG_DEBUG("Data packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << (int)station->m_chain[0].power);
+	  NS_LOG_DEBUG("Data packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << GetOutputPower(station->m_chain[0].power));
 	}
       else
 	{
@@ -940,6 +941,7 @@ MinstrelBluesWifiManager::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *s
       /// if we've attempted something
       if (station->m_minstrelBluesTable[i].numRateAttempt)
         {
+	  station->m_minstrelBluesTable[i].sampleSkipped = 0;
           /**
            * Calculate the probability of success.
            * Assume probability scales from 0 to 18000
@@ -958,6 +960,10 @@ MinstrelBluesWifiManager::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *s
           station->m_minstrelBluesTable[i].throughput = tempProb * (1000000 / txTime.GetMicroSeconds ());
 
         }
+      else
+	{
+	  station->m_minstrelBluesTable[i].sampleSkipped++;
+	}
 
       /// Reset counters.
       station->m_minstrelBluesTable[i].numRateSuccess = 0;
@@ -1185,7 +1191,7 @@ MinstrelBluesWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *stat
        */
       if ((station->m_minstrelBluesTable[i].numDataAttempt > m_bluesUpdateStatsThreshold && station->m_minstrelBluesTable[i].ewmaDataProb < m_thEmergency*18000) || (station->m_minstrelBluesTable[i].throughput == 0))
 	{
-	  NS_LOG_UNCOND("Throughput collapse at rate: " << i << " " << station->m_minstrelBluesTable[i].ewmaDataProb << " " << station->m_minstrelBluesTable[i].throughput);
+	  NS_LOG_DEBUG("Throughput collapse at rate: " << i << " " << station->m_minstrelBluesTable[i].ewmaDataProb << " " << station->m_minstrelBluesTable[i].throughput);
 	  Reset(station, i);
 	}
     }
