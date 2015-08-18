@@ -817,7 +817,7 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	  else
 	    {
 	      NS_ASSERT(station->m_bluesRoundRobinIndex == 2);
-	      if (station->m_minstrelBluesTable[station->m_sortedThRates[station->m_bluesRoundRobinIndex]].perfectTxTime >
+	      if (station->m_minstrelBluesTable[station->m_sortedThRates[station->m_bluesRoundRobinIndex]].perfectTxTime <
 	          station->m_minstrelBluesTable[station->m_sortedThRates[0]].perfectTxTime)
                 {
 	          sampleRate = station->m_sortedThRates[station->m_bluesRoundRobinIndex];
