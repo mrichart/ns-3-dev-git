@@ -347,6 +347,8 @@ int main (int argc, char *argv[])
   int sta1_x = 10;
   int sta1_y = 0;
 
+  bool printMBTable = false;
+
   uint32_t simuTime = 100;
 
   CommandLine cmd;
@@ -364,6 +366,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("AP1_y", "Position of AP1 in y coordinate", ap1_y);
   cmd.AddValue ("STA1_x", "Position of STA1 in x coordinate", sta1_x);
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
+  cmd.AddValue ("printMBTable", "Print the statistics table of Minstrel-Blues", printMBTable);
   cmd.AddValue ("simuTime", "Simulation time (seconds).", simuTime);
   cmd.Parse (argc, argv);
 
@@ -395,7 +398,7 @@ int main (int argc, char *argv[])
     }
   else if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
     {
-      wifi.SetRemoteStationManager (manager, "FixedRate", BooleanValue (fixedRate), "DataMode", StringValue (mode), "DefaultTxPowerLevel", UintegerValue (powerLevels-1), "RtsCtsThreshold", UintegerValue (rtsThreshold));
+      wifi.SetRemoteStationManager (manager, "FixedRate", BooleanValue (fixedRate), "DataMode", StringValue (mode), "PrintTable", BooleanValue (printMBTable), "DefaultTxPowerLevel", UintegerValue (powerLevels-1), "RtsCtsThreshold", UintegerValue (rtsThreshold));
     }
   else
     {
@@ -404,20 +407,23 @@ int main (int argc, char *argv[])
   wifiPhy.Set ("TxPowerStart", DoubleValue (minPower));
   wifiPhy.Set ("TxPowerEnd", DoubleValue (maxPower));
   wifiPhy.Set ("TxPowerLevels", UintegerValue (powerLevels));
+
+  //Configure the AP node
+  Ssid ssid = Ssid ("AP");
+  wifiMac.SetType ("ns3::ApWifiMac",
+                   "Ssid", SsidValue (ssid));
+  wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
+
   wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (edThreshold));
 
   //Configure the STA node
-  Ssid ssid = Ssid ("AP");
+  ssid = Ssid ("AP");
   wifiMac.SetType ("ns3::StaWifiMac",
                    "Ssid", SsidValue (ssid),
                    "ActiveProbing", BooleanValue (false));
   wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
 
-  //Configure the AP node
-  ssid = Ssid ("AP");
-  wifiMac.SetType ("ns3::ApWifiMac",
-                   "Ssid", SsidValue (ssid));
-  wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
+
 
   wifiDevices.Add (wifiStaDevices);
   wifiDevices.Add (wifiApDevices);
@@ -515,8 +521,8 @@ int main (int argc, char *argv[])
   Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
   Ptr<WifiPhy> phy = wifiDevice->GetPhy ();
   Ptr<YansWifiPhy> yansPhy = DynamicCast<YansWifiPhy> (phy);
-  Simulator::Schedule (Seconds (119), &YansWifiPhy::SetTxPowerStart, yansPhy, 1);
-  Simulator::Schedule (Seconds (119), &YansWifiPhy::SetTxPowerEnd, yansPhy, 22);
+  Simulator::Schedule (Seconds (120), &YansWifiPhy::SetTxPowerStart, yansPhy, 1);
+  Simulator::Schedule (Seconds (120), &YansWifiPhy::SetTxPowerEnd, yansPhy, 22);
   Ptr<WifiRemoteStationManager> apManager = wifiDevice->GetRemoteStationManager();
   Simulator::Schedule (Seconds (120), &WifiRemoteStationManager::SetupPhy, apManager, yansPhy);
 
