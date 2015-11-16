@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2014 Universidad de la República - Uruguay
+ * Copyright (c) 2015 Universidad de la República - Uruguay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,12 +19,11 @@
  */
 
 /**
- * This example program is designed to validate power adaptation
- * in ns3.
+ * This example program is designed to validate power adaptation in ns3.
  *
- * The output of this is typically two plot files, named throughput-validation.plt
- * and power-validation.plt If Gnuplot program is available, one can use it to convert
- * the plt file into an eps file, by running:
+ * The output of this a plot named throughput-validation.plt.
+ * If Gnuplot program is available, one can use it to convert the plt file into an
+ * eps file, by running:
  * \code{.sh}
  *   gnuplot throughput-validation.plt
  * \endcode
@@ -42,23 +41,18 @@
  *
  * The output consists of:
  * - A plot of average throughput vs. time.
- * - A plot of average transmit power vs. time.
  * - (if logging is enabled) the changes of power and rate to standard output.
  * - (if logging is enabled) the rate and SNR (signal to noise ratio) at which the packets where received by the STA.
  *
- * The Average Transmit Power is defined as an average of the power
- * consumed per measurement interval, expressed in milliwatts.  The
- * power level for each frame transmission is reported by the simulator, 
- * and the energy consumed is obtained by multiplying the power by the
- * frame duration.  At every 'time' (defaulting to 1 second), the
- * total energy for the collection period is divided by the step time 
- * and converted from dbm to milliwatt units, and this average is 
- * plotted against time.
  *
- * When neither power control mechanism is selected as the rate control, the
- * generation of the plot of average transmit power vs distance is suppressed
- * since the other Wifi rate controls do not support the necessary callbacks
- * for computing the average power.
+ * The validation consists of different experiments. Each of them tries to replicate the experiments done in
+ * <i>A Measurement-Based Joint Power and Rate Controller for IEEE 802.11 Networks</i> by Thomas Huehn, 2013:
+ * 1- Validate power settings (page 67 of thesis).
+ *      Measure the SNR and Throughput at the receiver when adapting power at the sender. One test for each possible rate.
+ *      The script allows to set a fixed rate and power and generates logs of SNR and throughput.
+ * 2- Validate only power adaptation (page 76 of thesis).
+ *      Measure the SNR and Throughput at the receiver when using Minstrel-Blues with a fixed rate. One test for each possible rate.
+ *      The script allows to set a fixed rate and generates logs of SNR and throughput.
  *
  * To display all the possible arguments and their defaults:
  * \code{.sh}
@@ -67,7 +61,14 @@
  * 
  * Example usage (fixing power (1dBm) and rate (6Mbps)):
  * \code{.sh}
- *   ./waf --run "power-adaptation-validation --mode=OfdmRate6Mbps --powerLevels=1 --maxPower=1 --minPower=1 --outputFileName=6Mbps1Dbm"
+ *   ./waf --run "power-adaptation-validation --STA1_x=15 --simuTime=20 --manager=ns3::MinstrelBluesWifiManager --fixedRate=true
+ *   --mode=OfdmRate6Mbps --powerLevels=1 --maxPower=1 --minPower=1 --outputFileName=6Mbps1Dbm" 2>snr6Mbps1Dbm.log
+ * \endcode
+ *
+ * * Example usage for experiment 2 (fixing rate (54Mbps)):
+ * \code{.sh}
+ *   ./waf --run "power-adaptation-validation --STA1_x=15 --simuTime=20 --manager=ns3::MinstrelBluesWifiManager --fixedRate=true
+ *   --mode=OfdmRate54Mbps --outputFileName=bluesOnly54Mbps" 2>snr-bluesOnly54Mbps.txt
  * \endcode
  *
  * To enable the log of rate and power changes:
@@ -107,9 +108,7 @@ public:
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
   void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
-  void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
   void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
-  void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
   Vector GetPosition (Ptr<Node> node);
@@ -217,19 +216,7 @@ NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address des
 }
 
 void
-NodeStatistics::BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
-{
-  actualPower[dest] = power;
-}
-
-void
 NodeStatistics::RateCallback (std::string path, uint32_t rate, Mac48Address dest)
-{
-  actualMode[dest] = myPhy->GetMode (rate);
-}
-
-void
-NodeStatistics::BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
 {
   actualMode[dest] = myPhy->GetMode (rate);
 }
@@ -302,7 +289,7 @@ void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << (int)power);
 }
 
-void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+void BluesPowerCallback (std::string path, uint8_t power, Mac48Address dest, std::string type)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " power: " << (int)power);
 }
@@ -312,7 +299,7 @@ void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
 }
 
-void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
+void BluesRateCallback (std::string path, uint32_t rate, Mac48Address dest, std::string type)
 {
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
 }
@@ -467,20 +454,10 @@ int main (int argc, char *argv[])
                    MakeCallback (&NodeStatistics::RxCallback, &statistics));
 
   //Register power and rate changes to calculate the Average Transmit Power
-  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
-    {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                         MakeCallback (&NodeStatistics::BluesPowerCallback, &statistics));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                         MakeCallback (&NodeStatistics::BluesRateCallback, &statistics));
-    }
-  else
-    {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-		       MakeCallback (&NodeStatistics::PowerCallback, &statistics));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-		       MakeCallback (&NodeStatistics::RateCallback, &statistics));
-    }
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                   MakeCallback (&NodeStatistics::PowerCallback, &statistics));
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                   MakeCallback (&NodeStatistics::RateCallback, &statistics));
 
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
                    MakeCallback (&NodeStatistics::PhyCallback, &statistics));
@@ -490,9 +467,9 @@ int main (int argc, char *argv[])
   //Callbacks to print every change of power and rate
   if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
       {
-        Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+        Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChangeWithInfo",
                            MakeCallback (BluesPowerCallback));
-        Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+        Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChangeWithInfo",
                          MakeCallback (BluesRateCallback));
       }
   else
@@ -517,18 +494,6 @@ int main (int argc, char *argv[])
   gnuplot.SetTitle ("Throughput (AP to STA) vs time");
   gnuplot.AddDataset (statistics.GetDatafile ());
   gnuplot.GenerateOutput (outfile);
-
-  if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0)
-    {
-      std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
-      gnuplot = Gnuplot (("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");
-      gnuplot.SetTerminal ("post eps color enhanced");
-      gnuplot.SetLegend ("Time (seconds)", "Power (mW)");
-      gnuplot.SetTitle ("Average transmit power (AP to STA) vs time");
-      gnuplot.AddDataset (statistics.GetPowerDatafile ());
-      gnuplot.GenerateOutput (outfile2);
-    }
 
   Simulator::Destroy ();
 
