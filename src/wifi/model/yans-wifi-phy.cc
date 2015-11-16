@@ -265,7 +265,7 @@ YansWifiPhy::ConfigurePowerLimitation (enum WifiPhyPowerLimitation powerLimitati
       ConfigureCM9_80211a ();
       break;
     default:
-      NS_ASSERT (false);
+      //No limits
       break;
     }
 }
