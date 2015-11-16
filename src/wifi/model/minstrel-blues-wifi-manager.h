@@ -171,7 +171,7 @@ public:
    * \param [in] power The new power.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (*PowerChangeTracedCallback)(const std::string, const uint8_t power, const Mac48Address remoteAddress);
+  typedef void (*PowerChangeTracedCallback)(const uint8_t power, const Mac48Address remoteAddress);
 
   /**
    * TracedCallback signature for rate change events.
@@ -179,7 +179,27 @@ public:
    * \param [in] rate The new rate.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (*RateChangeTracedCallback)(const std::string, const uint32_t rate, const Mac48Address remoteAddress);
+  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
+
+  /**
+   * TracedCallback signature for power change events with extra information as a string.
+   * In Minstrel-Blues case, the info is the frame type used.
+   *
+   * \param [in] power The new power.
+   * \param [in] address The remote station MAC address.
+   * \param [in] address The type of frame: data, reference or sample.
+   */
+  typedef void (*PowerChangeWithInfoTracedCallback)(const uint8_t power, const Mac48Address remoteAddress, std::string);
+
+  /**
+   * TracedCallback signature for rate change events with extra information as a string.
+   * In Minstrel-Blues case, the info is the frame type used.
+   *
+   * \param [in] rate The new rate.
+   * \param [in] address The remote station MAC address.
+   * \param [in] address The type of frame: normal, minstrel or sample.
+   */
+  typedef void (*RateChangeWithInfoTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress, std::string);
 
 private:
   // overriden from base class
@@ -318,11 +338,14 @@ private:
   /**
    * The trace source fired when the transmission power change.
    */
-  TracedCallback<std::string, uint8_t, Mac48Address> m_powerChange;
+  TracedCallback<uint8_t, Mac48Address> m_powerChange;
+  TracedCallback<uint8_t, Mac48Address, std::string> m_powerChangeWithInfo;
   /**
    * The trace source fired when the transmission rate change.
    */
-  TracedCallback<std::string, uint32_t, Mac48Address> m_rateChange;
+  TracedCallback<uint32_t, Mac48Address> m_rateChange;
+  TracedCallback<uint32_t, Mac48Address, std::string> m_rateChangeWithInfo;
+
 };
 
 } // namespace ns3

@@ -203,6 +203,14 @@ MinstrelBluesWifiManager::GetTypeId (void)
 		     "The transmission rate has change",
 		     MakeTraceSourceAccessor (&MinstrelBluesWifiManager::m_rateChange),
 		     "ns3::MinstrelBluesWifiManager::RateChangeTracedCallback")
+    .AddTraceSource ("PowerChangeWithInfo",
+                    "The transmission power has change",
+                    MakeTraceSourceAccessor (&MinstrelBluesWifiManager::m_powerChangeWithInfo),
+                    "ns3::MinstrelBluesWifiManager::PowerChangeWithInfoTracedCallback")
+    .AddTraceSource ("RateChangeWithInfo",
+                    "The transmission rate has change",
+                    MakeTraceSourceAccessor (&MinstrelBluesWifiManager::m_rateChangeWithInfo),
+                    "ns3::MinstrelBluesWifiManager::RateChangeWithInfoTracedCallback")
   ;
   return tid;
 }
@@ -334,8 +342,10 @@ MinstrelBluesWifiManager::CheckInit (MinstrelBluesWifiRemoteStation *station)
       RateInit (station);
       InitSampleTable (station);
       SetRatePower(station);
-      m_powerChange("init", GetOutputPower(station->m_currentPower), station->m_state->m_address);
-      m_rateChange("init", station->m_currentRate, station->m_state->m_address);
+      m_powerChange(GetOutputPower(station->m_currentPower), station->m_state->m_address);
+      m_rateChange(station->m_currentRate, station->m_state->m_address);
+      m_powerChangeWithInfo(GetOutputPower(station->m_currentPower), station->m_state->m_address, "init");
+      m_rateChangeWithInfo(station->m_currentRate, station->m_state->m_address, "init");
       PrintTable (station);
       PrintSampleTable (station);
       station->m_initialized = true;
@@ -763,8 +773,10 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	      station->m_chain[3].power = station->m_chain[0].power;
 	    }
 
-          m_powerChange("ref", GetOutputPower(station->m_chain[0].power), station->m_state->m_address);
-          m_rateChange("minstrel", station->m_chain[0].rate, station->m_state->m_address);
+          m_powerChange(GetOutputPower(station->m_chain[0].power), station->m_state->m_address);
+          m_rateChange(station->m_chain[0].rate, station->m_state->m_address);
+          m_powerChangeWithInfo(GetOutputPower(station->m_chain[0].power), station->m_state->m_address, "ref");
+          m_rateChangeWithInfo(station->m_chain[0].rate, station->m_state->m_address, "minstrel");
           NS_LOG_DEBUG ("With sample rate use reference power: " << (int) station->m_chain[0].power);
         }
       else if (station->m_bluesSampleCount > 1)  //suggested by thomas
@@ -789,8 +801,10 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	      station->m_chain[2].power = station->m_chain[0].power;
 	      station->m_chain[3].power = station->m_chain[0].power;
             }
-	  m_rateChange("normal", station->m_chain[0].rate, station->m_state->m_address);
-	  m_powerChange("data", GetOutputPower(station->m_chain[0].power), station->m_state->m_address);
+	  m_rateChange(station->m_chain[0].rate, station->m_state->m_address);
+	  m_powerChange(GetOutputPower(station->m_chain[0].power), station->m_state->m_address);
+	  m_rateChangeWithInfo(station->m_chain[0].rate, station->m_state->m_address, "normal");
+	  m_powerChangeWithInfo(GetOutputPower(station->m_chain[0].power), station->m_state->m_address, "data");
 	  NS_LOG_DEBUG("Data packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << GetOutputPower(station->m_chain[0].power));
 	}
       else
@@ -836,12 +850,14 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	  if (station->m_minstrelBluesTable[sampleRate].numRefAttempt > station->m_minstrelBluesTable[sampleRate].numSampleAttempt)
 	    {
 	      samplePower = station->m_minstrelBluesTable[sampleRate].samplePower;
-	      m_powerChange("sample", GetOutputPower(samplePower), station->m_state->m_address);
+	      m_powerChange(GetOutputPower(samplePower), station->m_state->m_address);
+	      m_powerChangeWithInfo(GetOutputPower(samplePower), station->m_state->m_address, "sample");
 	    }
 	  else
 	    {
 	      samplePower = station->m_minstrelBluesTable[sampleRate].refPower;
-	      m_powerChange("ref", GetOutputPower(samplePower), station->m_state->m_address);
+	      m_powerChange(GetOutputPower(samplePower), station->m_state->m_address);
+	      m_powerChangeWithInfo(GetOutputPower(samplePower), station->m_state->m_address, "ref");
 	    }
           station->m_chain[0].rate = sampleRate;
           station->m_chain[0].power = samplePower;
@@ -861,7 +877,8 @@ MinstrelBluesWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 	      station->m_chain[3].power = station->m_chain[0].power;
             }
 
-          m_rateChange("blues", station->m_chain[0].rate, station->m_state->m_address);
+          m_rateChange(station->m_chain[0].rate, station->m_state->m_address);
+          m_rateChangeWithInfo(station->m_chain[0].rate, station->m_state->m_address, "blues");
 	  NS_LOG_DEBUG("Sample power packet: rate= " << station->m_chain[0].rate << "(" << GetSupported (station, station->m_chain[0].rate) << ") power= " << (int)station->m_chain[0].power);
 	}
     }
