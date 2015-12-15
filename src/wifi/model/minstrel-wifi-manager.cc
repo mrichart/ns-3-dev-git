@@ -138,7 +138,7 @@ MinstrelWifiManager::SetupPhy (Ptr<WifiPhy> phy)
       WifiMode mode = phy->GetMode (i);
       WifiTxVector txVector;
       txVector.SetMode (mode);
-      AddCalcTxTime (mode, phy->CalculateTxDuration (m_pktLen, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency (), 0, 0));
+      AddCalcTxTime (mode, phy->CalculateTxDuration (m_pktLen, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ()));
     }
   WifiRemoteStationManager::SetupPhy (phy);
 }
@@ -474,6 +474,12 @@ MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
                                         uint32_t size)
 {
   MinstrelWifiRemoteStation *station = (MinstrelWifiRemoteStation *) st;
+  uint32_t channelWidth = GetChannelWidth (station);
+  if (channelWidth > 20 && channelWidth != 22)
+    {
+      //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
+      channelWidth = 20;
+    }
   if (!station->m_initialized)
     {
       CheckInit (station);
@@ -482,7 +488,7 @@ MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
       station->m_txrate = m_nsupported / 2;
     }
   UpdateStats (station);
-  return WifiTxVector (GetSupported (station, station->m_txrate), GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNess (station), GetAggregation (station), GetStbc (station));
+  return WifiTxVector (GetSupported (station, station->m_txrate), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
 WifiTxVector
@@ -490,8 +496,13 @@ MinstrelWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   MinstrelWifiRemoteStation *station = (MinstrelWifiRemoteStation *) st;
   NS_LOG_DEBUG ("DoGetRtsMode m_txrate=" << station->m_txrate);
-
-  return WifiTxVector (GetSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNess (station), GetAggregation (station), GetStbc (station));
+  uint32_t channelWidth = GetChannelWidth (station);
+  if (channelWidth > 20 && channelWidth != 22)
+    {
+      //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
+      channelWidth = 20;
+    }
+  return WifiTxVector (GetSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
 bool

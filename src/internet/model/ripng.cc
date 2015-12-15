@@ -119,6 +119,7 @@ void RipNg::DoInitialize ()
       if (m_interfaceExclusions.find (i) == m_interfaceExclusions.end ())
         {
           activeInterface = true;
+          m_ipv6->SetForwarding (i, true);
         }
 
       for (uint32_t j = 0; j < m_ipv6->GetNAddresses (i); j++)
@@ -219,35 +220,6 @@ bool RipNg::RouteInput (Ptr<const Packet> p, const Ipv6Header &header, Ptr<const
       return false; // Let other routing protocols try to handle this
     }
 
-  /// \todo  Configurable option to enable \RFC{1222} Strong End System Model
-  // Right now, we will be permissive and allow a source to send us
-  // a packet to one of our other interface addresses; that is, the
-  // destination unicast address does not match one of the iif addresses,
-  // but we check our other interfaces.  This could be an option
-  // (to remove the outer loop immediately below and just check iif).
-  for (uint32_t j = 0; j < m_ipv6->GetNInterfaces (); j++)
-    {
-      for (uint32_t i = 0; i < m_ipv6->GetNAddresses (j); i++)
-        {
-          Ipv6InterfaceAddress iaddr = m_ipv6->GetAddress (j, i);
-          Ipv6Address addr = iaddr.GetAddress ();
-          if (addr.IsEqual (header.GetDestinationAddress ()))
-            {
-              if (j == iif)
-                {
-                  NS_LOG_LOGIC ("For me (destination " << addr << " match)");
-                }
-              else
-                {
-                  NS_LOG_LOGIC ("For me (destination " << addr << " match) on another interface " << header.GetDestinationAddress ());
-                }
-              lcb (p, header, iif);
-              return true;
-            }
-          NS_LOG_LOGIC ("Address " << addr << " not a match");
-        }
-    }
-
   if (header.GetDestinationAddress ().IsLinkLocal () ||
       header.GetSourceAddress ().IsLinkLocal ())
     {
@@ -260,7 +232,10 @@ bool RipNg::RouteInput (Ptr<const Packet> p, const Ipv6Header &header, Ptr<const
   if (m_ipv6->IsForwarding (iif) == false)
     {
       NS_LOG_LOGIC ("Forwarding disabled for this interface");
-      ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+      if (!ecb.IsNull ())
+        {
+          ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+        }
       return false;
     }
   // Next, try to find a route
@@ -316,6 +291,7 @@ void RipNg::NotifyInterfaceUp (uint32_t i)
   if (m_interfaceExclusions.find (i) == m_interfaceExclusions.end ())
     {
       activeInterface = true;
+      m_ipv6->SetForwarding (i, true);
     }
 
   for (uint32_t j = 0; j < m_ipv6->GetNAddresses (i); j++)
@@ -488,8 +464,9 @@ void RipNg::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
   std::ostream* os = stream->GetStream ();
 
   *os << "Node: " << m_ipv6->GetObject<Node> ()->GetId ()
-      << " Time: " << Simulator::Now ().GetSeconds () << "s "
-      << "Ipv6 RIPng table" << std::endl;
+      << ", Time: " << Now().As (Time::S)
+      << ", Local time: " << GetObject<Node> ()->GetLocalTime ().As (Time::S)
+      << ", IPv6 RIPng table" << std::endl;
 
   if (!m_routes.empty ())
     {
@@ -534,6 +511,7 @@ void RipNg::PrintRoutingTable (Ptr<OutputStreamWrapper> stream) const
             }
         }
     }
+  *os << std::endl;
 }
 
 void RipNg::DoDispose ()

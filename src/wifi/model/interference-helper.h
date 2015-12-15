@@ -52,13 +52,12 @@ public:
      * Create an Event with the given parameters.
      *
      * \param size packet size
-     * \param txvector TXVECTOR of the packet
+     * \param txVector TXVECTOR of the packet
      * \param preamble preamble type
      * \param duration duration of the signal
      * \param rxPower the receive power (w)
-     * \param txvector TXVECTOR of the packet
      */
-    Event (uint32_t size, WifiTxVector txvector,
+    Event (uint32_t size, WifiTxVector txVector,
            enum WifiPreamble preamble,
            Time duration, double rxPower);
     ~Event ();
@@ -173,14 +172,14 @@ private:
    * Add the packet-related signal to interference helper.
    *
    * \param size packet size
-   * \param txvector TXVECTOR of the packet
+   * \param txVector TXVECTOR of the packet
    * \param preamble Wi-Fi preamble for the packet
    * \param duration the duration of the signal
    * \param rxPower receive power (W)
    *
    * \return InterferenceHelper::Event
    */
-  Ptr<InterferenceHelper::Event> Add (uint32_t size, WifiTxVector txvector,
+  Ptr<InterferenceHelper::Event> Add (uint32_t size, WifiTxVector txVector,
                                       enum WifiPreamble preamble,
                                       Time duration, double rxPower);
 
@@ -286,11 +285,11 @@ private:
    *
    * \param signal
    * \param noiseInterference
-   * \param mode
+   * \param channelWidth
    *
    * \return SNR in liear ratio
    */
-  double CalculateSnr (double signal, double noiseInterference, WifiMode mode) const;
+  double CalculateSnr (double signal, double noiseInterference, uint32_t channelWidth) const;
   /**
    * Calculate the success rate of the chunk given the SINR, duration, and Wi-Fi mode.
    * The duration and mode are used to calculate how many bits are present in the chunk.
@@ -298,10 +297,11 @@ private:
    * \param snir SINR
    * \param duration
    * \param mode
+   * \param txVector
    *
    * \return the success rate
    */
-  double CalculateChunkSuccessRate (double snir, Time duration, WifiMode mode) const;
+  double CalculateChunkSuccessRate (double snir, Time duration, WifiMode mode, WifiTxVector txVector) const;
   /**
    * Calculate the error rate of the given plcp payload. The plcp payload can be divided into
    * multiple chunks (e.g. due to interference from other transmissions).

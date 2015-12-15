@@ -314,6 +314,9 @@ WifiMac::ConfigureStandard (enum WifiPhyStandard standard)
     case WIFI_PHY_STANDARD_80211n_5GHZ:
       Configure80211n_5Ghz ();
       break;
+    case WIFI_PHY_STANDARD_80211ac:
+      Configure80211ac ();
+      break;
     default:
       NS_ASSERT (false);
       break;
@@ -347,7 +350,11 @@ void
 WifiMac::Configure80211g (void)
 {
   SetSifs (MicroSeconds (10));
-  //Note: no support for Short Slot Time yet
+  // Slot time defaults to the "long slot time" of 20 us in the standard
+  // according to mixed 802.11b/g deployments.  Short slot time is supported
+  // if the user sets the slot to 9 us *after* calling Configure80211g().
+  // The other parameters below should also be adjusted accordingly as they
+  // depend on slot time.
   SetSlot (MicroSeconds (20));
   SetEifsNoDifs (MicroSeconds (10 + 304));
   SetPifs (MicroSeconds (10 + 20));
@@ -392,6 +399,12 @@ WifiMac::Configure80211n_5Ghz (void)
   SetRifs (MicroSeconds (2));
   SetBasicBlockAckTimeout (GetSifs () + GetSlot () + GetDefaultBasicBlockAckDelay () + GetDefaultMaxPropagationDelay () * 2);
   SetCompressedBlockAckTimeout (GetSifs () + GetSlot () + GetDefaultCompressedBlockAckDelay () + GetDefaultMaxPropagationDelay () * 2);
+}
+
+void
+WifiMac::Configure80211ac (void)
+{
+  Configure80211n_5Ghz ();
 }
 
 void

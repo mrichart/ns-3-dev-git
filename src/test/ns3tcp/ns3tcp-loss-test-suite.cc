@@ -118,10 +118,10 @@ Ns3TcpLossTestCase::DoSetup (void)
 {
   //
   // We expect there to be a file called ns3tcp-state-response-vectors.pcap in
-  // response-vectors/ of this directory
+  // the data directory
   //
   std::ostringstream oss;
-  oss << "/response-vectors/ns3tcp-loss-" << m_tcpModel << m_testCase << "-response-vectors.pcap";
+  oss << "ns3tcp-loss-" << m_tcpModel << m_testCase << "-response-vectors.pcap";
   m_pcapFilename = CreateDataDirFilename(oss.str ());
 
   if (m_writeVectors)
@@ -132,7 +132,9 @@ Ns3TcpLossTestCase::DoSetup (void)
   else
     {
       m_pcapFile.Open (m_pcapFilename, std::ios::in|std::ios::binary);
-      NS_ABORT_MSG_UNLESS (m_pcapFile.GetDataLinkType () == PCAP_LINK_TYPE, "Wrong response vectors in directory");
+      NS_ABORT_MSG_UNLESS (m_pcapFile.GetDataLinkType () == PCAP_LINK_TYPE,
+                           "Wrong response vectors in directory: opening " <<
+                           m_pcapFilename);
     }
 }
 
@@ -308,7 +310,6 @@ Ns3TcpLossTestCase::DoRun (void)
       LogComponentEnable ("TcpWestwood", LOG_LEVEL_ALL);
       LogComponentEnable ("TcpNewReno", LOG_LEVEL_INFO);
       LogComponentEnable ("TcpReno", LOG_LEVEL_INFO);
-      LogComponentEnable ("TcpTahoe", LOG_LEVEL_INFO);
       LogComponentEnable ("TcpSocketBase", LOG_LEVEL_INFO);
     }
 
@@ -453,20 +454,9 @@ public:
 Ns3TcpLossTestSuite::Ns3TcpLossTestSuite ()
   : TestSuite ("ns3-tcp-loss", SYSTEM)
 {
-  SetDataDir (NS_TEST_SOURCEDIR);
+  // We can't use NS_TEST_SOURCEDIR variable here because we use subdirectories
+  SetDataDir ("src/test/ns3tcp/response-vectors");
   Packet::EnablePrinting ();  // Enable packet metadata for all test cases
-
-  AddTestCase (new Ns3TcpLossTestCase ("Tahoe", 0), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Tahoe", 1), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Tahoe", 2), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Tahoe", 3), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Tahoe", 4), TestCase::QUICK);
-
-  AddTestCase (new Ns3TcpLossTestCase ("Reno", 0), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Reno", 1), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Reno", 2), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Reno", 3), TestCase::QUICK);
-  AddTestCase (new Ns3TcpLossTestCase ("Reno", 4), TestCase::QUICK);
 
   AddTestCase (new Ns3TcpLossTestCase ("NewReno", 0), TestCase::QUICK);
   AddTestCase (new Ns3TcpLossTestCase ("NewReno", 1), TestCase::QUICK);

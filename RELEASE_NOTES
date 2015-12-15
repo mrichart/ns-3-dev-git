@@ -18,29 +18,179 @@ This release is not yet available.
 
 Supported platforms
 -------------------
+To be determined.
 
 New user-visible features
 -------------------------
-- (network) SimpleChannel allows per-NetDevice blacklists, in order to do hidden terminal testcases.
+- (internet) The native TCP implementation has been refactored, for the following
+  improvements:  1) congestion control has been aligned with the Linux
+  architecture, to facilitate easier coding of new congestion control algorithms
+  or porting implementations from the Linux kernel, 2) Fast Retransmit and Fast
+  recovery algorithms, compliant to RFCs, are shared by all TCP variants, unlike
+  previous releases. 3) TCP Hybla and TCP HighSpeed have been added.
+- (routing) The PrintRoutingTable* functions now print the following informations
+  each time they are called: 1) the node ID, 2) the global time, 3) the local time
+  4) the routing protocol type
+- (internet) L4 protocols (e.g., TCP, UDP, ICMP, etc.) can be demultiplexed by IP
+  according to the incoming interface. In other words, it is now possible to
+  use specialized L4 protocols according to the interface.
+- (internet) Ipv6Address::IsAllHostsMulticast() is now deprecated. FF02::3 is not
+  in the official reserved IPv6 multicast address list.
+- (internet) Ipv6Address::IsAll[Nodes,Routers]Multicast() now checks the address
+  scope beyond the simple link-local. Nodes are checked for Interface-Local, Link-Local
+  and Realm-Local, Routers for the above plus Site-Local.
+- (internet) Ipv6 routing protocols must now *not* forward packets to upper layers
+  unless for extremey specific cases. The Ipv6L3protocol handles almost all the
+  packets directed to the host.
+- (internet) Ipv6 can now reject packets directed to an address not configured on 
+  the interface they are received from (Strong End System Model, RFC 1222).
+- (internet) UDP and Ipv6 RAW sockets can now join Ipv6 multicast groups.
+  Incomin packets will be filtered according to if there's a socket listening to
+  that group. Source filtering is left to the application.
 
 Bugs fixed
 ----------
+- Bug 1132 - useless for loops in block-ack-test-suite.cc
+- Bug 1571 - TCP zero-window and flow control window updates by the receiver
+- Bug 1761 - Rounding with olsr::EmfToSeconds
+- Bug 1954 - Serialized size of wifi-net-device differ for TX and RX trace
+- Bug 2003 - Missing DSSS short PLCP preamble
+- Bug 2041 - TCP RTO needs unit tests
+- Bug 2150 - The TCP sender keeps retransmitting and does not terminate the connection after some retries.
+- Bug 2159 - TCP advertises wrong receive window
+- Bug 2176 - Building IPv4 address from char* doesn't look reliable
+- Bug 2183 - LiIonEnergySourceHelper is not in the energy wscript
+- Bug 2185 - WiFi MacLow may respond to errored frames that it should ignore
+- Bug 2193 - Simulation fails when transmitting very small MPDU subframes
+- Bug 2195 - Udp[*]Client can't send packets to broadcast address
+- Bug 2201 - Simulation fails when active probing is used in 802.11n/ac with channel bonding enabled
+- Bug 2207 - Print node ID and time when printing routing tables
+- Bug 2206 - Split internet-apps from applications
+- Bug 2208 - Interface index based L4 protocols
+- Bug 2211 - Ipv{4,6}EndPoint can cause memory corruption
+- Bug 2219 - SixLowPanNetDevice hangs trying to decode a IPv6 Fragment extension header
+- Bug 2233 - Implement RFC 1222 - Strong End System Model
+- Bug 2234 - Ipv6L3Protocol should trash multicast packets not interesting for the node
+- Bug 2238 - Ipv6 routing reorganization
+- Bug 2242 - Mobility of both sender PHY and receiver PHY set to sender mobility in lr-wpan-phy-test.cc example.
+
+Known issues
+------------
+In general, known issues are tracked on the project tracker available
+at http://www.nsnam.org/bugzilla/
+
+Release 3.24.1
+==============
+
+Release 3.24.1 is a maintenance release that fixes three issues:
+- support for Xcode 7 clang compiler version
+- detection of Python bindings location
+- compilation problem on 32-bit gcc-4.4 machine
+
+The issues prevented selected systems from being able to successfully
+build ns-3, and prevented the released version from being able to
+detect the presence of pybindgen used for Python bindings.
+
+Availability
+------------
+This release is available from:
+https://www.nsnam.org/release/ns-allinone-3.24.1.tar.bz2
+
+Supported platforms
+-------------------
+This release has been tested on the following platforms:
+- Ubuntu 15.04 (64 bit) with g++-4.9.2
+- Fedora Core 22 (32 bit) with g++-5.1.1
+- Fedora Core 21 (64 bit) with g++-4.9.2
+- Ubuntu 14.04 (64 bit) with g++-4.8.2
+- Ubuntu 12.04.4 (64 bit) with g++-4.6.3
+- CentOS/RHEL 6.7 (64-bit) with g++-4.4.7
+- OS X Yosemite 10.10.5 with Xcode 7 and Apple LLVM version 7.0.0
+- OS X Yosemite 10.10.5 with Xcode 6.4 and Apple LLVM version 6.1.0
+- FreeBSD 10.2-RELEASE (64 bit) with clang-3.4.1
+
+New user-visible features
+-------------------------
+Features are identical to release 3.24.
+
+Bugs fixed
+----------
+- Bug 2181 - Xcode 7.0 compiler warnings trigger build failure
+- Bug 2182 - pybindgen required version is now a string literal
+- Bug 2184 - integer overflow in MacLow
+
+Release 3.24
+============
+
+Availability
+------------
+This release is available from:
+https://www.nsnam.org/release/ns-allinone-3.24.tar.bz2
+
+Supported platforms
+-------------------
+This release has been tested on the following platforms:
+- Ubuntu 15.04 (64 bit) with g++-4.9.2
+- Fedora Core 22 (32 bit) with g++-5.1.1
+- Fedora Core 21 (64 bit) with g++-4.9.2
+- Ubuntu 14.04 (64 bit) with g++-4.8.2
+- Ubuntu 12.04.4 (32/64 bit) with g++-4.6.3
+- CentOS/RHEL 6.7 (64-bit) with g++-4.4.7
+- OS X Yosemite 10.10.4 with Xcode 6.4 and Apple LLVM version 6.1.0
+- FreeBSD 10.1-RELEASE (64 bit) with clang-3.4.1
+
+New user-visible features
+-------------------------
+- (build system) Python 3 is now supported by waf and test runner programs
+- (wifi) 802.11ac Very High Throughput (VHT) physical layer modes are now 
+  supported.
+- (internet) permanent (static) ARP entries can be created for IPv4
+- (network) SimpleChannel allows per-NetDevice blacklists, in order to do hidden terminal testcases.
+- (documentation) TracedCallback function signatures now documented in Doxygen
+
+Bugs fixed
+----------
+- Bug 730 - Enabling fragmentation at run-time breaks simulation
 - Bug 1249 - doxygen comments on device-level SetMobility ()
+- Bug 1482 - mesh module was producing fatal error with ASCII and netanim traces
+- Bug 1557 - errors in function OpenFlowSwitchNetDevice::BufferFromPacket()
+- Bug 1681 - m_lastNavStart is assigned twice continuously
 - Bug 1736 - default dot11EDCATableMSDULifetime
+- Bug 1901 - mesh module producing malformed pcaps
 - Bug 1929 - TcpL4Protocol::Send must indicate the source address to routing (if known)
+- Bug 1982 - AODV and mesh modules use random variables before seeds can be set
+- Bug 2058 - TCP window update can shrink left edge of window
+- Bug 2063 - FdNetDevice::SendFrom assert does not account for headers correctly
+- Bug 2082 - Empirical RV fails if value provided in CDF function is negative
+- Bug 2093 - MultiModelSpectrumChannel::GetDevice only works for 0-th index
 - Bug 2096 - Wrong pcap information when MPDU aggregation is used
+- Bug 2104 - Sequence Number passed to QosUtilsMapSeqControlToUniqueInteger instead of Sequence Control
 - Bug 2108 - Erroneous implementation in InterferenceHelper
+- Bug 2119 - Fix memory leaks in FdNetDevice test due to non-executed events
 - Bug 2124 - UdpSocketImpl::ShutdownRecv doesn't stop the Ipv[4,6]EndPointDemux
+- Bug 2125 - subclasses must chain up to base class NotifyNewAggregate
 - Bug 2126 - LrWpanNetDevice silently accepts no mobility on the node
-- Bug 2130 - Allow SimpleChannel to simulate hidden terminals.
+- Bug 2127 - Scheduler benchmark utility works in first run only
+- Bug 2130 - Allow SimpleChannel to simulate hidden terminals
+- Bug 2132 - TcpL4Protocol sends a bad-formatted RST packet
 - Bug 2135 - TCP doesn't honor the socket's output interface
 - Bug 2136 - The usage of tid in wifi and wave module shall be "if (tid > 7)" rather than "if (tid >= 7)"
-- Bug 2132 - TCP RST packets were incorrectly formatted if no endpoints matched
 - Bug 2138 - SimpleNetDevice could send overlapped packets
+- Bug 2143 - maybe-uninitialized warning
+- Bug 2146 - bug in WAVE channel coordination
 - Bug 2148 - Ipv6Interface::SetUp doesn't re-create the Link-Local addresses
 - Bug 2153 - Incorrect power limits in wifi power control algorithms
 - Bug 2154 - Incorrect power calculation in wifi power adaptation examples
 - Bug 2156 - Duplicate packets when using two level aggregation
+- Bug 2157 - OpenFlowSwitchNetDevice::BufferFromPacket setting eth_type incorrectly
+- Bug 2158 - OpenflowSwitchNetDevice flooding bug
+- Bug 2165 - server replies to SYN (with option TS) with a SYNACK (with option TS) also if the attribute Timestamp is false
+- Bug 2166 - SteadyStateRandomWaypointMobilityModel directs the node to the ground
+- Bug 2170 - AnimationInterface outputs improperly formed XML
+- Bug 2171 - power-adaptation-distance.cc:202:22: error: call to 'pow' is ambiguous
+- Bug 2173 - WifiInformationElement::DeserializeIfPresent attempts to read beyond the end of buffer
+- Bug 2174 - m_rWnd not updated when segments without ACK are received
+- Bug 2177 - Ipv6ExtensionFragmentHeader length is initialized to a wrong value.
 
 Known issues
 ------------

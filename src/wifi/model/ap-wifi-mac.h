@@ -24,7 +24,9 @@
 #define AP_WIFI_MAC_H
 
 #include "regular-wifi-mac.h"
+#include "capability-information.h"
 #include "ht-capabilities.h"
+#include "vht-capabilities.h"
 #include "amsdu-subframe-header.h"
 #include "supported-rates.h"
 #include "ns3/random-variable-stream.h"
@@ -180,11 +182,23 @@ private:
    */
   void SendOneBeacon (void);
   /**
+   * Return the Capability information of the current AP.
+   *
+   * \return the Capability information that we support
+   */
+  CapabilityInformation GetCapabilities (void) const;
+  /**
    * Return the HT capability of the current AP.
    *
    * \return the HT capability that we support
    */
   HtCapabilities GetHtCapabilities (void) const;
+  /**
+   * Return the VHT capability of the current AP.
+   *
+   * \return the VHT capability that we support
+   */
+  VhtCapabilities GetVhtCapabilities (void) const;
   /**
    * Return an instance of SupportedRates that contains all rates that we support
    * including HT rates.

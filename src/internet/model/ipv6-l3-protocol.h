@@ -105,23 +105,53 @@ public:
   void SetNode (Ptr<Node> node);
 
   /**
-   * \brief Add an L4 protocol.
+   * \brief Add a L4 protocol.
    * \param protocol L4 protocol
    */
   void Insert (Ptr<IpL4Protocol> protocol);
 
   /**
-   * \brief Remove an L4 protocol.
-   * \param protocol L4 protocol to remove
+   * \brief Add a L4 protocol to a specific interface.
+   *
+   * This may be called multiple times for multiple interfaces for the same
+   * protocol.  To insert for all interfaces, use the separate
+   * Insert (Ptr<IpL4Protocol> protocol) method.
+   *
+   * Setting a protocol on a specific interface will overwrite the
+   * previously bound protocol.
+   *
+   * \param protocol L4 protocol.
+   * \param interfaceIndex interface index.
+   */
+  void Insert (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
+
+  /**
+   * \brief Remove a L4 protocol.
+   * \param protocol L4 protocol to remove.
    */
   void Remove (Ptr<IpL4Protocol> protocol);
 
   /**
+   * \brief Remove a L4 protocol from a specific interface.
+   * \param protocol L4 protocol to remove.
+   * \param interfaceIndex interface index.
+   */
+  void Remove (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
+
+  /**
    * \brief Get L4 protocol by protocol number.
    * \param protocolNumber protocol number
-   * \return corresponding Ipv6L4Protocol or 0 if not found
+   * \return corresponding IpL4Protocol or 0 if not found
    */
   virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber) const;
+
+  /**
+   * \brief Get L4 protocol by protocol number for the specified interface.
+   * \param protocolNumber protocol number
+   * \param interfaceIndex interface index, -1 means "any" interface.
+   * \return corresponding IpL4Protocol or 0 if not found
+   */
+  virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber, int32_t interfaceIndex) const;
 
   /**
    * \brief Create raw IPv6 socket.
@@ -395,8 +425,7 @@ public:
    * \param [in] interface
    */
   typedef void (* SentTracedCallback)
-    (const Ipv6Header & header, const Ptr<const Packet> packet,
-     const uint32_t interface);
+    (const Ipv6Header & header, Ptr<const Packet> packet, uint32_t interface);
    
   /**
    * TracedCallback signature for packet transmission or reception events.
@@ -404,10 +433,11 @@ public:
    * \param [in] packet The packet.
    * \param [in] ipv6
    * \param [in] interface
+   * \deprecated The non-const \c Ptr<Ipv6> argument is deprecated
+   * and will be changed to \c Ptr<const Ipv6> in a future release.
    */
   typedef void (* TxRxTracedCallback)
-    (const Ptr<const Packet> packet, const Ptr<const Ipv6> ipv6,
-     const uint32_t interface);
+    (Ptr<const Packet> packet, Ptr<Ipv6> ipv6, uint32_t interface);
 
   /**
    * TracedCallback signature for packet drop events.
@@ -417,12 +447,55 @@ public:
    * \param [in] reason The reason the packet was dropped.
    * \param [in] ipv6
    * \param [in] interface
+   * \deprecated The non-const \c Ptr<Ipv6> argument is deprecated
+   * and will be changed to \c Ptr<const Ipv6> in a future release.
    */
   typedef void (* DropTracedCallback)
-    (const Ipv6Header & header, const Ptr<const Packet> packet,
-     const DropReason reason, const Ptr<const Ipv6> ipv6,
-     const uint32_t interface);
-   
+    (const Ipv6Header & header, Ptr<const Packet> packet,
+     DropReason reason, Ptr<Ipv6> ipv6,
+     uint32_t interface);
+
+  /**
+   * Adds a multicast address to the list of addresses to pass to local deliver.
+   * \param address the address.
+   */
+  void AddMulticastAddress (Ipv6Address address);
+
+  /**
+   * Adds a multicast address to the list of addresses to pass to local deliver.
+   * \param address the address.
+   * \param interface the incoming interface.
+   */
+  void AddMulticastAddress (Ipv6Address address, uint32_t interface);
+
+  /**
+   * Removes a multicast address from the list of addresses to pass to local deliver.
+   * \param address the address.
+   */
+  void RemoveMulticastAddress (Ipv6Address address);
+
+  /**
+   * Removes a multicast address from the list of addresses to pass to local deliver.
+   * \param address the address.
+   * \param interface the incoming interface.
+   */
+  void RemoveMulticastAddress (Ipv6Address address, uint32_t interface);
+
+  /**
+   * Checks if the address has been registered.
+   * \param address the address.
+   * \return true if the address is registered.
+   */
+  bool IsRegisteredMulticastAddress (Ipv6Address address) const;
+
+  /**
+   * Checks if the address has been registered for a specific interface.
+   * \param address the address.
+   * \param interface the incoming interface.
+   * \return true if the address is registered.
+   */
+  bool IsRegisteredMulticastAddress (Ipv6Address address, uint32_t interface) const;
+
 protected:
   /**
    * \brief Dispose object.
@@ -452,9 +525,14 @@ private:
   typedef std::list<Ptr<Ipv6RawSocketImpl> > SocketList;
 
   /**
+   * \brief Container of the IPv6 L4 keys: protocol number, interface index
+   */
+  typedef std::pair<int, int32_t> L4ListKey_t;
+
+  /**
    * \brief Container of the IPv6 L4 instances.
    */
-  typedef std::list<Ptr<IpL4Protocol> > L4List_t;
+  typedef std::map<L4ListKey_t, Ptr<IpL4Protocol> > L4List_t;
 
   /**
    * \brief Container of the IPv6 Autoconfigured addresses.
@@ -468,16 +546,22 @@ private:
 
   /**
    * \brief Callback to trace TX (transmission) packets.
+   * \deprecated The non-const \c Ptr<Ipv6> argument is deprecated
+   * and will be changed to \c Ptr<const Ipv6> in a future release.
    */ 
   TracedCallback<Ptr<const Packet>, Ptr<Ipv6>, uint32_t> m_txTrace;
 
   /**
    * \brief Callback to trace RX (reception) packets.
+   * \deprecated The non-const \c Ptr<Ipv6> argument is deprecated
+   * and will be changed to \c Ptr<const Ipv6> in a future release.
    */ 
   TracedCallback<Ptr<const Packet>, Ptr<Ipv6>, uint32_t> m_rxTrace;
 
   /**
    * \brief Callback to trace drop packets.
+   * \deprecated The non-const \c Ptr<Ipv6> argument is deprecated
+   * and will be changed to \c Ptr<const Ipv6> in a future release.
    */ 
   TracedCallback<const Ipv6Header &, Ptr<const Packet>, DropReason, Ptr<Ipv6>, uint32_t> m_dropTrace;
 
@@ -652,6 +736,11 @@ private:
   uint8_t m_defaultTclass;
 
   /**
+   * \brief Rejects packets directed to an interface with wrong address (\RFC{1222}).
+   */
+  bool m_strongEndSystemModel;
+
+  /**
    * \brief Routing protocol.
    */
   Ptr<Ipv6RoutingProtocol> m_routingProtocol;
@@ -670,6 +759,51 @@ private:
    * \brief Allow ICMPv6 Redirect sending state
    */
   bool m_sendIcmpv6Redirect;
+
+  /**
+   * \brief IPv6 multicast addresses / interface key.
+   */
+  typedef std::pair<Ipv6Address, uint64_t> Ipv6RegisteredMulticastAddressKey_t;
+
+  /**
+   * \brief Container of the IPv6 multicast addresses.
+   */
+  typedef std::map<Ipv6RegisteredMulticastAddressKey_t, uint32_t> Ipv6RegisteredMulticastAddress_t;
+
+  /**
+   * \brief Container Iterator of the IPv6 multicast addresses.
+   */
+  typedef std::map<Ipv6RegisteredMulticastAddressKey_t, uint32_t>::iterator Ipv6RegisteredMulticastAddressIter_t;
+
+  /**
+   * \brief Container Const Iterator of the IPv6 multicast addresses.
+   */
+  typedef std::map<Ipv6RegisteredMulticastAddressKey_t, uint32_t>::const_iterator Ipv6RegisteredMulticastAddressCIter_t;
+
+  /**
+   * \brief Container of the IPv6 multicast addresses.
+   */
+  typedef std::map<Ipv6Address, uint32_t> Ipv6RegisteredMulticastAddressNoInterface_t;
+
+  /**
+   * \brief Container Iterator of the IPv6 multicast addresses.
+   */
+  typedef std::map<Ipv6Address, uint32_t>::iterator Ipv6RegisteredMulticastAddressNoInterfaceIter_t;
+
+  /**
+   * \brief Container Const Iterator of the IPv6 multicast addresses.
+   */
+  typedef std::map<Ipv6Address, uint32_t>::const_iterator Ipv6RegisteredMulticastAddressNoInterfaceCIter_t;
+
+  /**
+   * \brief List of multicast IP addresses of interest, divided per interface.
+   */
+  Ipv6RegisteredMulticastAddress_t m_multicastAddresses;
+
+  /**
+   * \brief List of multicast IP addresses of interest for all the interfaces.
+   */
+  Ipv6RegisteredMulticastAddressNoInterface_t m_multicastAddressesNoInterface;
 };
 
 } /* namespace ns3 */

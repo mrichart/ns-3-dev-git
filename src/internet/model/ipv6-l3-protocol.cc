@@ -84,6 +84,11 @@ TypeId Ipv6L3Protocol::GetTypeId ()
                    MakeBooleanAccessor (&Ipv6L3Protocol::SetSendIcmpv6Redirect,
                                         &Ipv6L3Protocol::GetSendIcmpv6Redirect),
                    MakeBooleanChecker ())
+    .AddAttribute ("StrongEndSystemModel",
+                   "Reject packets for an address not configured on the interface they're coming from (RFC1222).",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&Ipv6L3Protocol::m_strongEndSystemModel),
+                   MakeBooleanChecker ())
     .AddTraceSource ("Tx",
                      "Send IPv6 packet to outgoing interface.",
                      MakeTraceSourceAccessor (&Ipv6L3Protocol::m_txTrace),
@@ -135,7 +140,7 @@ void Ipv6L3Protocol::DoDispose ()
   /* clear protocol and interface list */
   for (L4List_t::iterator it = m_protocols.begin (); it != m_protocols.end (); ++it)
     {
-      *it = 0;
+      it->second = 0;
     }
   m_protocols.clear ();
 
@@ -529,7 +534,7 @@ void Ipv6L3Protocol::SetUp (uint32_t i)
     }
   else
     {
-      NS_LOG_LOGIC ("Interface " << int(i) << " is set to be down for IPv6. Reason: not respecting minimum IPv6 MTU (1280 octects)");
+      NS_LOG_LOGIC ("Interface " << int(i) << " is set to be down for IPv6. Reason: not respecting minimum IPv6 MTU (1280 octets)");
     }
 }
 
@@ -707,26 +712,89 @@ void Ipv6L3Protocol::SetNode (Ptr<Node> node)
 void Ipv6L3Protocol::Insert (Ptr<IpL4Protocol> protocol)
 {
   NS_LOG_FUNCTION (this << protocol);
-  m_protocols.push_back (protocol);
+  L4ListKey_t key = std::make_pair (protocol->GetProtocolNumber (), -1);
+  if (m_protocols.find (key) != m_protocols.end ())
+    {
+      NS_LOG_WARN ("Overwriting default protocol " << int(protocol->GetProtocolNumber ()));
+    }
+  m_protocols[key] = protocol;
+}
+
+void Ipv6L3Protocol::Insert (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex)
+{
+  NS_LOG_FUNCTION (this << protocol << interfaceIndex);
+
+  L4ListKey_t key = std::make_pair (protocol->GetProtocolNumber (), interfaceIndex);
+  if (m_protocols.find (key) != m_protocols.end ())
+    {
+      NS_LOG_WARN ("Overwriting protocol " << int(protocol->GetProtocolNumber ()) << " on interface " << int(interfaceIndex));
+    }
+  m_protocols[key] = protocol;
 }
 
 void Ipv6L3Protocol::Remove (Ptr<IpL4Protocol> protocol)
 {
   NS_LOG_FUNCTION (this << protocol);
-  m_protocols.remove (protocol);
+
+  L4ListKey_t key = std::make_pair (protocol->GetProtocolNumber (), -1);
+  L4List_t::iterator iter = m_protocols.find (key);
+  if (iter == m_protocols.end ())
+    {
+      NS_LOG_WARN ("Trying to remove an non-existent default protocol " << int(protocol->GetProtocolNumber ()));
+    }
+  else
+    {
+      m_protocols.erase (key);
+    }
+}
+
+void Ipv6L3Protocol::Remove (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex)
+{
+  NS_LOG_FUNCTION (this << protocol << interfaceIndex);
+
+  L4ListKey_t key = std::make_pair (protocol->GetProtocolNumber (), interfaceIndex);
+  L4List_t::iterator iter = m_protocols.find (key);
+  if (iter == m_protocols.end ())
+    {
+      NS_LOG_WARN ("Trying to remove an non-existent protocol " << int(protocol->GetProtocolNumber ()) << " on interface " << int(interfaceIndex));
+    }
+  else
+    {
+      m_protocols.erase (key);
+    }
 }
 
 Ptr<IpL4Protocol> Ipv6L3Protocol::GetProtocol (int protocolNumber) const
 {
   NS_LOG_FUNCTION (this << protocolNumber);
 
-  for (L4List_t::const_iterator i = m_protocols.begin (); i != m_protocols.end (); ++i)
+  return GetProtocol (protocolNumber, -1);
+}
+
+Ptr<IpL4Protocol> Ipv6L3Protocol::GetProtocol (int protocolNumber, int32_t interfaceIndex) const
+{
+  NS_LOG_FUNCTION (this << protocolNumber << interfaceIndex);
+
+  L4ListKey_t key;
+  L4List_t::const_iterator i;
+  if (interfaceIndex >= 0)
     {
-      if ((*i)->GetProtocolNumber () == protocolNumber)
+      // try the interface-specific protocol.
+      key = std::make_pair (protocolNumber, interfaceIndex);
+      i = m_protocols.find (key);
+      if (i != m_protocols.end ())
         {
-          return *i;
+          return i->second;
         }
     }
+  // try the generic protocol.
+  key = std::make_pair (protocolNumber, -1);
+  i = m_protocols.find (key);
+  if (i != m_protocols.end ())
+    {
+      return i->second;
+    }
+
   return 0;
 }
 
@@ -938,6 +1006,57 @@ void Ipv6L3Protocol::Receive (Ptr<NetDevice> device, Ptr<const Packet> p, uint16
         }
     }
 
+  if (hdr.GetDestinationAddress ().IsAllNodesMulticast ())
+    {
+      LocalDeliver (packet, hdr, interface);
+      return;
+    }
+  else if (hdr.GetDestinationAddress ().IsAllRoutersMulticast() && ipv6Interface->IsForwarding ())
+    {
+      LocalDeliver (packet, hdr, interface);
+      return;
+    }
+  else if (hdr.GetDestinationAddress ().IsMulticast ())
+    {
+      bool isSolicited = ipv6Interface->IsSolicitedMulticastAddress (hdr.GetDestinationAddress ());
+      bool isRegisteredOnInterface = IsRegisteredMulticastAddress (hdr.GetDestinationAddress (), interface);
+      bool isRegisteredGlobally = IsRegisteredMulticastAddress (hdr.GetDestinationAddress ());
+      if (isSolicited || isRegisteredGlobally || isRegisteredOnInterface)
+        {
+          LocalDeliver (packet, hdr, interface);
+          // do not return, the packet could be handled by a routing protocol
+        }
+    }
+
+
+  for (uint32_t j = 0; j < GetNInterfaces (); j++)
+    {
+      for (uint32_t i = 0; i < GetNAddresses (j); i++)
+        {
+          Ipv6InterfaceAddress iaddr = GetAddress (j, i);
+          Ipv6Address addr = iaddr.GetAddress ();
+          if (addr.IsEqual (hdr.GetDestinationAddress ()))
+            {
+              bool rightInterface = false;
+              if (j == interface)
+                {
+                  NS_LOG_LOGIC ("For me (destination " << addr << " match)");
+                  rightInterface = true;
+                }
+              else
+                {
+                  NS_LOG_LOGIC ("For me (destination " << addr << " match) on another interface " << hdr.GetDestinationAddress ());
+                }
+              if (rightInterface || !m_strongEndSystemModel)
+                {
+                  LocalDeliver (packet, hdr, interface);
+                }
+              return;
+            }
+          NS_LOG_LOGIC ("Address " << addr << " not a match");
+        }
+    }
+
   if (!m_routingProtocol->RouteInput (packet, hdr, device,
                                       MakeCallback (&Ipv6L3Protocol::IpForward, this),
                                       MakeCallback (&Ipv6L3Protocol::IpMulticastForward, this),
@@ -945,8 +1064,7 @@ void Ipv6L3Protocol::Receive (Ptr<NetDevice> device, Ptr<const Packet> p, uint16
                                       MakeCallback (&Ipv6L3Protocol::RouteInputError, this)))
     {
       NS_LOG_WARN ("No route found for forwarding packet.  Drop.");
-      GetIcmpv6 ()->SendErrorDestinationUnreachable (p->Copy (), hdr.GetSourceAddress (), Icmpv6Header::ICMPV6_NO_ROUTE);
-      m_dropTrace (hdr, packet, DROP_NO_ROUTE, m_node->GetObject<Ipv6> (), interface);
+      // Drop trace and ICMPs are courtesy of RouteInputError
     }
 }
 
@@ -1244,14 +1362,15 @@ void Ipv6L3Protocol::LocalDeliver (Ptr<const Packet> packet, Ipv6Header const& i
         }
       else
         {
-          protocol = GetProtocol (nextHeader);
-          // For ICMPv6 Error packets
-          Ptr<Packet> malformedPacket  = packet->Copy ();
-          malformedPacket->AddHeader (ip);
+          protocol = GetProtocol (nextHeader, iif);
 
           if (!protocol)
             {
               NS_LOG_LOGIC ("Unknown Next Header. Drop!");
+
+              // For ICMPv6 Error packets
+              Ptr<Packet> malformedPacket  = packet->Copy ();
+              malformedPacket->AddHeader (ip);
 
               if (nextHeaderPosition == 0)
                 {
@@ -1304,7 +1423,15 @@ void Ipv6L3Protocol::RouteInputError (Ptr<const Packet> p, const Ipv6Header& ipH
 {
   NS_LOG_FUNCTION (this << p << ipHeader << sockErrno);
   NS_LOG_LOGIC ("Route input failure-- dropping packet to " << ipHeader << " with errno " << sockErrno);
+
   m_dropTrace (ipHeader, p, DROP_ROUTE_ERROR, m_node->GetObject<Ipv6> (), 0);
+
+  if (!ipHeader.GetDestinationAddress ().IsMulticast ())
+    {
+      Ptr<Packet> packet = p->Copy ();
+      packet->AddHeader (ipHeader);
+      GetIcmpv6 ()->SendErrorDestinationUnreachable (packet, ipHeader.GetSourceAddress (), Icmpv6Header::ICMPV6_NO_ROUTE);
+    }
 }
 
 Ipv6Header Ipv6L3Protocol::BuildHeader (Ipv6Address src, Ipv6Address dst, uint8_t protocol, uint16_t payloadSize, uint8_t ttl, uint8_t tclass)
@@ -1379,6 +1506,84 @@ void Ipv6L3Protocol::RegisterOptions ()
 void Ipv6L3Protocol::ReportDrop (Ipv6Header ipHeader, Ptr<Packet> p, DropReason dropReason)
 {
   m_dropTrace (ipHeader, p, dropReason, m_node->GetObject<Ipv6> (), 0);
+}
+
+void Ipv6L3Protocol::AddMulticastAddress (Ipv6Address address, uint32_t interface)
+{
+  NS_LOG_FUNCTION (address << interface);
+
+  if (!address.IsMulticast ())
+    {
+      NS_LOG_WARN ("Not adding a non-multicast address " << address);
+      return;
+    }
+
+  Ipv6RegisteredMulticastAddressKey_t key = std::make_pair (address, interface);
+  m_multicastAddresses[key]++;
+}
+
+void Ipv6L3Protocol::AddMulticastAddress (Ipv6Address address)
+{
+  NS_LOG_FUNCTION (address);
+
+  if (!address.IsMulticast ())
+    {
+      NS_LOG_WARN ("Not adding a non-multicast address " << address);
+      return;
+    }
+
+  m_multicastAddressesNoInterface[address]++;
+}
+
+void Ipv6L3Protocol::RemoveMulticastAddress (Ipv6Address address, uint32_t interface)
+{
+  NS_LOG_FUNCTION (address << interface);
+
+  Ipv6RegisteredMulticastAddressKey_t key = std::make_pair (address, interface);
+
+  m_multicastAddresses[key]--;
+  if (m_multicastAddresses[key] == 0)
+    {
+      m_multicastAddresses.erase (key);
+    }
+}
+
+void Ipv6L3Protocol::RemoveMulticastAddress (Ipv6Address address)
+{
+  NS_LOG_FUNCTION (address);
+
+  m_multicastAddressesNoInterface[address]--;
+  if (m_multicastAddressesNoInterface[address] == 0)
+    {
+      m_multicastAddressesNoInterface.erase (address);
+    }
+}
+
+bool Ipv6L3Protocol::IsRegisteredMulticastAddress (Ipv6Address address, uint32_t interface) const
+{
+  NS_LOG_FUNCTION (address << interface);
+
+  Ipv6RegisteredMulticastAddressKey_t key = std::make_pair (address, interface);
+  Ipv6RegisteredMulticastAddressCIter_t iter = m_multicastAddresses.find (key);
+
+  if (iter == m_multicastAddresses.end ())
+    {
+      return false;
+    }
+  return true;
+}
+
+bool Ipv6L3Protocol::IsRegisteredMulticastAddress (Ipv6Address address) const
+{
+  NS_LOG_FUNCTION (address);
+
+  Ipv6RegisteredMulticastAddressNoInterfaceCIter_t iter = m_multicastAddressesNoInterface.find (address);
+
+  if (iter == m_multicastAddressesNoInterface.end ())
+    {
+      return false;
+    }
+  return true;
 }
 
 } /* namespace ns3 */

@@ -128,6 +128,22 @@ public:
    * The caller does not get ownership of the returned pointer.
    */
   void Insert (Ptr<IpL4Protocol> protocol);
+
+  /**
+   * \brief Add a L4 protocol to a specific interface.
+   *
+   * This may be called multiple times for multiple interfaces for the same
+   * protocol.  To insert for all interfaces, use the separate
+   * Insert (Ptr<IpL4Protocol> protocol) method.
+   *
+   * Setting a protocol on a specific interface will overwrite the
+   * previously bound protocol.
+   *
+   * \param protocol L4 protocol.
+   * \param interfaceIndex interface index.
+   */
+  void Insert (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
+
   /**
    * \param protocolNumber number of protocol to lookup
    *        in this L4 Demux
@@ -137,6 +153,15 @@ public:
    * to forward packets up the stack to the right protocol.
    */
   virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber) const;
+
+  /**
+   * \brief Get L4 protocol by protocol number for the specified interface.
+   * \param protocolNumber protocol number
+   * \param interfaceIndex interface index, -1 means "any" interface.
+   * \return corresponding IpL4Protocol or 0 if not found
+   */
+  virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber, int32_t interfaceIndex) const;
+
   /**
    * \param protocol protocol to remove from this demux.
    *
@@ -144,6 +169,13 @@ public:
    * returned from the Ipv4L4Protocol::Insert method.
    */
   void Remove (Ptr<IpL4Protocol> protocol);
+
+  /**
+   * \brief Remove a L4 protocol from a specific interface.
+   * \param protocol L4 protocol to remove.
+   * \param interfaceIndex interface index.
+   */
+  void Remove (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
 
   /**
    * \param ttl default ttl to use
@@ -245,8 +277,7 @@ public:
    * \param [in] interface
    */
   typedef void (* SentTracedCallback)
-    (const Ipv4Header & header, const Ptr<const Packet> packet,
-     const uint32_t interface);
+    (const Ipv4Header & header, Ptr<const Packet> packet, uint32_t interface);
    
   /**
    * TracedCallback signature for packet transmission or reception events.
@@ -254,10 +285,11 @@ public:
    * \param [in] packet The packet.
    * \param [in] ipv4
    * \param [in] interface
+   * \deprecated The non-const \c Ptr<Ipv4> argument is deprecated
+   * and will be changed to \c Ptr<const Ipv4> in a future release.
    */
   typedef void (* TxRxTracedCallback)
-    (const Ptr<const Packet> packet, const Ptr<const Ipv4> ipv4, 
-     const uint32_t interface);
+    (Ptr<const Packet> packet, Ptr<Ipv4> ipv4, uint32_t interface);
 
   /**
    * TracedCallback signature for packet drop events.
@@ -267,11 +299,13 @@ public:
    * \param [in] reason The reason the packet was dropped.
    * \param [in] ipv4
    * \param [in] interface
+   * \deprecated The non-const \c Ptr<Ipv4> argument is deprecated
+   * and will be changed to \c Ptr<const Ipv4> in a future release.
    */
   typedef void (* DropTracedCallback)
-    (const Ipv4Header & header, const Ptr<const Packet> packet,
-     const DropReason reason, const Ptr<const Ipv4> ipv4,
-     const uint32_t interface);
+    (const Ipv4Header & header, Ptr<const Packet> packet,
+     DropReason reason, Ptr<Ipv4> ipv4,
+     uint32_t interface);
    
 protected:
 
@@ -433,10 +467,16 @@ private:
    * \brief Container of the IPv4 Raw Sockets.
    */
   typedef std::list<Ptr<Ipv4RawSocketImpl> > SocketList;
+
+  /**
+   * \brief Container of the IPv4 L4 keys: protocol number, interface index
+   */
+  typedef std::pair<int, int32_t> L4ListKey_t;
+
   /**
    * \brief Container of the IPv4 L4 instances.
    */
-   typedef std::list<Ptr<IpL4Protocol> > L4List_t;
+  typedef std::map<L4ListKey_t, Ptr<IpL4Protocol> > L4List_t;
 
   bool m_ipForward;      //!< Forwarding packets (i.e. router mode) state.
   bool m_weakEsModel;    //!< Weak ES model state
@@ -456,11 +496,17 @@ private:
 
   // The following two traces pass a packet with an IP header
   /// Trace of transmitted packets
+  /// \deprecated The non-const \c Ptr<Ipv4> argument is deprecated
+  /// and will be changed to \c Ptr<const Ipv4> in a future release.
   TracedCallback<Ptr<const Packet>, Ptr<Ipv4>,  uint32_t> m_txTrace;
   /// Trace of received packets
+  /// \deprecated The non-const \c Ptr<Ipv4> argument is deprecated
+  /// and will be changed to \c Ptr<const Ipv4> in a future release.
   TracedCallback<Ptr<const Packet>, Ptr<Ipv4>, uint32_t> m_rxTrace;
   // <ip-header, payload, reason, ifindex> (ifindex not valid if reason is DROP_NO_ROUTE)
   /// Trace of dropped packets
+  /// \deprecated The non-const \c Ptr<Ipv4> argument is deprecated
+  /// and will be changed to \c Ptr<const Ipv4> in a future release.
   TracedCallback<const Ipv4Header &, Ptr<const Packet>, DropReason, Ptr<Ipv4>, uint32_t> m_dropTrace;
 
   Ptr<Ipv4RoutingProtocol> m_routingProtocol; //!< Routing protocol associated with the stack

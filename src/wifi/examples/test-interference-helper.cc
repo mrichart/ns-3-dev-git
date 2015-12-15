@@ -106,7 +106,7 @@ InterferenceExperiment::SendA (void) const
   WifiTxVector txVector;
   txVector.SetTxPowerLevel (m_input.txPowerLevelA);
   txVector.SetMode (WifiMode (m_input.txModeA));
-  m_txA->SendPacket (p, txVector, m_input.preamble, 0, 0);
+  m_txA->SendPacket (p, txVector, m_input.preamble);
 }
 
 void
@@ -116,7 +116,7 @@ InterferenceExperiment::SendB (void) const
   WifiTxVector txVector;
   txVector.SetTxPowerLevel (m_input.txPowerLevelB);
   txVector.SetMode (WifiMode (m_input.txModeB));
-  m_txB->SendPacket (p, txVector, m_input.preamble, 0, 0);
+  m_txB->SendPacket (p, txVector, m_input.preamble);
 }
 
 InterferenceExperiment::InterferenceExperiment ()
@@ -236,6 +236,10 @@ int main (int argc, char *argv[])
     {
       input.standard = WIFI_PHY_STANDARD_80211n_5GHZ;
     }
+  else if (str_standard == "WIFI_PHY_STANDARD_80211ac")
+    {
+      input.standard = WIFI_PHY_STANDARD_80211ac;
+    }
 
   if (str_preamble == "WIFI_PREAMBLE_LONG" && (input.standard == WIFI_PHY_STANDARD_80211a || input.standard == WIFI_PHY_STANDARD_80211b || input.standard == WIFI_PHY_STANDARD_80211g))
     {
@@ -252,6 +256,10 @@ int main (int argc, char *argv[])
   else if (str_preamble == "WIFI_PREAMBLE_HT_GF" && (input.standard == WIFI_PHY_STANDARD_80211n_2_4GHZ || input.standard == WIFI_PHY_STANDARD_80211n_5GHZ))
     {
       input.preamble = WIFI_PREAMBLE_HT_GF;
+    }
+  else if (str_preamble == "WIFI_PREAMBLE_VHT" && input.standard == WIFI_PHY_STANDARD_80211ac)
+    {
+      input.preamble = WIFI_PREAMBLE_VHT;
     }
   else
     {

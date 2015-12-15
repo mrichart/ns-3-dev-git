@@ -40,14 +40,24 @@ HtWifiMacHelper::Default (void)
 {
   HtWifiMacHelper helper;
 
-  //We're making Ht-enabled Wi-Fi MACs here, so we set the necessary
-  //attribute. I've carefully positioned this here so that someone
-  //who knows what they're doing can override with explicit attributes.
   helper.SetType ("ns3::StaWifiMac",
                   "QosSupported", BooleanValue (true),
                   "HtSupported", BooleanValue (true));
 
   return helper;
+}
+
+StringValue
+HtWifiMacHelper::DataRateForMcs (int mcs)
+{
+  std::stringstream sstmp;
+  std::string strtmp, dataRate;
+
+  sstmp << mcs;
+  sstmp >> strtmp;
+  dataRate = "HtMcs" + strtmp;
+  
+  return StringValue (dataRate);
 }
 
 } //namespace ns3

@@ -39,6 +39,10 @@ SOURCES = \
 	$(SRC)/fd-net-device/doc/fd-net-device.rst \
 	$(SRC)/tap-bridge/doc/tap.rst \
 	$(SRC)/mesh/doc/source/mesh.rst \
+	$(SRC)/mesh/doc/source/mesh-user.rst \
+	$(SRC)/mesh/doc/source/mesh-design.rst \
+	$(SRC)/mesh/doc/source/mesh-references.rst \
+	$(SRC)/mesh/doc/source/mesh-testing.rst \
 	$(SRC)/lte/doc/source/lte.rst \
 	$(SRC)/lte/doc/source/lte-user.rst \
 	$(SRC)/lte/doc/source/lte-design.rst \
@@ -58,6 +62,7 @@ SOURCES = \
 	$(SRC)/internet/doc/routing-overview.rst \
 	$(SRC)/internet/doc/tcp.rst \
 	$(SRC)/internet/doc/codel.rst \
+	$(SRC)/internet-apps/doc/internet-apps.rst \
 	$(SRC)/mobility/doc/mobility.rst \
 	$(SRC)/olsr/doc/olsr.rst \
 	$(SRC)/openflow/doc/openflow-switch.rst \

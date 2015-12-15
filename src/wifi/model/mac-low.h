@@ -29,6 +29,7 @@
 
 #include "wifi-mac-header.h"
 #include "wifi-mode.h"
+#include "wifi-phy.h"
 #include "wifi-preamble.h"
 #include "wifi-remote-station-manager.h"
 #include "ctrl-headers.h"
@@ -530,6 +531,11 @@ public:
    */
   void SetMpduAggregator (Ptr<MpduAggregator> aggregator);
   /**
+   *
+   * \return the attached MpduAggregator
+   */
+  Ptr<MpduAggregator> GetMpduAggregator (void);
+  /**
    * Set MAC address of this MacLow.
    *
    * \param ad Mac48Address of this MacLow
@@ -727,11 +733,12 @@ public:
   /**
    * \param packet packet received.
    * \param rxSnr snr of packet received.
+   * \param isEndOfFrame PHY-RXEND indication.
    *
    * This method is typically invoked by the lower PHY layer to notify
    * the MAC layer that a packet was unsuccessfully received.
    */
-  void ReceiveError (Ptr<const Packet> packet, double rxSnr);
+  void ReceiveError (Ptr<const Packet> packet, double rxSnr, bool isEndOfFrame);
   /**
    * \param duration switching delay duration.
    *
@@ -880,16 +887,15 @@ private:
   void ForwardDown (Ptr<const Packet> packet, const WifiMacHeader *hdr,
                     WifiTxVector txVector, WifiPreamble preamble);
   /**
-   * Forward the packet down to WifiPhy for transmission. This is called for each MPDU when MPDU aggregation is used.
+   * Forward the MPDU down to WifiPhy for transmission. This is called for each MPDU when MPDU aggregation is used.
    *
    * \param packet
    * \param hdr
    * \param txVector
    * \param preamble
-   * \param packetType
-   * \param mpduReferenceNumber
+   * \param mpdutype
    */
-  void SendPacket (Ptr<const Packet> packet, WifiTxVector txVector, WifiPreamble preamble, uint8_t packetType, uint32_t mpduReferenceNumber);
+  void SendMpdu (Ptr<const Packet> packet, WifiTxVector txVector, WifiPreamble preamble, enum mpduType mpdutype);
   /**
    * Return a TXVECTOR for the RTS frame given the destination.
    * The function consults WifiRemoteStationManager, which controls the rate
@@ -1164,7 +1170,7 @@ private:
   /**
    * \param originator Address of peer participating in Block Ack mechanism.
    * \param tid TID for which Block Ack was created.
-   * \param seq Starting sequence
+   * \param seq Starting sequence control
    *
    * This function forward up all completed "old" packets with sequence number
    * smaller than <i>seq</i>. All comparison are performed circularly mod 4096.
@@ -1279,7 +1285,6 @@ private:
    */
   Ptr<Packet> PerformMsduAggregation (Ptr<const Packet> packet, WifiMacHeader *hdr, Time *tstamp, Ptr<Packet> currentAmpduPacket, uint16_t blockAckSize);
 
-
   Ptr<WifiPhy> m_phy; //!< Pointer to WifiPhy (actually send/receives frames)
   Ptr<WifiRemoteStationManager> m_stationManager; //!< Pointer to WifiRemoteStationManager (rate control)
   MacLowRxCallback m_rxCallback; //!< Callback to pass packet up
@@ -1321,7 +1326,8 @@ private:
   Ptr<MpduAggregator> m_mpduAggregator; //!<
 
   Ptr<Packet> m_currentPacket;              //!< Current packet transmitted/to be transmitted
-  WifiMacHeader m_currentHdr;               //!< Header of the current packet
+  WifiMacHeader m_currentHdr;               //!< Header of the current transmitted packet
+  WifiMacHeader m_lastReceivedHdr;          //!< Header of the last received packet
   MacLowTransmissionParameters m_txParams;  //!< Transmission parameters of the current packet
   MacLowTransmissionListener *m_listener;   //!< Transmission listener for the current packet
   Mac48Address m_self;                      //!< Address of this MacLow (Mac48Address)
@@ -1369,7 +1375,6 @@ private:
   WifiTxVector m_currentTxVector;     //!< TXVECTOR used for the current packet transmission
   bool m_receivedAtLeastOneMpdu;      //!< Flag whether an MPDU has already been successfully received while receiving an A-MPDU
   std::vector<Item> m_txPackets;      //!< Contain temporary items to be sent with the next A-MPDU transmission, once RTS/CTS exchange has succeeded. It is not used in other cases.
-  uint32_t m_mpduReferenceNumber;       //!< A-MPDU reference number to identify all subframes belonging to the same A-MPDU
 };
 
 } //namespace ns3

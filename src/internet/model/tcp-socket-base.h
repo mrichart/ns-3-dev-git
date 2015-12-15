@@ -36,6 +36,7 @@
 #include "tcp-tx-buffer.h"
 #include "tcp-rx-buffer.h"
 #include "rtt-estimator.h"
+#include "tcp-congestion-ops.h"
 
 namespace ns3 {
 
@@ -76,6 +77,93 @@ public:
 typedef std::deque<RttHistory> RttHistory_t;
 
 /**
+ * \brief Data structure that records the congestion state of a connection
+ *
+ * In this data structure, basic informations that should be passed between
+ * socket and the congestion control algorithm are saved. Through the code,
+ * it will be referred as Transmission Control Block (TCB), but there are some
+ * differencies. In the RFCs, the TCB contains all the variables that defines
+ * a connection, while we preferred to maintain in this class only the values
+ * that should be exchanged between socket and other parts, like congestion
+ * control algorithms.
+ *
+ */
+class TcpSocketState : public Object
+{
+public:
+  /**
+   * Get the type ID.
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
+
+  TcpSocketState ();
+  TcpSocketState (const TcpSocketState &other);
+
+  /**
+   * \brief Definition of the Congestion state machine
+   *
+   * The design of this state machine is taken from Linux v4.0, but it has been
+   * maintained in the Linux mainline from ages. It basically avoids to maintain
+   * a lot of boolean variables, and it allows to check the transitions from
+   * different algorithm in a cleaner way.
+   *
+   * These states represent the situation from a congestion control point of view:
+   * in fact, apart the CA_OPEN state, the other states represent a situation in
+   * which there is a congestion, and different actions should be taken,
+   * depending on the case.
+   *
+   */
+  typedef enum
+  {
+    CA_OPEN,      /**< Normal state, no dubious events */
+    CA_DISORDER,  /**< In all the respects it is "Open",
+                    *  but requires a bit more attention. It is entered when
+                    *  we see some SACKs or dupacks. It is split of "Open" */
+    CA_CWR,       /**< cWnd was reduced due to some Congestion Notification event.
+                    *  It can be ECN, ICMP source quench, local device congestion.
+                    *  Not used in NS-3 right now. */
+    CA_RECOVERY,  /**< CWND was reduced, we are fast-retransmitting. */
+    CA_LOSS,      /**< CWND was reduced due to RTO timeout or SACK reneging. */
+    CA_LAST_STATE /**< Used only in debug messages */
+  } TcpCongState_t;
+
+  /**
+   * \ingroup tcp
+   * TracedValue Callback signature for TcpCongState_t
+   *
+   * \param [in] oldValue original value of the traced variable
+   * \param [in] newValue new value of the traced variable
+   */
+  typedef void (* TcpCongStatesTracedValueCallback)(const TcpCongState_t oldValue,
+                                                    const TcpCongState_t newValue);
+
+  /**
+   * \brief Literal names of TCP states for use in log messages
+   */
+  static const char* const TcpCongStateName[TcpSocketState::CA_LAST_STATE];
+
+  // Congestion control
+  TracedValue<uint32_t>  m_cWnd;            //!< Congestion window
+  TracedValue<uint32_t>  m_ssThresh;        //!< Slow start threshold
+  uint32_t               m_initialCWnd;     //!< Initial cWnd value
+  uint32_t               m_initialSsThresh; //!< Initial Slow Start Threshold value
+
+  // Segment
+  uint32_t               m_segmentSize;     //!< Segment size
+
+  TracedValue<TcpCongState_t> m_congState;    //!< State in the Congestion state machine
+
+  /**
+   * \brief Get cwnd in segments rather than bytes
+   *
+   * \return Congestion window in segments
+   */
+  uint32_t GetCwndInSegments () const { return m_cWnd / m_segmentSize; }
+};
+
+/**
  * \ingroup socket
  * \ingroup tcp
  *
@@ -87,6 +175,65 @@ typedef std::deque<RttHistory> RttHistory_t;
  * provides connection orientation and sliding window flow control. Part of
  * this class is modified from the original NS-3 TCP socket implementation
  * (TcpSocketImpl) by Raj Bhattacharjea <raj.b@gatech.edu> of Georgia Tech.
+ *
+ * Congestion state machine
+ * ---------------------------
+ *
+ * The socket maintains two state machines; the TCP one, and another called
+ * "Congestion state machine", which keeps track of the phase we are in. Currently,
+ * ns-3 manages the states:
+ *
+ * - CA_OPEN
+ * - CA_DISORDER
+ * - CA_RECOVERY
+ * - CA_LOSS
+ *
+ * Another one (CA_CWR) is present but not used. For more information, see
+ * the TcpCongState_t documentation.
+ *
+ * Congestion control interface
+ * ---------------------------
+ *
+ * Congestion control, unlike older releases of ns-3, has been splitted from
+ * TcpSocketBase. In particular, each congestion control is now a subclass of
+ * the main TcpCongestionOps class. Switching between congestion algorithm is
+ * now a matter of setting a pointer into the TcpSocketBase class.
+ *
+ * The variables needed to congestion control classes to operate correctly have
+ * been moved inside the TcpSocketState class. It contains information on the
+ * congestion window, slow start threshold, segment size and the state of the
+ * Congestion state machine.
+ *
+ * To track the trace inside the TcpSocketState class, a "forward" technique is
+ * used, which consists in chaining callbacks from TcpSocketState to TcpSocketBase
+ * (see for example cWnd trace source).
+ *
+ * Fast retransmit
+ * ---------------------------
+ *
+ * The fast retransmit enhancement is introduced in RFC 2581 and updated in
+ * RFC 5681. It basically reduces the time a sender waits before retransmitting
+ * a lost segment, through the assumption that if it receives a certain number
+ * of duplicate ACKs, a segment has been lost and it can be retransmitted.
+ * Usually it is coupled with the Limited Transmit algorithm, defined in
+ * RFC 3042.
+ *
+ * In ns-3, these algorithms are included in this class, and it is implemented inside
+ * the ReceivedAck method. The attribute which manages the number of dup ACKs
+ * necessary to start the fast retransmit algorithm is named "ReTxThreshold",
+ * and its default value is 3, while the Limited Transmit one can be enabled
+ * by setting the attribute "LimitedTransmit" to true.
+ *
+ * Fast recovery
+ * --------------------------
+ *
+ * The fast recovery algorithm is introduced RFC 2001, and it basically
+ * avoids to reset cWnd to 1 segment after sensing a loss on the channel. Instead,
+ * the slow start threshold is halved, and the cWnd is set equal to such value,
+ * plus segments for the cWnd inflation.
+ *
+ * The algorithm is implemented in the ReceivedAck method.
+ *
  */
 class TcpSocketBase : public TcpSocket
 {
@@ -97,6 +244,9 @@ public:
    * \return the object TypeId
    */
   static TypeId GetTypeId (void);
+
+  friend class TcpGeneralTest;
+
   /**
    * Create an unbound TCP socket
    */
@@ -166,6 +316,49 @@ public:
    */
   Ptr<TcpRxBuffer> GetRxBuffer (void) const;
 
+  /**
+   * \brief Callback pointer for cWnd trace chaining
+   */
+  TracedCallback<uint32_t, uint32_t> m_cWndTrace;
+
+  /**
+   * \brief Callback pointer for ssTh trace chaining
+   */
+  TracedCallback<uint32_t, uint32_t> m_ssThTrace;
+
+  /**
+   * \brief Callback pointer for congestion state trace chaining
+   */
+  TracedCallback<TcpSocketState::TcpCongState_t, TcpSocketState::TcpCongState_t> m_congStateTrace;
+
+  /**
+   * \brief Callback function to hook to TcpSocketState congestion window
+   * \param oldValue old cWnd value
+   * \param newValue new cWnd value
+   */
+  void UpdateCwnd (uint32_t oldValue, uint32_t newValue);
+
+  /**
+   * \brief Callback function to hook to TcpSocketState slow start threshold
+   * \param oldValue old ssTh value
+   * \param newValue new ssTh value
+   */
+  void UpdateSsThresh (uint32_t oldValue, uint32_t newValue);
+
+  /**
+   * \brief Callback function to hook to TcpSocketState congestion state
+   * \param oldValue old congestion state value
+   * \param newValue new congestion state value
+   */
+  void UpdateCongState (TcpSocketState::TcpCongState_t oldValue,
+                       TcpSocketState::TcpCongState_t newValue);
+
+  /**
+   * \brief Install a congestion control algorithm on this socket
+   *
+   * \param algo Algorithm to be installed
+   */
+  void SetCongestionControlAlgorithm (Ptr<TcpCongestionOps> algo);
 
   // Necessary implementations of null functions from ns3::Socket
   virtual enum SocketErrno GetErrno (void) const;    // returns m_errno
@@ -188,6 +381,17 @@ public:
   virtual int GetSockName (Address &address) const; // Return local addr:port in address
   virtual void BindToNetDevice (Ptr<NetDevice> netdevice); // NetDevice with my m_endPoint
 
+  /**
+   * TracedCallback signature for tcp packet transmission or reception events.
+   *
+   * \param [in] packet The packet.
+   * \param [in] ipv4
+   * \param [in] interface
+   */
+  typedef void (* TcpTxRxTracedCallback)
+    (const Ptr<const Packet> packet, const TcpHeader& header,
+     const Ptr<const TcpSocketBase> socket);
+
 protected:
   // Implementing ns3::TcpSocket -- Attribute get/set
   // inherited, no need to doc
@@ -204,8 +408,10 @@ protected:
   virtual uint32_t GetInitialCwnd (void) const;
   virtual void     SetConnTimeout (Time timeout);
   virtual Time     GetConnTimeout (void) const;
-  virtual void     SetConnCount (uint32_t count);
-  virtual uint32_t GetConnCount (void) const;
+  virtual void     SetSynRetries (uint32_t count);
+  virtual uint32_t GetSynRetries (void) const;
+  virtual void     SetDataRetries (uint32_t retries);
+  virtual uint32_t GetDataRetries (void) const;
   virtual void     SetDelAckTimeout (Time timeout);
   virtual Time     GetDelAckTimeout (void) const;
   virtual void     SetDelAckMaxCount (uint32_t count);
@@ -266,7 +472,8 @@ protected:
    * \param fromAddress the address of the remote host
    * \param toAddress the address the connection is directed to
    */
-  void CompleteFork (Ptr<Packet> p, const TcpHeader& tcpHeader, const Address& fromAddress, const Address& toAddress);
+  virtual void CompleteFork (Ptr<Packet> p, const TcpHeader& tcpHeader,
+                             const Address& fromAddress, const Address& toAddress);
 
 
 
@@ -355,7 +562,7 @@ protected:
    *
    * \param flags the packet's flags
    */
-  void SendEmptyPacket (uint8_t flags);
+  virtual void SendEmptyPacket (uint8_t flags);
 
   /**
    * \brief Send reset and tear down this socket
@@ -502,31 +709,31 @@ protected:
    * \brief Return count of number of unacked bytes
    * \returns count of number of unacked bytes
    */
-  virtual uint32_t UnAckDataCount (void);
+  virtual uint32_t UnAckDataCount (void) const;
 
   /**
    * \brief Return total bytes in flight
    * \returns total bytes in flight
    */
-  virtual uint32_t BytesInFlight (void);
+  virtual uint32_t BytesInFlight (void) const;
 
   /**
    * \brief Return the max possible number of unacked bytes
    * \returns the max possible number of unacked bytes
    */
-  virtual uint32_t Window (void);
+  virtual uint32_t Window (void) const;
 
   /**
    * \brief Return unfilled portion of window
    * \return unfilled portion of window
    */
-  virtual uint32_t AvailableWindow (void);
+  virtual uint32_t AvailableWindow (void) const;
 
   /**
    * \brief The amount of Rx window announced to the peer
    * \returns size of Rx window announced to the peer
    */
-  virtual uint16_t AdvertisedWindowSize (void);
+  virtual uint16_t AdvertisedWindowSize (void) const;
 
   /**
    * \brief Update the receiver window (RWND) based on the value of the 
@@ -549,7 +756,7 @@ protected:
    * \brief Call CopyObject<> to clone me
    * \returns a copy of the socket
    */
-  virtual Ptr<TcpSocketBase> Fork (void) = 0;
+  virtual Ptr<TcpSocketBase> Fork (void);
 
   /**
    * \brief Received an ACK packet
@@ -574,15 +781,9 @@ protected:
   /**
    * \brief Update buffers w.r.t. ACK
    * \param seq the sequence number
+   * \param resetRTO indicates if RTO should be reset
    */
-  virtual void NewAck (SequenceNumber32 const& seq);
-
-  /**
-   * \brief Received dupack (duplicate ACK)
-   * \param tcpHeader the packet's TCP header
-   * \param count counter of duplicate ACKs
-   */
-  virtual void DupAck (const TcpHeader& tcpHeader, uint32_t count) = 0;
+  virtual void NewAck (SequenceNumber32 const& seq, bool resetRTO);
 
   /**
    * \brief Call Retransmit() upon RTO event
@@ -715,8 +916,10 @@ protected:
   uint32_t          m_delAckCount;     //!< Delayed ACK counter
   uint32_t          m_delAckMaxCount;  //!< Number of packet to fire an ACK before delay timeout
   bool              m_noDelay;         //!< Set to true to disable Nagle's algorithm
-  uint32_t          m_cnCount;         //!< Count of remaining connection retries
-  uint32_t          m_cnRetries;       //!< Number of connection retries before giving up
+  uint32_t          m_synCount;        //!< Count of remaining connection retries
+  uint32_t          m_synRetries;      //!< Number of connection attempts
+  uint32_t          m_dataRetrCount;   //!< Count of remaining data retransmission attempts
+  uint32_t          m_dataRetries;     //!< Number of data retransmission attempts
   TracedValue<Time> m_rto;             //!< Retransmit timeout
   Time              m_minRto;          //!< minimum value of the Retransmit timeout
   Time              m_clockGranularity; //!< Clock Granularity used in RTO calcs
@@ -753,17 +956,11 @@ protected:
   double                   m_msl;           //!< Max segment lifetime
 
   // Window management
-  uint32_t              m_segmentSize; //!< Segment size
   uint16_t              m_maxWinSize;  //!< Maximum window size to advertise
   TracedValue<uint32_t> m_rWnd;        //!< Receiver window (RCV.WND in RFC793)
   TracedValue<SequenceNumber32> m_highRxMark;     //!< Highest seqno received
   TracedValue<SequenceNumber32> m_highRxAckMark;  //!< Highest ack received
-
-  // Congestion control
-  TracedValue<uint32_t> m_cWnd;     //!< Congestion window
-  TracedValue<uint32_t> m_ssThresh; //!< Slow start threshold
-  uint32_t               m_initialCWnd;      //!< Initial cWnd value
-  uint32_t               m_initialSsThresh;  //!< Initial Slow Start Threshold value
+  uint32_t                      m_bytesAckedNotProcessed;  //!< Bytes acked, but not processed
 
   // Options
   bool    m_winScalingEnabled;    //!< Window Scale option enabled
@@ -774,7 +971,36 @@ protected:
   uint32_t m_timestampToEcho;     //!< Timestamp to echo
 
   EventId m_sendPendingDataEvent; //!< micro-delay event to send pending data
+
+  // Fast Retransmit and Recovery
+  SequenceNumber32       m_recover;      //!< Previous highest Tx seqnum for fast recovery
+  uint32_t               m_retxThresh;   //!< Fast Retransmit threshold
+  bool                   m_limitedTx;    //!< perform limited transmit
+
+  // Transmission Control Block
+  Ptr<TcpSocketState>    m_tcb  ;             //!< Congestion control informations
+  Ptr<TcpCongestionOps>  m_congestionControl; //!< Congestion control
+
+  // Guesses over the other connection end
+  bool m_isFirstPartialAck;//!< First partial ACK during RECOVERY
+
+  // The following two traces pass a packet with a TCP header
+  TracedCallback<Ptr<const Packet>, const TcpHeader&,
+                 Ptr<const TcpSocketBase> > m_txTrace; //!< Trace of transmitted packets
+
+  TracedCallback<Ptr<const Packet>, const TcpHeader&,
+                 Ptr<const TcpSocketBase> > m_rxTrace; //!< Trace of received packets
 };
+
+/**
+ * \ingroup tcp
+ * TracedValue Callback signature for TcpCongState_t
+ *
+ * \param [in] oldValue original value of the traced variable
+ * \param [in] newValue new value of the traced variable
+ */
+typedef void (* TcpCongStatesTracedValueCallback)(const TcpSocketState::TcpCongState_t oldValue,
+                                                  const TcpSocketState::TcpCongState_t newValue);
 
 } // namespace ns3
 

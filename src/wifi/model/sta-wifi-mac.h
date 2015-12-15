@@ -28,6 +28,7 @@
 #include "ns3/traced-callback.h"
 #include "supported-rates.h"
 #include "amsdu-subframe-header.h"
+#include "capability-information.h"
 
 namespace ns3  {
 
@@ -171,11 +172,23 @@ private:
    */
   void SetState (enum MacState value);
   /**
-   * Return the HT capability of the current AP.
+   * Return the Capability information of the current STA.
+   *
+   * \return the Capability information that we support
+   */
+  CapabilityInformation GetCapabilities (void) const;
+  /**
+   * Return the HT capability of the current STA.
    *
    * \return the HT capability that we support
    */
   HtCapabilities GetHtCapabilities (void) const;
+  /**
+   * Return the VHT capability of the current STA.
+   *
+   * \return the VHT capability that we support
+   */
+  VhtCapabilities GetVhtCapabilities (void) const;
 
   enum MacState m_state;
   Time m_probeRequestTimeout;
