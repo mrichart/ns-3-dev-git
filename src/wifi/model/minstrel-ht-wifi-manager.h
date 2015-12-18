@@ -36,22 +36,22 @@ namespace ns3 {
 struct MinstrelHtWifiRemoteStation;
 
 /**
- * A struct to contain all information related to a data rate
+ * A struct to contain all statistics information related to a data rate.
  */
 struct HtRateInfo
 {
   /**
-   * Perfect transmission time calculation, or frame calculation
-   * Given a bit rate and a packet length n bytes
+   * Perfect transmission time calculation, or frame calculation.
+   * Given a bit rate and a packet length n bytes.
    */
   Time perfectTxTime;
 
 
-  uint32_t retryCount;  ///< retry limit
-  uint32_t adjustedRetryCount;  ///< adjust the retry limit for this rate
-  uint32_t numRateAttempt;  ///< how many number of attempts so far
-  uint32_t numRateSuccess;    ///< number of successful pkts
-  uint32_t prob;  ///< (# pkts success )/(# total pkts)
+  uint32_t retryCount;          //!< Retry limit.
+  uint32_t adjustedRetryCount;  //!< Adjust the retry limit for this rate.
+  uint32_t numRateAttempt;      //!< Number of transmission attempts so far.
+  uint32_t numRateSuccess;      //!< Number of successful frames transmitted so far.
+  uint32_t prob;                //!< (# frame success )/(# total frames)
 
   /**
    * EWMA calculation
@@ -59,45 +59,70 @@ struct HtRateInfo
    */
   uint32_t ewmaProb;
 
-  uint32_t prevNumRateAttempt;  ///< from last rate
-  uint32_t prevNumRateSuccess;  ///< from last rate
-  uint64_t successHist;  ///< aggregate of all successes
-  uint64_t attemptHist;  ///< aggregate of all attempts
-  uint32_t throughput;  ///< throughput of a rate
+  uint32_t prevNumRateAttempt;  //!< Number of transmission attempts with previous rate.
+  uint32_t prevNumRateSuccess;  //!< Number of successful frames transmitted with previous rate.
+  uint64_t successHist;         //!< Aggregate of all transmission successes.
+  uint64_t attemptHist;         //!< Aggregate of all transmission attempts.
+  uint32_t throughput;          //!< Throughput of this rate.
 };
 
 /**
- * Data structure for a Minstrel Rate table
- * A vector of a struct RateInfo
+ * Data structure for a Minstrel Rate table.
+ * A vector of a struct RateInfo.
  */
 typedef std::vector<struct HtRateInfo> HtMinstrelRate;
 
+/**
+ * A struct to contain information of a group.
+ */
 struct GroupInfo
 {
   /**
-   * MCS rates are divided into groups based on the number of streams and flags that they use
+   * MCS rates are divided into groups based on the number of streams and flags that they use.
    */
-  uint8_t m_col; ///< sample table column
-  uint8_t m_index;  ///<sample table index
-  uint32_t m_maxTpRate; ///< Rate the has max throughput for this group
-  uint32_t m_maxTpRate2;///< Rate the has second max throughput for this group
-  uint32_t m_maxProbRate;///< Rate the has highest success probability for this group
-  HtMinstrelRate m_minstrelTable; ///< Information about rates member in this group
-  
+  uint8_t m_col;                  //!< Sample table column.
+  uint8_t m_index;                //!< Sample table index.
+
+  bool m_supported;               //!< If the rates of this group are supported by the station.
+
+  uint32_t m_maxTpRate;           //!< The max throughput rate of this group.
+  uint32_t m_maxTpRate2;          //!< The second max throughput rate of this group.
+  uint32_t m_maxProbRate;         //!< The highest success probability rate of this group.
+
+  HtMinstrelRate m_minstrelTable; //!< Information about rates of this group.
 };
 
 /**
- * Data structure for a MCS group table
- * A vector of a Minstrel Rate Table
+ * Data structure for a MCS group table.
+ * A vector of a GroupInfo.
  */
-typedef std::vector<struct GroupInfo> McsGroup;
+//typedef std::vector<struct GroupInfo> McsGroupData;
 
 /**
- * Data structure for a Sample Rate table
- * A vector of a vector uint32_t
+ * Data structure for a Sample Rate table.
+ * A vector of a vector uint32_t.
  */
 typedef std::vector<std::vector<uint32_t> > HtSampleRate;
 
+/**
+ * Data structure to save transmission times calculations per rate.
+ * A vector fo Time, WifiMode pairs.
+ */
+typedef std::vector<std::pair<Time,WifiMode> > TxTime;
+
+/**
+ * Data structure to contain the information that defines a group.
+ * It also contains the transmission times for all the MCS in the group.
+ * A group is a collection of MCS defined by the number of spatial streams,
+ * if it uses or not Short Guard Interval and the channel width used.
+ */
+struct McsGroup
+{
+  uint8_t streams;
+  uint8_t sgi;
+  uint32_t chWidth;
+  TxTime calcTxTime;
+};
 
 /**
  * \author Ghada Badawy
@@ -116,8 +141,16 @@ public:
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
+  /**
+   * TracedCallback signature for rate change events.
+   *
+   * \param [in] rate The new rate.
+   * \param [in] address The remote station MAC address.
+   */
+  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
+
 private:
-  // overriden from base class
+  // Overriden from base class.
   virtual WifiRemoteStation * DoCreateStation (void) const;
   virtual void DoReportRxOk (WifiRemoteStation *station,
                              double rxSnr, WifiMode txMode);
@@ -135,55 +168,100 @@ private:
   virtual bool DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally); 
   virtual void DoDisposeStation (WifiRemoteStation *station);
 
+  Time CalculateTxDuration(Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
 
-  /// for estimating the TxTime of a packet with a given mode
-  Time GetCalcTxTime (WifiMode mode) const;
-  void AddCalcTxTime (WifiMode mode, Time t);
+  /// For estimating the TxTime of a frame with a given mode and group (stream, guard interval and channel width).
+  Time GetCalcTxTime (uint32_t groupId, WifiMode mode) const;
+  void AddCalcTxTime (uint32_t groupId, WifiMode mode, Time t);
 
-  /// update the number of retries and reset accordingly
+  /// Update the number of retries and reset accordingly.
   void UpdateRetry (MinstrelHtWifiRemoteStation *station);
 
-  /// getting the next sample from Sample Table
+  /// Getting the next sample from Sample Table.
   uint32_t GetNextSample (MinstrelHtWifiRemoteStation *station);
 
-  /// find a rate to use from Minstrel Table
+  /// Find a rate to use from Minstrel Table.
   uint32_t FindRate (MinstrelHtWifiRemoteStation *station);
 
-  /// updating the Minstrel Table every 1/10 seconds
+  /// Updating the Minstrel Table every 1/10 seconds.
   void UpdateStats (MinstrelHtWifiRemoteStation *station);
 
-  /// initialize Minstrel Table
+  /// Initialize Minstrel Table.
   void RateInit (MinstrelHtWifiRemoteStation *station);
 
-  /// initialize Sample Table
+  /**
+   * Estimate the time to transmit the given packet with the given number of retries.
+   * This function is "roughly" the function "calc_usecs_unicast_packet" in minstrel.c
+   * in the madwifi implementation.
+   *
+   * The basic idea is that, we try to estimate the "average" time used to transmit the
+   * packet for the given number of retries while also accounting for the 802.11 congestion
+   * window change. The original code in the madwifi seems to estimate the number of backoff
+   * slots as the half of the current CW size.
+   *
+   * There are four main parts:
+   *  - wait for DIFS (sense idle channel)
+   *  - ACK timeouts
+   *  - DATA transmission
+   *  - backoffs according to CW
+   */
+  Time CalculateTimeUnicastPacket (Time dataTransmissionTime, uint32_t shortRetries, uint32_t longRetries);
+
+  /// Initialize Sample Table.
   void InitSampleTable (MinstrelHtWifiRemoteStation *station);
 
-  /// printing Sample Table
+  /// Printing Sample Table.
   void PrintSampleTable (MinstrelHtWifiRemoteStation *station);
 
-  /// printing Minstrel Table
+  /// Printing Minstrel Table.
   void PrintTable (MinstrelHtWifiRemoteStation *station);
 
-  void CheckInit (MinstrelHtWifiRemoteStation *station);  ///< check for initializations
+  /// Check for initializations.
+  void CheckInit (MinstrelHtWifiRemoteStation *station);
 
-  uint32_t  GetRateId(uint32_t rate);
+  /**
+   * For managing rates from different groups, a global index for
+   * all rates in all groups is used.
+   * The group order is fixed by BW -> SGI -> #streams.
+   * Following functions convert from groupId and rateId to
+   * global index and vice versa.
+   */
 
-  uint32_t  GetGroupId(uint32_t rate, WifiRemoteStation *st, uint8_t txstreams);
-  uint32_t GetTxRate(uint32_t groupid, uint32_t index);
-  uint8_t GetStreams (uint32_t groupId, MinstrelHtWifiRemoteStation *station);
+  /// Return the rate index inside a group.
+  uint32_t  GetRateId(uint32_t index);
 
-  typedef std::vector<std::pair<Time,WifiMode> > TxTime;
+  /// Return the group id from global index.
+  uint32_t GetGroupId(uint32_t index);
 
+  /// Returns the global index corresponding to the MCS inside a group.
+  uint32_t GetIndex(uint32_t groupid, uint32_t mcsIndex);
 
-  TxTime m_calcTxTime;  ///< to hold all the calculated TxTime for all modes
-  Time m_updateStats;  ///< how frequent do we calculate the stats(1/10 seconds)
-  double m_lookAroundRate;  ///< the % to try other rates than our current rate
-  double m_ewmaLevel;  ///< exponential weighted moving average
-  uint32_t m_segmentSize;  ///< largest allowable segment size
-  uint32_t m_sampleCol;  ///< number of sample columns
-  uint32_t m_pktLen;  ///< packet length used  for calculate mode TxTime
-  uint32_t m_nsupported;  ///< modes supported
-  uint8_t m_nGroups;///<hold the number of different MCS groups that the STA has if the STA supports 40MHz then it only uses 40MHz rates no switching between 20 and 40MHz rates
+  /// Calculates the group id from the number of streams, if using sgi and the channel width used.
+  uint32_t GetGroupId(uint8_t txstreams, uint8_t sgi, uint8_t ht40);
+
+  Time m_updateStats;         //!< How frequent do we calculate the stats (1/10 seconds).
+  double m_lookAroundRate;    //!< The % to try other rates than our current rate.
+  double m_ewmaLevel;         //!< Exponential weighted moving average level (or coefficient).
+
+  uint32_t m_nSampleCol;      //!< Number of sample columns.
+  uint32_t m_frameLength;     //!< Frame length used for calculate modes TxTime.
+
+  /**
+   * Constants for maximum values.
+   * When running, Minstrel will obtain the supported values for each station.
+   */
+  uint8_t m_nSupportedStreams;    //!< Number of streams supported by the phy layer.
+  uint8_t m_nStreamGroups;        //!< Number of groups per stream.
+  uint8_t m_nHtGroups;            //!< Number of HT groups.
+  uint8_t m_nSupportedGroupRates; //!< Number of rates (or MCS) per group.
+  uint8_t m_nMinstrelGroups;      //!< Number of groups Minstrel should consider.
+
+  McsGroup m_groups[];            //!< Array of groups information.
+
+  /**
+   * The trace source fired when the transmission rate change.
+   */
+  TracedCallback<uint32_t, Mac48Address> m_rateChange;
 };
 
 } // namespace ns3

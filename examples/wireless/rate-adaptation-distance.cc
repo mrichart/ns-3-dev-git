@@ -179,7 +179,6 @@ int main (int argc, char *argv[])
   wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
   HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
-  wifiPhy.Set("ChannelBonding", BooleanValue(true));
   wifiPhy.Set("ShortGuardEnabled", BooleanValue(true));
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
   wifiPhy.SetChannel (wifiChannel.Create ());
