@@ -26,6 +26,7 @@
 #include "wifi-remote-station-manager.h"
 #include "wifi-mode.h"
 #include "ns3/nstime.h"
+#include "ns3/random-variable-stream.h"
 #include <vector>
 #include <map>
 #include <deque>
@@ -96,7 +97,7 @@ struct GroupInfo
  * Data structure for a MCS group table.
  * A vector of a GroupInfo.
  */
-//typedef std::vector<struct GroupInfo> McsGroupData;
+typedef std::vector<struct GroupInfo> McsGroupData;
 
 /**
  * Data structure for a Sample Rate table.
@@ -125,6 +126,12 @@ struct McsGroup
 };
 
 /**
+ * Data structure for a MCS group array.
+ * A vector of a McsGroup.
+ */
+typedef std::vector<struct McsGroup> MinstrelMcsGroups;
+
+/**
  * \author Ghada Badawy
  * \brief Implementation of Minstrel HT Rate Control Algorithm
  * \ingroup wifi
@@ -138,6 +145,16 @@ public:
   static TypeId GetTypeId (void);
   MinstrelHtWifiManager ();
   virtual ~MinstrelHtWifiManager ();
+
+  /**
+   * Assign a fixed random variable stream number to the random variables
+   * used by this model.  Return the number of streams (possibly zero) that
+   * have been assigned.
+   *
+   * \param stream first stream index to use
+   * \return the number of stream indices assigned by this model
+   */
+   int64_t AssignStreams (int64_t stream);
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
@@ -179,6 +196,9 @@ private:
 
   /// Getting the next sample from Sample Table.
   uint32_t GetNextSample (MinstrelHtWifiRemoteStation *station);
+
+  /// Set the next sample from Sample Table.
+  void SetNextSample (MinstrelHtWifiRemoteStation *station);
 
   /// Find a rate to use from Minstrel Table.
   uint32_t FindRate (MinstrelHtWifiRemoteStation *station);
@@ -252,11 +272,13 @@ private:
    */
   uint8_t m_nSupportedStreams;    //!< Number of streams supported by the phy layer.
   uint8_t m_nStreamGroups;        //!< Number of groups per stream.
-  uint8_t m_nHtGroups;            //!< Number of HT groups.
-  uint8_t m_nSupportedGroupRates; //!< Number of rates (or MCS) per group.
-  uint8_t m_nMinstrelGroups;      //!< Number of groups Minstrel should consider.
+  uint8_t m_nGroupRates; //!< Number of rates (or MCS) per group.
+  uint8_t m_nGroups;      //!< Number of groups Minstrel should consider.
 
-  McsGroup m_groups[];            //!< Array of groups information.
+  MinstrelMcsGroups m_minstrelGroups;            //!< Array of groups information.
+
+
+  Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
 
   /**
    * The trace source fired when the transmission rate change.
