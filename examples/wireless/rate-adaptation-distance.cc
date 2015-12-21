@@ -144,6 +144,8 @@ int main (int argc, char *argv[])
   uint32_t rtsThreshold = 2346;
   std::string manager = "ns3::MinstrelWifiManager";
   std::string outputFileName = "minstrel";
+  bool shortGuardInterval = false;
+  uint32_t chWidth = 20;
   int ap1_x = 0;
   int ap1_y = 0;
   int sta1_x = 5;
@@ -154,6 +156,8 @@ int main (int argc, char *argv[])
 
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager", manager);
+  cmd.AddValue ("shortGuardInterval", "Enable Short Guard Interval in all stations", shortGuardInterval);
+  cmd.AddValue ("channelWidth", "Channel width of all the stations", chWidth);
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
   cmd.AddValue ("outputFileName", "Output filename", outputFileName);
   cmd.AddValue ("steps", "How many different distances to try", steps);
@@ -179,9 +183,11 @@ int main (int argc, char *argv[])
   wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
   HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
-  wifiPhy.Set("ShortGuardEnabled", BooleanValue(true));
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
   wifiPhy.SetChannel (wifiChannel.Create ());
+
+  wifiPhy.Set("ShortGuardEnabled", BooleanValue(shortGuardInterval));
+  wifiPhy.Set("ChannelWidth", UintegerValue(chWidth));
 
   NetDeviceContainer wifiApDevices;
   NetDeviceContainer wifiStaDevices;
