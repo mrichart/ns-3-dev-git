@@ -1,5 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
+ * Copyright (c) 2009 Duy Nguyen
  * Copyright (c) 2015 Ghada Badawy
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- *Author: Ghada Badawy <gbadawy@gmail.com>
+ *Author: Duy Nguyen <duy@soe.ucsc.edu>
+ *        Ghada Badawy <gbadawy@gmail.com>
  */
 
 
@@ -94,7 +96,7 @@ struct GroupInfo
 };
 
 /**
- * Data structure for a MCS group table.
+ * Data structure for a table of groups. Each group is of type GroupInfo.
  * A vector of a GroupInfo.
  */
 typedef std::vector<struct GroupInfo> McsGroupData;
@@ -126,7 +128,7 @@ struct McsGroup
 };
 
 /**
- * Data structure for a MCS group array.
+ * Data structure for a table of group definitions.
  * A vector of a McsGroup.
  */
 typedef std::vector<struct McsGroup> MinstrelMcsGroups;
@@ -154,7 +156,7 @@ public:
    * \param stream first stream index to use
    * \return the number of stream indices assigned by this model
    */
-   int64_t AssignStreams (int64_t stream);
+  int64_t AssignStreams (int64_t stream);
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
@@ -182,13 +184,16 @@ private:
   virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station, uint32_t size);
   virtual WifiTxVector DoGetRtsTxVector (WifiRemoteStation *station);
   virtual bool IsLowLatency (void) const;
-  virtual bool DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally); 
+  virtual bool DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally);
   virtual void DoDisposeStation (WifiRemoteStation *station);
 
-  Time CalculateTxDuration(Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
+  /// Estimates the TxTime of a frame with a given mode and group (stream, guard interval and channel width).
+  Time CalculateTxDuration (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
 
-  /// For estimating the TxTime of a frame with a given mode and group (stream, guard interval and channel width).
+  /// Obtain the TXtime saved in the group information.
   Time GetCalcTxTime (uint32_t groupId, WifiMode mode) const;
+
+  /// Save a TxTime to the vector of groups.
   void AddCalcTxTime (uint32_t groupId, WifiMode mode, Time t);
 
   /// Update the number of retries and reset accordingly.
@@ -231,10 +236,10 @@ private:
   void InitSampleTable (MinstrelHtWifiRemoteStation *station);
 
   /// Printing Sample Table.
-  void PrintSampleTable (MinstrelHtWifiRemoteStation *station);
+  void PrintSampleTable (MinstrelHtWifiRemoteStation *station, std::ostream &os);
 
   /// Printing Minstrel Table.
-  void PrintTable (MinstrelHtWifiRemoteStation *station);
+  void PrintTable (MinstrelHtWifiRemoteStation *station, std::ostream &os);
 
   /// Check for initializations.
   void CheckInit (MinstrelHtWifiRemoteStation *station);
@@ -248,16 +253,16 @@ private:
    */
 
   /// Return the rate index inside a group.
-  uint32_t  GetRateId(uint32_t index);
+  uint32_t  GetRateId (uint32_t index);
 
   /// Return the group id from global index.
-  uint32_t GetGroupId(uint32_t index);
+  uint32_t GetGroupId (uint32_t index);
 
   /// Returns the global index corresponding to the MCS inside a group.
-  uint32_t GetIndex(uint32_t groupid, uint32_t mcsIndex);
+  uint32_t GetIndex (uint32_t groupid, uint32_t mcsIndex);
 
   /// Calculates the group id from the number of streams, if using sgi and the channel width used.
-  uint32_t GetGroupId(uint8_t txstreams, uint8_t sgi, uint8_t ht40);
+  uint32_t GetGroupId (uint8_t txstreams, uint8_t sgi, uint8_t ht40);
 
   Time m_updateStats;         //!< How frequent do we calculate the stats (1/10 seconds).
   double m_lookAroundRate;    //!< The % to try other rates than our current rate.
@@ -270,12 +275,12 @@ private:
    * Constants for maximum values.
    * When running, Minstrel will obtain the supported values for each station.
    */
-  uint8_t m_nSupportedStreams;    //!< Number of streams supported by the phy layer.
-  uint8_t m_nStreamGroups;        //!< Number of groups per stream.
-  uint8_t m_nGroupRates; //!< Number of rates (or MCS) per group.
-  uint8_t m_nGroups;      //!< Number of groups Minstrel should consider.
+  uint8_t m_nSupportedStreams;  //!< Number of streams supported by the phy layer.
+  uint8_t m_nStreamGroups;      //!< Number of groups per stream.
+  uint8_t m_nGroupRates;        //!< Number of rates (or MCS) per group.
+  uint8_t m_nGroups;            //!< Number of groups Minstrel should consider.
 
-  MinstrelMcsGroups m_minstrelGroups;            //!< Array of groups information.
+  MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.
 
 
   Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
