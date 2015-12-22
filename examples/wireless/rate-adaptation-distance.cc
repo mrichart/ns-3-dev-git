@@ -43,6 +43,9 @@
  * Another example (moving towards the AP):
  * ./waf --run "rate-adaptation-distance --manager=ns3::MinstrelWifiManager --outputFileName=minstrel --stepsSize=1 --STA1_x=-200"
  *
+ * Example for HT rates with SGI and channel width of 40MHz:
+ * ./waf --run "rate-adaptation-distance --manager=ns3::MinstrelHtWifiManager --outputFileName=minstrelHt --shortGuardInterval=true --channelWidth=40"
+ *
  * To enable the log of rate changes:
  * export NS_LOG=RateAdaptationDistance=level_info
  */
