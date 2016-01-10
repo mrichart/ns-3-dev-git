@@ -190,7 +190,6 @@ int main (int argc, char *argv[])
   wifiPhy.SetChannel (wifiChannel.Create ());
 
   wifiPhy.Set("ShortGuardEnabled", BooleanValue(shortGuardInterval));
-  wifiPhy.Set("ChannelWidth", UintegerValue(chWidth));
 
   NetDeviceContainer wifiApDevices;
   NetDeviceContainer wifiStaDevices;
@@ -215,6 +214,9 @@ int main (int argc, char *argv[])
 
   wifiDevices.Add (wifiStaDevices);
   wifiDevices.Add (wifiApDevices);
+
+  // Set channel width
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelWidth", UintegerValue (chWidth));
 
   // Configure the mobility.
   MobilityHelper mobility;

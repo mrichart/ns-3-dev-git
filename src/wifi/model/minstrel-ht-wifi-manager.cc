@@ -75,7 +75,6 @@ struct MinstrelHtWifiRemoteStation : public WifiRemoteStation
 
   uint32_t m_shortRetry;    //!< Number of short retries (such as control frames).
   uint32_t m_longRetry;     //!< Number of long retries (such as data packets).
-  uint32_t m_retry;         //!< Number of retries (short + long).
   uint32_t m_err;           //!< Number of retry errors (all retransmission attempts failed).
 
   uint32_t m_txRate;        //!< Current transmission rate.
@@ -174,32 +173,18 @@ MinstrelHtWifiManager::SetupPhy (Ptr<WifiPhy> phy)
   NS_LOG_FUNCTION (this << phy);
 
   /**
-   *  Check HT capabilities of the phy layer of the transmitter.
-   *  Initialize m_groups array based on the capabilities supported.
+   *  Initialize m_groups array with all the possible groups.
    */
 
-  m_nSupportedStreams = phy->GetNumberOfTransmitAntennas ();
+  m_nSupportedStreams = 2;
   uint8_t supportedSgi = 1;
-  if (phy->GetGuardInterval () && phy->GetChannelWidth () == 40)
-    {
-      m_nStreamGroups = 4;
-    }
-  else if (phy->GetGuardInterval () || phy->GetChannelWidth () == 40)
-    {
-      m_nStreamGroups = 2;
-    }
-  else
-    {
-      m_nStreamGroups = 1;
-      supportedSgi = 0;
-    }
+  m_nStreamGroups = 4;
 
   m_nGroups = m_nSupportedStreams * m_nStreamGroups;   // Calculate the number of groups.
   m_nGroupRates = phy->GetNMcs ();   // Get the number of supported MCS by the phy.
 
   /**
    * Initialize the groups array.
-   * Use capabilities supported by the phy layer.
    */
   m_minstrelGroups = MinstrelMcsGroups (m_nGroups);
   for (uint8_t streams = 1; streams <= m_nSupportedStreams; streams++)
@@ -218,20 +203,17 @@ MinstrelHtWifiManager::SetupPhy (Ptr<WifiPhy> phy)
             }
           NS_LOG_DEBUG ("Initialized group " << GetGroupId (streams, sgi, 0) << ": (" << (uint32_t)streams << "," << (uint32_t)sgi << "," << chWidth << ")");
 
-          if (phy->GetChannelWidth () == 40)
-            {
-              chWidth = 40;
+          chWidth = 40;
 
-              m_minstrelGroups[GetGroupId (streams, sgi, 1)].streams = streams;
-              m_minstrelGroups[GetGroupId (streams, sgi, 1)].sgi = sgi;
-              m_minstrelGroups[GetGroupId (streams, sgi, 1)].chWidth = chWidth;
-              for (uint8_t i = 0; i < m_nGroupRates; i++)
-                {
-                  WifiMode mode = phy->GetMcs (i);
-                  AddCalcTxTime (GetGroupId (streams, sgi, 1), mode, CalculateTxDuration (phy, streams, sgi, chWidth, mode));
-                }
-              NS_LOG_DEBUG ("Initialized group " << GetGroupId (streams, sgi, 1) << ": (" << (uint32_t)streams << "," << (uint32_t)sgi << "," << chWidth << ")");
+          m_minstrelGroups[GetGroupId (streams, sgi, 1)].streams = streams;
+          m_minstrelGroups[GetGroupId (streams, sgi, 1)].sgi = sgi;
+          m_minstrelGroups[GetGroupId (streams, sgi, 1)].chWidth = chWidth;
+          for (uint8_t i = 0; i < m_nGroupRates; i++)
+            {
+              WifiMode mode = phy->GetMcs (i);
+              AddCalcTxTime (GetGroupId (streams, sgi, 1), mode, CalculateTxDuration (phy, streams, sgi, chWidth, mode));
             }
+          NS_LOG_DEBUG ("Initialized group " << GetGroupId (streams, sgi, 1) << ": (" << (uint32_t)streams << "," << (uint32_t)sgi << "," << chWidth << ")");
         }
     }
   WifiRemoteStationManager::SetupPhy (phy);
@@ -246,7 +228,6 @@ MinstrelHtWifiManager::CalculateTxDuration (Ptr<WifiPhy> phy, uint8_t streams, u
   txvector.SetNss (streams);
   txvector.SetShortGuardInterval (sgi);
   txvector.SetChannelWidth (chWidth);
-  txvector.SetTxPowerLevel (0);
   txvector.SetNess (0);
   txvector.SetStbc (phy->GetStbc ());
   txvector.SetMode (mode);
@@ -297,7 +278,6 @@ MinstrelHtWifiManager::DoCreateStation (void) const
   station->m_sampleRateSlower = false;
   station->m_shortRetry = 0;
   station->m_longRetry = 0;
-  station->m_retry = 0;
   station->m_err = 0;
   station->m_txRate = 0;
   station->m_initialized = false;
@@ -570,7 +550,6 @@ void
 MinstrelHtWifiManager::UpdateRetry (MinstrelHtWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
-  station->m_retry = station->m_shortRetry + station->m_longRetry;  //FIXME retry is never used??
   station->m_shortRetry = 0;
   station->m_longRetry = 0;
 }
@@ -702,11 +681,15 @@ uint32_t
 MinstrelHtWifiManager::GetNextSample (MinstrelHtWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
-  uint32_t sampleIndex;
-  uint32_t rateIndex;
-  sampleIndex = station->m_sampleTable[station->m_mcsTable[station->m_sampleGroup].m_index]
-    [station->m_mcsTable[station->m_sampleGroup].m_col];
-  rateIndex = GetIndex (station->m_sampleGroup, sampleIndex);
+
+  uint32_t sampleGroup = station->m_sampleGroup;
+
+  uint32_t index = station->m_mcsTable[sampleGroup].m_index;
+  uint32_t col = station->m_mcsTable[sampleGroup].m_col;
+
+  uint32_t sampleIndex = station->m_sampleTable[index][col];
+
+  uint32_t rateIndex = GetIndex (sampleGroup, sampleIndex);
   NS_LOG_DEBUG ("Next Sample is " << rateIndex );
 
   SetNextSample (station); //Calculate the next sample rate.
@@ -1047,7 +1030,6 @@ MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
     }
 
   NS_LOG_DEBUG ("max tp=" << index_max_tp << "\nmax tp2=" << index_max_tp2 << "\nmax prob=" << index_max_prob);
-
 }
 
 void
@@ -1063,46 +1045,51 @@ MinstrelHtWifiManager::RateInit (MinstrelHtWifiRemoteStation *station)
     {
       /// Check if the group is supported
       station->m_mcsTable[j].m_supported = false;
-      if (!(m_minstrelGroups[j].sgi ^ GetShortGuardInterval (station))          ///Is SGI supported?
-          && (m_minstrelGroups[j].chWidth <= GetChannelWidth (station))         ///Is channel width supported?
-          && (m_minstrelGroups[j].streams <= GetNumberOfReceiveAntennas (station))) ///FIXME Is this the correct way to check the number of streams?
+      if (!(GetPhy()->GetGuardInterval() ^ m_minstrelGroups[j].sgi)          ///Is SGI supported by the transmitter?
+          && (GetPhy()->GetChannelWidth() == m_minstrelGroups[j].chWidth)         ///Is channel width supported by the transmitter?
+          && (GetPhy()->GetNumberOfTransmitAntennas () == m_minstrelGroups[j].streams)) ///Are streams supported by the transmitter? FIXME Is this the correct way to check the number of streams?
         {
-          NS_LOG_DEBUG ("Group " << j << ": (" << (uint32_t)m_minstrelGroups[j].streams << "," << (uint32_t)m_minstrelGroups[j].sgi << "," << m_minstrelGroups[j].chWidth << ")");
-          station->m_mcsTable[j].m_supported = true;
-
-          station->m_mcsTable[j].m_minstrelTable = HtMinstrelRate (station->m_nSupportedMcs);
-          station->m_mcsTable[j].m_col = 0;
-          station->m_mcsTable[j].m_index = 0;
-          for (uint32_t i = 0; i < station->m_nSupportedMcs; i++)
+          if (!(m_minstrelGroups[j].sgi ^ GetShortGuardInterval (station))          ///Is SGI supported by the receiver?
+              && (m_minstrelGroups[j].chWidth == GetChannelWidth (station))         ///Is channel width supported by the receiver?
+              && (m_minstrelGroups[j].streams <= GetNumberOfReceiveAntennas (station))) ///Are streams supported by the receiver? FIXME Is this the correct way to check the number of streams?
             {
-              station->m_mcsTable[j].m_minstrelTable[i].numRateAttempt = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].numRateSuccess = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].prob = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].ewmaProb = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].prevNumRateAttempt = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].prevNumRateSuccess = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].successHist = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].attemptHist = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].throughput = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].perfectTxTime = GetCalcTxTime (j, GetPhy ()->GetMcs (i));
-              station->m_mcsTable[j].m_minstrelTable[i].retryCount = 1;
-              station->m_mcsTable[j].m_minstrelTable[i].adjustedRetryCount = 1;
-              //Emulating minstrel.c::ath_rate_ctl_reset
-              //We only check from 2 to 10 retries. This guarantee that
-              //at least one retry is permitted.
-              Time totalTxTimeWithGivenRetries = Seconds (0.0); //tx_time in minstrel.c
-              NS_LOG_DEBUG (" Calculating the number of retries");
-              for (uint32_t retries = 2; retries < 11; retries++)
+              NS_LOG_DEBUG ("Group " << j << ": (" << (uint32_t)m_minstrelGroups[j].streams << "," << (uint32_t)m_minstrelGroups[j].sgi << "," << m_minstrelGroups[j].chWidth << ")");
+              station->m_mcsTable[j].m_supported = true;
+
+              station->m_mcsTable[j].m_minstrelTable = HtMinstrelRate (station->m_nSupportedMcs);
+              station->m_mcsTable[j].m_col = 0;
+              station->m_mcsTable[j].m_index = 0;
+              for (uint32_t i = 0; i < station->m_nSupportedMcs; i++)
                 {
-                  NS_LOG_DEBUG ("  Checking " << retries << " retries");
-                  totalTxTimeWithGivenRetries = CalculateTimeUnicastPacket (station->m_mcsTable[j].m_minstrelTable[i].perfectTxTime, 0, retries);
-                  NS_LOG_DEBUG ("   totalTxTimeWithGivenRetries = " << totalTxTimeWithGivenRetries);
-                  if (totalTxTimeWithGivenRetries > MilliSeconds (6))
+                  station->m_mcsTable[j].m_minstrelTable[i].numRateAttempt = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].numRateSuccess = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].prob = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].ewmaProb = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].prevNumRateAttempt = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].prevNumRateSuccess = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].successHist = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].attemptHist = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].throughput = 0;
+                  station->m_mcsTable[j].m_minstrelTable[i].perfectTxTime = GetCalcTxTime (j, GetPhy ()->GetMcs (i));
+                  station->m_mcsTable[j].m_minstrelTable[i].retryCount = 1;
+                  station->m_mcsTable[j].m_minstrelTable[i].adjustedRetryCount = 1;
+                  //Emulating minstrel.c::ath_rate_ctl_reset
+                  //We only check from 2 to 10 retries. This guarantee that
+                  //at least one retry is permitted.
+                  Time totalTxTimeWithGivenRetries = Seconds (0.0); //tx_time in minstrel.c
+                  NS_LOG_DEBUG (" Calculating the number of retries");
+                  for (uint32_t retries = 2; retries < 11; retries++)
                     {
-                      break;
+                      NS_LOG_DEBUG ("  Checking " << retries << " retries");
+                      totalTxTimeWithGivenRetries = CalculateTimeUnicastPacket (station->m_mcsTable[j].m_minstrelTable[i].perfectTxTime, 0, retries);
+                      NS_LOG_DEBUG ("   totalTxTimeWithGivenRetries = " << totalTxTimeWithGivenRetries);
+                      if (totalTxTimeWithGivenRetries > MilliSeconds (6))
+                        {
+                          break;
+                        }
+                      station->m_mcsTable[j].m_minstrelTable[i].retryCount = retries;
+                      station->m_mcsTable[j].m_minstrelTable[i].adjustedRetryCount = retries;
                     }
-                  station->m_mcsTable[j].m_minstrelTable[i].retryCount = retries;
-                  station->m_mcsTable[j].m_minstrelTable[i].adjustedRetryCount = retries;
                 }
             }
         }
@@ -1195,11 +1182,13 @@ MinstrelHtWifiManager::PrintTable (MinstrelHtWifiRemoteStation *station, std::os
 {
   NS_LOG_FUNCTION (this << station);
   NS_LOG_DEBUG ("PrintTable=" << station);
+  uint32_t numRates = station->m_nSupportedMcs;
   for (uint32_t j = 0; j < m_nGroups; j++)
     {
-      for (uint32_t i = 0; i < 8; i++)
+      for (uint32_t i = 0; i < numRates; i++)
         {
-          os << "index(" << i << ") = " << station->m_mcsTable[j].m_minstrelTable[i].perfectTxTime << "\n";
+          if (station->m_mcsTable[j].m_supported)
+            os << "index(" << i << ") = " << station->m_mcsTable[j].m_minstrelTable[i].perfectTxTime << "\n";
         }
     }
 }
