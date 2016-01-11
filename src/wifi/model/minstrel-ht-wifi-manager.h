@@ -134,6 +134,15 @@ struct McsGroup
 typedef std::vector<struct McsGroup> MinstrelMcsGroups;
 
 /**
+ * Constants for maximum values.
+ */
+
+uint8_t MAX_SUPPORTED_STREAMS = 2;  //!< Maximal number of streams supported by the phy layer.
+uint8_t MAX_STREAM_GROUPS = 4;      //!< Maximal number of groups per stream (2 possible channel widths and 2 possible SGI configurations).
+uint8_t MAX_GROUP_RATES = 8;        //!< Number of rates (or MCS) per group.
+uint8_t N_GROUPS = MAX_SUPPORTED_STREAMS * MAX_STREAM_GROUPS; //!< Number of groups Minstrel should consider.
+
+/**
  * \author Ghada Badawy
  * \brief Implementation of Minstrel HT Rate Control Algorithm
  * \ingroup wifi
@@ -270,15 +279,6 @@ private:
 
   uint32_t m_nSampleCol;      //!< Number of sample columns.
   uint32_t m_frameLength;     //!< Frame length used for calculate modes TxTime.
-
-  /**
-   * Constants for maximum values.
-   * When running, Minstrel will obtain the supported values for each station.
-   */
-  uint8_t m_nSupportedStreams;  //!< Number of streams supported by the phy layer.
-  uint8_t m_nStreamGroups;      //!< Number of groups per stream.
-  uint8_t m_nGroupRates;        //!< Number of rates (or MCS) per group.
-  uint8_t m_nGroups;            //!< Number of groups Minstrel should consider.
 
   MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.
 
