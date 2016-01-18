@@ -568,7 +568,7 @@ MinstrelHtWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
   McsGroup group = m_minstrelGroups[groupId];
 
   // Check consistency of rate selected.
-  if ((group.sgi ^ GetShortGuardInterval (station)) || group.chWidth != GetChannelWidth (station)  ||  (uint32_t) group.streams > GetNumberOfReceiveAntennas (station))
+  if ((group.sgi && !GetShortGuardInterval (station)) || group.chWidth > GetChannelWidth (station)  ||  (uint32_t) group.streams > GetNumberOfReceiveAntennas (station))
     {
       NS_ASSERT_MSG (false,"Inconsistent group selected. Group: (" << (uint32_t)group.streams << "," << (uint32_t)group.sgi << "," << group.chWidth << ")" <<
                      " Station capabilities: (" << GetNumberOfReceiveAntennas (station) << "," << GetShortGuardInterval (station) << "," << GetChannelWidth (station) << ")");
@@ -576,7 +576,7 @@ MinstrelHtWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
 
   m_rateChange (rateId, station->m_state->m_address);
 
-  return WifiTxVector (GetMcsSupported (station, rateId), GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetShortGuardInterval (station), group.streams, GetNess (station), GetChannelWidth (station), GetAggregation (station), GetStbc (station));
+  return WifiTxVector (GetMcsSupported (station, rateId), GetDefaultTxPowerLevel (), GetLongRetryCount (station), group.sgi, group.streams, GetNess (station), group.chWidth, GetAggregation (station), GetStbc (station));
 }
 
 WifiTxVector
@@ -1028,13 +1028,13 @@ MinstrelHtWifiManager::RateInit (MinstrelHtWifiRemoteStation *station)
     {
       /// Check if the group is supported
       station->m_mcsTable[j].m_supported = false;
-      if (!(GetPhy()->GetGuardInterval() ^ m_minstrelGroups[j].sgi)          ///Is SGI supported by the transmitter?
-          && (GetPhy()->GetChannelWidth() == m_minstrelGroups[j].chWidth)         ///Is channel width supported by the transmitter?
-          && (GetPhy()->GetNumberOfTransmitAntennas () == m_minstrelGroups[j].streams)) ///Are streams supported by the transmitter? FIXME Is this the correct way to check the number of streams?
+      if (!(!GetPhy()->GetGuardInterval() && m_minstrelGroups[j].sgi)          ///Is SGI supported by the transmitter?
+          && (GetPhy()->GetChannelWidth() >= m_minstrelGroups[j].chWidth)         ///Is channel width supported by the transmitter?
+          && (GetPhy()->GetNumberOfTransmitAntennas () >= m_minstrelGroups[j].streams)) ///Are streams supported by the transmitter? FIXME Is this the correct way to check the number of streams?
         {
-          if (!(m_minstrelGroups[j].sgi ^ GetShortGuardInterval (station))          ///Is SGI supported by the receiver?
-              && (m_minstrelGroups[j].chWidth == GetChannelWidth (station))         ///Is channel width supported by the receiver?
-              && (m_minstrelGroups[j].streams <= GetNumberOfReceiveAntennas (station))) ///Are streams supported by the receiver? FIXME Is this the correct way to check the number of streams?
+          if (!(!GetShortGuardInterval (station) && m_minstrelGroups[j].sgi)          ///Is SGI supported by the receiver?
+              && (GetChannelWidth (station) >= m_minstrelGroups[j].chWidth)         ///Is channel width supported by the receiver?
+              && (GetNumberOfReceiveAntennas (station) >= m_minstrelGroups[j].streams)) ///Are streams supported by the receiver? FIXME Is this the correct way to check the number of streams?
             {
               NS_LOG_DEBUG ("Group " << j << ": (" << (uint32_t)m_minstrelGroups[j].streams << "," << (uint32_t)m_minstrelGroups[j].sgi << "," << m_minstrelGroups[j].chWidth << ")");
               station->m_mcsTable[j].m_supported = true;
