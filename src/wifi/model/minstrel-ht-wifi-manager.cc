@@ -898,9 +898,23 @@ MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
 
                   station->m_mcsTable[j].m_minstrelTable[i].ewmaProb = tempProb;
 
-                  /// Calculating throughput.
-                  station->m_mcsTable[j].m_minstrelTable[i].throughput = tempProb * (1000000 / txTime.GetMicroSeconds ());
-
+                  /**
+                   * Calculating throughput.
+                   * Do not account throughput if sucess prob is below 10% (as done in minstrel_hc linux implementation).
+                   */
+                  if (tempProb < 10*180)
+                    station->m_mcsTable[j].m_minstrelTable[i].throughput = 0;
+                  else
+                    {
+                      /**
+                       * For the throughput calculation, limit the probability value to 90% to
+                       * account for collision related packet error rate fluctuation.
+                       */
+                      if (tempProb > 90*180)
+                        station->m_mcsTable[j].m_minstrelTable[i].throughput = 90*180 * (1000000 / txTime.GetMicroSeconds ());
+                      else
+                        station->m_mcsTable[j].m_minstrelTable[i].throughput = tempProb * (1000000 / txTime.GetMicroSeconds ());
+                    }
                 }
 
               /// Bookeeping.
