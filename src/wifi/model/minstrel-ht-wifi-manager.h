@@ -18,6 +18,7 @@
  *
  *Author: Duy Nguyen <duy@soe.ucsc.edu>
  *        Ghada Badawy <gbadawy@gmail.com>
+ *        Matias Richart <mrichart@fing.edu.uy>
  */
 
 

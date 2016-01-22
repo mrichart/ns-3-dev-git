@@ -18,6 +18,7 @@
  *
  * Author: Duy Nguyen <duy@soe.ucsc.edu>
  *         Ghada Badawy <gbadawy@gmail.com>
+ *         Matias Richart <mrichart@fing.edu.uy>
  *
  * Some Comments:
  *
@@ -351,7 +352,8 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
    *
    * Note: For clarity, multiple blocks of if's and else's are used
    * After a failing 7 times, DoReportFinalDataFailed will be called
-   * FIXME In MinstrelHT Lowest baserate is not used
+   * Following implementation in linux, in MinstrelHT Lowest baserate is not used.
+   * Explanation can be found here: http://marc.info/?l=linux-wireless&m=144602778611966&w=2
    */
 
   CheckInit (station);
@@ -404,9 +406,6 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
           NS_LOG_DEBUG ("Not Sampling use Max Prob");
           station->m_txRate = station->m_maxProbRate;
         }
-
-      /// Use lowest base rate.
-      /* Acording to linux code, it seems that the lowest base rate is not used in MinstrelHT. */
     }
 
   /// For look-around rate, we're currently sampling random rates.
@@ -438,9 +437,6 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
               NS_LOG_DEBUG ("Sampling use Max prob");
               station->m_txRate =  station->m_maxProbRate;
             }
-
-          /// use lowest base rate
-          /* Acording to linux code, it seems that the lowest base rate is not used in MinstrelHT. */
         }
 
       /// Current sampling rate is better than current best rate.
@@ -469,9 +465,6 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
               NS_LOG_DEBUG ("Sampling use the MaxProb rate");
               station->m_txRate = station->m_maxProbRate;
             }
-
-          /// Use the lowest base rate.
-          /* Acording to linux code, it seems that the lowest base rate is not used in MinstrelHT. */
         }
     }
   NS_LOG_DEBUG ("Txrate = " << station->m_txRate  );
@@ -589,7 +582,57 @@ MinstrelHtWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
     {
       CheckInit (station);
     }
-  //Using the lowest non-HT rate.
+  /* RTS is sent in a non-HT frame. RTS with HT is not supported yet in NS3.
+   * When supported, decision of using HT has to follow rules in Section 9.7.6 from 802.11-2012.
+   * From Sec. 9.7.6.5: "A frame other than a BlockAckReq or BlockAck that is carried in a
+   * non-HT PPDU shall be transmitted by the STA using a rate no higher than the highest
+   * rate in  the BSSBasicRateSet parameter that is less than or equal to the rate or
+   * non-HT reference rate (see 9.7.9) of the previously transmitted frame that was
+   * directed to the same receiving STA. If no rate in the BSSBasicRateSet parameter meets
+   * these conditions, the control frame shall be transmitted at a rate no higher than the
+   * highest mandatory rate of the attached PHY that is less than or equal to the rate
+   * or non-HT reference rate (see 9.7.9) of the previously transmitted frame that was
+   * directed to the same receiving STA."
+   */
+
+  // As we are in Minstrel HT, assume the last rate was an HT rate.
+  WifiMode lastRate = GetMcsSupported(station, GetRateId(station->m_txRate));
+  uint8_t streams = m_minstrelGroups[GetGroupId(station->m_txRate)].streams;
+  WifiMode referenceRate = lastRate.GetNonHtReferenceRate(streams);
+  uint64_t lastDataRate = referenceRate.GetDataRate(20,false,1);
+  uint32_t nBasicRates = GetNBasicModes();
+
+  WifiMode rtsRate;
+  bool rateFound = false;
+
+  for (uint32_t i = 0; i < nBasicRates; i++)
+    {
+      uint64_t rate = GetBasicMode(i).GetDataRate(20,false,1);
+      if (rate <= lastDataRate)
+        {
+          rtsRate = GetBasicMode(i);
+          rateFound = true;
+        }
+    }
+
+  Ptr<WifiPhy> phy = GetPhy();
+  uint32_t nSupportRates = phy->GetNModes();
+
+  if (!rateFound)
+    {
+      for (uint32_t i = 0; i < nSupportRates; i++)
+        {
+          uint64_t rate = phy->GetMode(i).GetDataRate(20,false,1);
+          if (rate <= lastDataRate)
+            {
+              rtsRate = phy->GetMode(i);
+              rateFound = true;
+            }
+        }
+    }
+
+  NS_ASSERT(!rateFound);
+
   uint32_t channelWidth = GetChannelWidth (station);
     if (channelWidth > 20 && channelWidth != 22)
       {

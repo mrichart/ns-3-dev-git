@@ -160,7 +160,15 @@ public:
    * to which this WifiMode belongs.
    */
   enum WifiModulationClass GetModulationClass () const;
-
+  /**
+   * \returns the WifiMode which represents the non-HT Reference Rate
+   * which corresponds to the HT MCS of this WifiMode.
+   *
+   * To convert an HT MCS to is corresponding non-HT Reference Rate
+   * use the modulation and coding rate determined from the HT MCS
+   * to a non-HT reference rate by lookup into Table 9-5 of IEEE 802.11-2012.
+   */
+  WifiMode GetNonHtReferenceRate (uint8_t nss) const;
   /**
    * Create an invalid WifiMode. Calling any method on the
    * instance created will trigger an assert. This is useful
