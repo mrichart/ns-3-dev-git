@@ -766,15 +766,17 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
       HtRateInfo sampleRateInfo = station->m_mcsTable[sampleGroupId].m_minstrelTable[sampleRateId];
 
       /**
-       * This if condition is used to make sure that we don't need to use
-       * the sample rate it is the same as our current rate.
+       * Sampling might add some overhead (RTS, no aggregation)
+       * to the frame. Hence, don't use sampling for the currently
+       * used rates.
        *
        * Also do not sample if the probability is already higher than 95%
        * to avoid wasting airtime.
        */
       NS_LOG_DEBUG ("Use sample rate? MaxTpRate= " << station->m_maxTpRate << " CurrentRate= " << station->m_txRate <<
                     " SampleRate= " << sampleIdx << " SampleProb= " << sampleRateInfo.ewmaProb);
-      if (sampleIdx != station->m_maxTpRate && sampleIdx != station->m_txRate && sampleRateInfo.ewmaProb <= 95*180)
+      if (sampleIdx != station->m_maxTpRate && sampleIdx != station->m_maxTpRate2 &&
+          sampleIdx != station->m_maxProbRate && sampleRateInfo.ewmaProb <= 95*180)
         {
 
           /*
@@ -798,7 +800,7 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
           NS_LOG_DEBUG ("Use sample rate? SampleDuration= " << sampleDuration << " maxTp2Duration= " << maxTp2Duration <<
                         " maxProbDuration= " << maxProbDuration << " sampleStreams= " << sampleStreams <<
                         " maxTpStreams= " << maxTpStreams);
-          if (sampleDuration < maxTp2Duration && (maxTpStreams -1 >= sampleStreams || sampleDuration < maxProbDuration))
+          if (sampleDuration < maxTp2Duration || (sampleStreams <= maxTpStreams - 1 && sampleDuration < maxProbDuration))
             {
               /// Start sample count.
               station->m_sampleCount++;
@@ -816,7 +818,7 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
               /// set the rate that we're currently sampling
               station->m_sampleRate = sampleIdx;
 
-              uint64_t dataRate = GetMcsSupported (station, station->m_maxTpRate).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
+              uint64_t dataRate = GetMcsSupported (station, GetRateId (station->m_maxTpRate)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
               m_rateChange (dataRate, station->m_state->m_address);
 
               NS_LOG_DEBUG ("FindRate " << "sampleRate=" << sampleIdx);
@@ -843,7 +845,7 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
                   /// set the rate that we're currently sampling
                   station->m_sampleRate = sampleIdx;
 
-                  uint64_t dataRate = GetMcsSupported (station, station->m_maxTpRate).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
+                  uint64_t dataRate = GetMcsSupported (station, GetRateId (station->m_maxTpRate)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
                   m_rateChange (dataRate, station->m_state->m_address);
 
                   NS_LOG_DEBUG ("FindRate " << "sampleRate=" << sampleIdx);
@@ -854,7 +856,7 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
     }
   ///	Continue using the best rate.
   McsGroup maxTpGroup = m_minstrelGroups[GetGroupId (station->m_maxTpRate)];
-  uint64_t dataRate = GetMcsSupported (station, station->m_maxTpRate).GetDataRate(maxTpGroup.chWidth, maxTpGroup.sgi, maxTpGroup.streams);
+  uint64_t dataRate = GetMcsSupported (station, GetRateId (station->m_maxTpRate)).GetDataRate(maxTpGroup.chWidth, maxTpGroup.sgi, maxTpGroup.streams);
   m_rateChange (dataRate, station->m_state->m_address);
 
   NS_LOG_DEBUG ("FindRate " << "maxTpRrate=" << station->m_maxTpRate);
