@@ -85,7 +85,7 @@ ChangeSignalAndReportRate (Ptr<FixedRssLossModel> rssModel, struct Step step, do
 }
 int main (int argc, char *argv[])
 {
-  std::ofstream outfile ("ideal-wifi-manager.plt");
+  std::ofstream outfile ("minstrel-ht-wifi-manager.plt");
   std::vector <StandardInfo> standards;
   int steps;
   uint32_t rtsThreshold = 2346;
