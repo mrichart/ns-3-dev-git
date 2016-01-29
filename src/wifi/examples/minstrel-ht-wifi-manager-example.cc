@@ -43,9 +43,9 @@ PacketRx (Ptr<const Packet> pkt, const Address &addr)
 }
 
 void
-RateChange (uint64_t oldVal, uint64_t newVal)
+RateChange (uint64_t newVal, Mac48Address dest)
 {
-  NS_LOG_DEBUG ("Change from " << oldVal << " to " << newVal);
+  NS_LOG_DEBUG ("Change to " << newVal);
   g_intervalRate = newVal;
 }
 
@@ -151,14 +151,14 @@ int main (int argc, char *argv[])
         {
           HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
           wifiMac.SetType ("ns3::AdhocWifiMac");
-          wifiMac.SetBlockAckThresholdForAc (AC_BE, 2);
+          /*wifiMac.SetBlockAckThresholdForAc (AC_BE, 2);
           wifiMac.SetMpduAggregatorForAc (AC_BE, "ns3::MpduStandardAggregator",
-                                          "MaxAmpduSize", UintegerValue (65535));
+                                          "MaxAmpduSize", UintegerValue (65535));*/
           serverDevice = wifi.Install (wifiPhy, wifiMac, serverNode);
           clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
         }
       NS_ABORT_MSG_IF (serverDevice.GetN () == 0, "unknown standard");
-      //Config::ConnectWithoutContext ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::MinstrelHtWifiManager/Rate", MakeCallback(&RateChange));
+      Config::ConnectWithoutContext ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::MinstrelHtWifiManager/RateChange", MakeCallback(&RateChange));
       // Configure the mobility.
       MobilityHelper mobility;
      Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
