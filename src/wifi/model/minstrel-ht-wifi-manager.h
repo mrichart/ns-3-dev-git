@@ -66,7 +66,6 @@ struct HtRateInfo
   uint32_t prevNumRateAttempt;  //!< Number of transmission attempts with previous rate.
   uint32_t prevNumRateSuccess;  //!< Number of successful frames transmitted with previous rate.
   uint32_t numSamplesSkipped;   //!< Number of times this rate statistics were not updated because no attempts have been made.
-  uint32_t numSamplesSlow;      //!< Number of times a slow rate was sampled.
   uint64_t successHist;         //!< Aggregate of all transmission successes.
   uint64_t attemptHist;         //!< Aggregate of all transmission attempts.
   uint32_t throughput;          //!< Throughput of this rate.

@@ -74,6 +74,7 @@ struct MinstrelHtWifiRemoteStation : public WifiRemoteStation
   uint32_t m_sampleRate;    //!< The current sample rate.
   bool  m_sampleRateSlower; //!< A flag to indicate sample rate is slower.
   uint32_t m_sampleGroup;   //!< The group that the sample rate belongs to.
+  uint32_t m_numSamplesSlow;//!< Number of times a slow rate was sampled.
 
   uint32_t m_shortRetry;    //!< Number of short retries (such as control frames).
   uint32_t m_longRetry;     //!< Number of long retries (such as data packets).
@@ -273,6 +274,7 @@ MinstrelHtWifiManager::DoCreateStation (void) const
   station->m_txRate = 0;
   station->m_initialized = false;
   station->m_sampleGroup = 0;
+  station->m_numSamplesSlow = 0;
   station->m_nSupportedMcs = 0;
   return station;
 }
@@ -826,8 +828,8 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
             }
           else
             {
-              sampleRateInfo.numSamplesSlow++;
-              if (sampleRateInfo.numSamplesSkipped >= 20 && sampleRateInfo.numSamplesSlow <= 2)
+              station->m_numSamplesSlow++;
+              if (sampleRateInfo.numSamplesSkipped >= 20 && station->m_numSamplesSlow <= 2)
                 {
                   /// Start sample count.
                   station->m_sampleCount++;
@@ -887,6 +889,8 @@ MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
   NS_LOG_DEBUG ("Updating stats=" << this);
 
   station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
+
+  station->m_numSamplesSlow = 0;
 
   Time txTime;
   uint32_t tempProb;
@@ -956,7 +960,6 @@ MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
               /// Bookeeping.
               station->m_mcsTable[j].m_minstrelTable[i].numRateSuccess = 0;
               station->m_mcsTable[j].m_minstrelTable[i].numRateAttempt = 0;
-              station->m_mcsTable[j].m_minstrelTable[i].numSamplesSlow = 0;
 
               /// Sample less often below 10% and  above 95% of success.
               if ((station->m_mcsTable[j].m_minstrelTable[i].ewmaProb > 17100) || (station->m_mcsTable[j].m_minstrelTable[i].ewmaProb < 1800))
@@ -1145,7 +1148,6 @@ MinstrelHtWifiManager::RateInit (MinstrelHtWifiRemoteStation *station)
                   station->m_mcsTable[j].m_minstrelTable[i].prevNumRateAttempt = 0;
                   station->m_mcsTable[j].m_minstrelTable[i].prevNumRateSuccess = 0;
                   station->m_mcsTable[j].m_minstrelTable[i].numSamplesSkipped = 0;
-                  station->m_mcsTable[j].m_minstrelTable[i].numSamplesSlow = 0;
                   station->m_mcsTable[j].m_minstrelTable[i].successHist = 0;
                   station->m_mcsTable[j].m_minstrelTable[i].attemptHist = 0;
                   station->m_mcsTable[j].m_minstrelTable[i].throughput = 0;
