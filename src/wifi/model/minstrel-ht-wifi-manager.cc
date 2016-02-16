@@ -800,8 +800,8 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
           Time maxProbDuration = station->m_mcsTable[maxProbGroupId].m_minstrelTable[maxProbRateId].perfectTxTime;
 
           NS_LOG_DEBUG ("Use sample rate? SampleDuration= " << sampleDuration << " maxTp2Duration= " << maxTp2Duration <<
-                        " maxProbDuration= " << maxProbDuration << " sampleStreams= " << sampleStreams <<
-                        " maxTpStreams= " << maxTpStreams);
+                        " maxProbDuration= " << maxProbDuration << " sampleStreams= " << (uint32_t)sampleStreams <<
+                        " maxTpStreams= " << (uint32_t)maxTpStreams);
           if (sampleDuration < maxTp2Duration || (sampleStreams <= maxTpStreams - 1 && sampleDuration < maxProbDuration))
             {
               /// Start sample count.
