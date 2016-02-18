@@ -44,42 +44,6 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("MinstrelWifiManager");
 
-/**
- * \brief hold per-remote-station state for Minstrel Wifi manager.
- *
- * This struct extends from WifiRemoteStation struct to hold additional
- * information required by the Minstrel Wifi manager
- */
-struct MinstrelWifiRemoteStation : public WifiRemoteStation
-{
-  Time m_nextStatsUpdate;  ///< 10 times every second
-
-  /**
-   * To keep track of the current position in the our random sample table
-   * going row by row from 1st column until the 10th column(Minstrel defines 10)
-   * then we wrap back to the row 1 col 1.
-   * note: there are many other ways to do this.
-   */
-  uint32_t m_col, m_index;
-  uint32_t m_maxTpRate;          ///< the current throughput rate
-  uint32_t m_maxTpRate2;         ///< second highest throughput rate
-  uint32_t m_maxProbRate;        ///< rate with highest prob of success
-  uint32_t m_nModes;             ///< modes supported
-  int m_packetCount;             ///< total number of packets as of now
-  int m_sampleCount;             ///< how many packets we have sample so far
-  bool m_isSampling;             ///< a flag to indicate we are currently sampling
-  uint32_t m_sampleRate;         ///< current sample rate
-  bool  m_sampleRateSlower;      ///< a flag to indicate sample rate is slower
-  uint32_t m_shortRetry;         ///< short retries such as control packts
-  uint32_t m_longRetry;          ///< long retries such as data packets
-  uint32_t m_retry;              ///< total retries short + long
-  uint32_t m_err;                ///< retry errors
-  uint32_t m_txrate;             ///< current transmit rate
-  bool m_initialized;            ///< for initializing tables
-  MinstrelRate m_minstrelTable;  ///< minstrel table
-  SampleRate m_sampleTable;      ///< sample table
-};
-
 NS_OBJECT_ENSURE_REGISTERED (MinstrelWifiManager);
 
 TypeId
@@ -171,8 +135,8 @@ MinstrelWifiManager::AddCalcTxTime (WifiMode mode, Time t)
   m_calcTxTime.push_back (std::make_pair (t, mode));
 }
 
-WifiRemoteStation *
-MinstrelWifiManager::DoCreateStation (void) const
+MinstrelWifiRemoteStation *
+MinstrelWifiManager::CreateMinstrelStation (void) const
 {
   MinstrelWifiRemoteStation *station = new MinstrelWifiRemoteStation ();
 
@@ -196,6 +160,12 @@ MinstrelWifiManager::DoCreateStation (void) const
   station->m_initialized = false;
 
   return station;
+}
+
+WifiRemoteStation *
+MinstrelWifiManager::DoCreateStation (void) const
+{
+  return CreateMinstrelStation();
 }
 
 void

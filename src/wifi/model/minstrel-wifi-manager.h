@@ -28,8 +28,6 @@
 
 namespace ns3 {
 
-struct MinstrelWifiRemoteStation;
-
 /**
  * A struct to contain all information related to a data rate
  */
@@ -67,6 +65,42 @@ typedef std::vector<struct RateInfo> MinstrelRate;
  */
 typedef std::vector<std::vector<uint32_t> > SampleRate;
 
+/**
+ * \brief hold per-remote-station state for Minstrel Wifi manager.
+ *
+ * This struct extends from WifiRemoteStation struct to hold additional
+ * information required by the Minstrel Wifi manager
+ */
+struct MinstrelWifiRemoteStation : public WifiRemoteStation
+{
+  Time m_nextStatsUpdate;  ///< 10 times every second
+
+  /**
+   * To keep track of the current position in the our random sample table
+   * going row by row from 1st column until the 10th column(Minstrel defines 10)
+   * then we wrap back to the row 1 col 1.
+   * note: there are many other ways to do this.
+   */
+  uint32_t m_col, m_index;
+  uint32_t m_maxTpRate;          ///< the current throughput rate
+  uint32_t m_maxTpRate2;         ///< second highest throughput rate
+  uint32_t m_maxProbRate;        ///< rate with highest prob of success
+  uint32_t m_nModes;             ///< number of modes supported
+  int m_packetCount;             ///< total number of packets as of now
+  int m_sampleCount;             ///< how many packets we have sample so far
+  bool m_isSampling;             ///< a flag to indicate we are currently sampling
+  uint32_t m_sampleRate;         ///< current sample rate
+  bool  m_sampleRateSlower;      ///< a flag to indicate sample rate is slower
+  uint32_t m_shortRetry;         ///< short retries such as control packts
+  uint32_t m_longRetry;          ///< long retries such as data packets
+  uint32_t m_retry;              ///< total retries short + long
+  uint32_t m_err;                ///< retry errors
+  uint32_t m_txrate;             ///< current transmit rate
+  bool m_initialized;            ///< for initializing tables
+  MinstrelRate m_minstrelTable;  ///< minstrel table
+  SampleRate m_sampleTable;      ///< sample table
+};
+
 
 /**
  * \author Duy Nguyen
@@ -97,6 +131,15 @@ public:
    */
   int64_t AssignStreams (int64_t stream);
 
+  MinstrelWifiRemoteStation * CreateMinstrelStation (void) const;
+
+  //find a rate to use from Minstrel Table
+  uint32_t FindRate (MinstrelWifiRemoteStation *station);
+
+  //update the number of retries and reset accordingly
+  void UpdateRetry (MinstrelWifiRemoteStation *station);
+
+  void CheckInit (MinstrelWifiRemoteStation *station);  ///< check for initializations
 
 private:
   //overriden from base class
@@ -128,20 +171,14 @@ private:
    */
   void AddCalcTxTime (WifiMode mode, Time t);
 
-  //update the number of retries and reset accordingly
-  void UpdateRetry (MinstrelWifiRemoteStation *station);
-
-  //getting the next sample from Sample Table
-  uint32_t GetNextSample (MinstrelWifiRemoteStation *station);
-
-  //find a rate to use from Minstrel Table
-  uint32_t FindRate (MinstrelWifiRemoteStation *station);
-
   //updating the Minstrel Table every 1/10 seconds
   void UpdateStats (MinstrelWifiRemoteStation *station);
 
   //initialize Minstrel Table
   void RateInit (MinstrelWifiRemoteStation *station);
+
+  //getting the next sample from Sample Table
+  uint32_t GetNextSample (MinstrelWifiRemoteStation *station);
 
   /**
    * Estimate the time to transmit the given packet with the given number of retries.
@@ -170,7 +207,6 @@ private:
   //printing Minstrel Table
   void PrintTable (MinstrelWifiRemoteStation *station);
 
-  void CheckInit (MinstrelWifiRemoteStation *station);  ///< check for initializations
 
   /**
    * typedef for a vector of a pair of Time, WifiMode.
@@ -185,6 +221,7 @@ private:
   double m_ewmaLevel;       ///< exponential weighted moving average
   uint32_t m_sampleCol;     ///< number of sample columns
   uint32_t m_pktLen;        ///< packet length used for calculate mode TxTime
+  uint32_t m_nsupported;    ///< modes supported
 
   //Provides uniform random variables.
   Ptr<UniformRandomVariable> m_uniformRandomVariable;

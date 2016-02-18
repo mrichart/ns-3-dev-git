@@ -27,6 +27,7 @@
 #define MINSTREL_HT_WIFI_MANAGER_H
 
 #include "wifi-remote-station-manager.h"
+#include "minstrel-wifi-manager.h"
 #include "wifi-mode.h"
 #include "ns3/nstime.h"
 #include "ns3/random-variable-stream.h"
@@ -38,6 +39,7 @@
 namespace ns3 {
 
 struct MinstrelHtWifiRemoteStation;
+struct MinstrelHtWifiRemoteStationAux;
 
 /**
  * A struct to contain all statistics information related to a data rate.
@@ -253,7 +255,7 @@ private:
   void PrintTable (MinstrelHtWifiRemoteStation *station, std::ostream &os);
 
   /// Check for initializations.
-  void CheckInit (MinstrelHtWifiRemoteStation *station);
+  void CheckInit (MinstrelHtWifiRemoteStationAux *station);
 
   /**
    * For managing rates from different groups, a global index for
@@ -283,6 +285,8 @@ private:
   uint32_t m_frameLength;     //!< Frame length used for calculate modes TxTime.
 
   MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.
+
+  MinstrelWifiManager *m_legacyManager;
 
 
   Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
