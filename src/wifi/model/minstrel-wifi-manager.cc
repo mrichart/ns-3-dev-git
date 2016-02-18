@@ -389,12 +389,12 @@ MinstrelWifiManager::DoReportDataOk (WifiRemoteStation *st,
 
   station->m_minstrelTable[station->m_txrate].numRateSuccess++;
   station->m_minstrelTable[station->m_txrate].numRateAttempt++;
+  station->m_packetCount++;
 
   NS_LOG_DEBUG ("DoReportDataOk m_txrate = " << station->m_txrate << ", attempt = " << station->m_minstrelTable[station->m_txrate].numRateAttempt << ", success = " << station->m_minstrelTable[station->m_txrate].numRateSuccess << " (after update).");
 
   UpdateRetry (station);
-
-  station->m_packetCount++;
+  UpdateStats (station);
 
   if (station->m_nModes >= 1)
     {
@@ -418,10 +418,10 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   station->m_isSampling = false;
   station->m_sampleRateSlower = false;
+  station->m_err++;
 
   UpdateRetry (station);
-
-  station->m_err++;
+  UpdateStats (station);
 
   NS_LOG_DEBUG ("DoReportFinalDataFailed m_txrate = " << station->m_txrate << ", attempt = " << station->m_minstrelTable[station->m_txrate].numRateAttempt << ", success = " << station->m_minstrelTable[station->m_txrate].numRateSuccess << " (after update).");
 
@@ -457,7 +457,6 @@ MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
       //start the rate at half way
       station->m_txrate = station->m_nModes / 2;
     }
-  UpdateStats (station);
   return WifiTxVector (GetSupported (station, station->m_txrate), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
@@ -809,6 +808,7 @@ MinstrelWifiManager::RateInit (MinstrelWifiRemoteStation *station)
           station->m_minstrelTable[i].adjustedRetryCount = retries;
         }
     }
+  UpdateStats (station);
 }
 
 Time
