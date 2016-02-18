@@ -373,7 +373,7 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 
   if (!station->m_isHt)
     {
-      //TODO call appropiate function in minstrel
+      m_legacyManager->UpdateRate(station);
     }
   else
     {

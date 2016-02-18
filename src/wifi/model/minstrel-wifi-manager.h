@@ -131,6 +131,8 @@ public:
    */
   int64_t AssignStreams (int64_t stream);
 
+  void UpdateRate (MinstrelWifiRemoteStation *station);
+
   //find a rate to use from Minstrel Table
   uint32_t FindRate (MinstrelWifiRemoteStation *station);
 

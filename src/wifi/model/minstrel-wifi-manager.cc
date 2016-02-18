@@ -238,6 +238,12 @@ MinstrelWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       return;
     }
 
+  UpdateRate(station);
+}
+
+void
+MinstrelWifiManager::UpdateRate(MinstrelWifiRemoteStation *station)
+{
   station->m_longRetry++;
   station->m_minstrelTable[station->m_txrate].numRateAttempt++;
 
