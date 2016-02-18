@@ -106,6 +106,12 @@ MinstrelWifiManager::SetupPhy (Ptr<WifiPhy> phy)
   WifiRemoteStationManager::SetupPhy (phy);
 }
 
+void
+MinstrelWifiManager::SetupMac (Ptr<WifiMac> mac)
+{
+  WifiRemoteStationManager::SetupMac (mac);
+}
+
 int64_t
 MinstrelWifiManager::AssignStreams (int64_t stream)
 {
@@ -165,6 +171,7 @@ MinstrelWifiManager::DoCreateStation (void) const
 void
 MinstrelWifiManager::CheckInit (MinstrelWifiRemoteStation *station)
 {
+  NS_LOG_FUNCTION (this);
   if (!station->m_initialized && GetNSupported (station) > 1)
     {
       //Note: we appear to be doing late initialization of the table
@@ -444,6 +451,12 @@ MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
                                         uint32_t size)
 {
   MinstrelWifiRemoteStation *station = (MinstrelWifiRemoteStation *) st;
+  return GetDataTxVector(station);
+}
+
+WifiTxVector
+MinstrelWifiManager::GetDataTxVector (MinstrelWifiRemoteStation *station)
+{
   uint32_t channelWidth = GetChannelWidth (station);
   if (channelWidth > 20 && channelWidth != 22)
     {
@@ -464,6 +477,12 @@ WifiTxVector
 MinstrelWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   MinstrelWifiRemoteStation *station = (MinstrelWifiRemoteStation *) st;
+  return GetRtsTxVector(station);
+}
+
+WifiTxVector
+MinstrelWifiManager::GetRtsTxVector (MinstrelWifiRemoteStation *station)
+{
   NS_LOG_DEBUG ("DoGetRtsMode m_txrate=" << station->m_txrate);
   uint32_t channelWidth = GetChannelWidth (station);
   if (channelWidth > 20 && channelWidth != 22)
@@ -484,35 +503,33 @@ MinstrelWifiManager::DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const 
     {
       return normally;
     }
-
-  if (!station->m_isSampling)
+  if (station->m_longRetry > CountRetries(station))
     {
-      if (station->m_longRetry > (station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
-                                  station->m_minstrelTable[station->m_maxTpRate2].adjustedRetryCount +
-                                  station->m_minstrelTable[station->m_maxProbRate].adjustedRetryCount +
-                                  station->m_minstrelTable[0].adjustedRetryCount))
-        {
-          return false;
-        }
-      else
-        {
-          return true;
-        }
+      return false;
     }
   else
     {
-      if (station->m_longRetry > (station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount +
-                                  station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
-                                  station->m_minstrelTable[station->m_maxProbRate].adjustedRetryCount +
-                                  station->m_minstrelTable[0].adjustedRetryCount))
-        {
-          return false;
-        }
-      else
-        {
-          return true;
-        }
+      return true;
     }
+}
+
+uint32_t
+MinstrelWifiManager::CountRetries (MinstrelWifiRemoteStation *station)
+{
+  if (!station->m_isSampling)
+      {
+        return station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
+               station->m_minstrelTable[station->m_maxTpRate2].adjustedRetryCount +
+               station->m_minstrelTable[station->m_maxProbRate].adjustedRetryCount +
+               station->m_minstrelTable[0].adjustedRetryCount;
+      }
+    else
+      {
+        return station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount +
+               station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
+               station->m_minstrelTable[station->m_maxProbRate].adjustedRetryCount +
+               station->m_minstrelTable[0].adjustedRetryCount;
+      }
 }
 
 bool

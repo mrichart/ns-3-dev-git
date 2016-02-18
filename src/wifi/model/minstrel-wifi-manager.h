@@ -120,6 +120,8 @@ public:
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
+  virtual void SetupMac (Ptr<WifiMac> mac);
+
   /**
    * Assign a fixed random variable stream number to the random variables
    * used by this model.  Return the number of streams (possibly zero) that
@@ -133,8 +135,17 @@ public:
 
   void UpdateRate (MinstrelWifiRemoteStation *station);
 
+  //updating the Minstrel Table every 1/10 seconds
+  void UpdateStats (MinstrelWifiRemoteStation *station);
+
   //find a rate to use from Minstrel Table
   uint32_t FindRate (MinstrelWifiRemoteStation *station);
+
+  WifiTxVector GetDataTxVector (MinstrelWifiRemoteStation *station);
+
+  WifiTxVector GetRtsTxVector (MinstrelWifiRemoteStation *station);
+
+  uint32_t CountRetries (MinstrelWifiRemoteStation *station);
 
   //update the number of retries and reset accordingly
   void UpdateRetry (MinstrelWifiRemoteStation *station);
@@ -170,9 +181,6 @@ private:
    * \param t transmission time
    */
   void AddCalcTxTime (WifiMode mode, Time t);
-
-  //updating the Minstrel Table every 1/10 seconds
-  void UpdateStats (MinstrelWifiRemoteStation *station);
 
   //initialize Minstrel Table
   void RateInit (MinstrelWifiRemoteStation *station);

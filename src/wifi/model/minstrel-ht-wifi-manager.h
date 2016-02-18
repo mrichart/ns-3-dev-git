@@ -39,8 +39,6 @@
 namespace ns3 {
 
 struct MinstrelHtWifiRemoteStation;
-struct MinstrelHtWifiRemoteStationAux;
-
 /**
  * A struct to contain all statistics information related to a data rate.
  */
@@ -173,6 +171,8 @@ public:
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
+  virtual void SetupMac (Ptr<WifiMac> mac);
+
   /**
    * TracedCallback signature for rate change events.
    *
@@ -256,6 +256,8 @@ private:
 
   /// Check for initializations.
   void CheckInit (MinstrelHtWifiRemoteStation *station);
+
+  uint32_t CountRetries (MinstrelHtWifiRemoteStation * station);
 
   /**
    * For managing rates from different groups, a global index for
