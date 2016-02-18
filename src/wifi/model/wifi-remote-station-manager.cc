@@ -1396,6 +1396,7 @@ WifiRemoteStationManager::AddStationHtCapabilities (Mac48Address from, HtCapabil
     {
       state->m_channelWidth = 20;
     }
+  state->m_htSupported = true;
   state->m_greenfield = htCapabilities.GetGreenfield ();
 }
 
@@ -1420,6 +1421,7 @@ WifiRemoteStationManager::AddStationVhtCapabilities (Mac48Address from, VhtCapab
     {
       state->m_channelWidth = m_wifiPhy->GetChannelWidth ();
     }
+  state->m_vhtSupported = true;
 }
 
 bool
