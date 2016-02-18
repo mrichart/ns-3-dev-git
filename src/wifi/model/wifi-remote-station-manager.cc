@@ -1335,6 +1335,8 @@ WifiRemoteStationManager::LookupState (Mac48Address address) const
   state->m_ness = 0;
   state->m_aggregation = false;
   state->m_stbc = false;
+  state->m_htSupported = false;
+  state->m_vhtSupported = false;
   const_cast<WifiRemoteStationManager *> (this)->m_states.push_back (state);
   NS_LOG_DEBUG ("WifiRemoteStationManager::LookupState returning new state");
   return state;
@@ -1655,6 +1657,18 @@ uint32_t
 WifiRemoteStationManager::GetNSupported (const WifiRemoteStation *station) const
 {
   return station->m_state->m_operationalRateSet.size ();
+}
+
+bool
+WifiRemoteStationManager::GetHtSupported (const WifiRemoteStation *station) const
+{
+  return station->m_state->m_htSupported;
+}
+
+bool
+WifiRemoteStationManager::GetVhtSupported (const WifiRemoteStation *station) const
+{
+  return station->m_state->m_vhtSupported;
 }
 
 uint32_t
