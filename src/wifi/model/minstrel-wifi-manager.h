@@ -131,8 +131,6 @@ public:
    */
   int64_t AssignStreams (int64_t stream);
 
-  MinstrelWifiRemoteStation * CreateMinstrelStation (void) const;
-
   //find a rate to use from Minstrel Table
   uint32_t FindRate (MinstrelWifiRemoteStation *station);
 

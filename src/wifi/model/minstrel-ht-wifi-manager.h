@@ -255,7 +255,7 @@ private:
   void PrintTable (MinstrelHtWifiRemoteStation *station, std::ostream &os);
 
   /// Check for initializations.
-  void CheckInit (MinstrelHtWifiRemoteStationAux *station);
+  void CheckInit (MinstrelHtWifiRemoteStation *station);
 
   /**
    * For managing rates from different groups, a global index for

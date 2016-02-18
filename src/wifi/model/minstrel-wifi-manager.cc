@@ -135,8 +135,8 @@ MinstrelWifiManager::AddCalcTxTime (WifiMode mode, Time t)
   m_calcTxTime.push_back (std::make_pair (t, mode));
 }
 
-MinstrelWifiRemoteStation *
-MinstrelWifiManager::CreateMinstrelStation (void) const
+WifiRemoteStation *
+MinstrelWifiManager::DoCreateStation (void) const
 {
   MinstrelWifiRemoteStation *station = new MinstrelWifiRemoteStation ();
 
@@ -160,12 +160,6 @@ MinstrelWifiManager::CreateMinstrelStation (void) const
   station->m_initialized = false;
 
   return station;
-}
-
-WifiRemoteStation *
-MinstrelWifiManager::DoCreateStation (void) const
-{
-  return CreateMinstrelStation();
 }
 
 void
