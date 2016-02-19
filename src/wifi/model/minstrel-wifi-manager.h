@@ -152,6 +152,9 @@ public:
 
   void CheckInit (MinstrelWifiRemoteStation *station);  ///< check for initializations
 
+  //initialize Sample Table
+  void InitSampleTable (MinstrelWifiRemoteStation *station);
+
 private:
   //overriden from base class
   virtual WifiRemoteStation * DoCreateStation (void) const;
@@ -205,9 +208,6 @@ private:
    *  - backoffs according to CW
    */
   Time CalculateTimeUnicastPacket (Time dataTransmissionTime, uint32_t shortRetries, uint32_t longRetries);
-
-  //initialize Sample Table
-  void InitSampleTable (MinstrelWifiRemoteStation *station);
 
   //printing Sample Table
   void PrintSampleTable (MinstrelWifiRemoteStation *station);

@@ -57,7 +57,6 @@ struct MinstrelHtWifiRemoteStation : MinstrelWifiRemoteStation
   uint32_t m_sampleGroup;   //!< The group that the sample rate belongs to.
   uint32_t m_numSamplesSlow;//!< Number of times a slow rate was sampled.
 
-  HtSampleRate m_sampleTable;   //!< Sample rates table.
   McsGroupData m_mcsTable;      //!< Table of groups with stats.
   bool m_isHt;                  //!< If the station is HT capable.
 };
@@ -126,7 +125,12 @@ MinstrelHtWifiManager::MinstrelHtWifiManager ()
    *  Create the legacy Minstrel manager in case HT is not supported by the device
    *  or non-HT stations want to associate.
    */
-  m_legacyManager = new MinstrelWifiManager();
+  m_legacyManager = CreateObject<MinstrelWifiManager>();
+//  m_legacyManager->SetAttribute("UpdateStatistics", TimeValue (m_updateStats));
+//  m_legacyManager->SetAttribute("LookAroundRate", DoubleValue (m_lookAroundRate));
+//  m_legacyManager->SetAttribute("EWMA", DoubleValue (m_ewmaLevel));
+//  m_legacyManager->SetAttribute("SampleColumn", UintegerValue (m_nSampleCol));
+//  m_legacyManager->SetAttribute("PacketLength", UintegerValue (m_frameLength));
 }
 
 MinstrelHtWifiManager::~MinstrelHtWifiManager ()
@@ -317,7 +321,8 @@ MinstrelHtWifiManager::CheckInit (MinstrelHtWifiRemoteStation *station)
         {
           station->m_isHt = true;
           station->m_nModes = GetNMcsSupported (station);
-          InitSampleTable (station);
+          station->m_sampleTable = SampleRate (station->m_nModes, std::vector<uint32_t> (m_nSampleCol));
+          m_legacyManager->InitSampleTable (station);
           RateInit (station);
           station->m_initialized = true;
         }
@@ -1302,41 +1307,6 @@ MinstrelHtWifiManager::CalculateTimeUnicastPacket (Time dataTransmissionTime, ui
     }
 
   return tt;
-}
-
-void
-MinstrelHtWifiManager::InitSampleTable (MinstrelHtWifiRemoteStation *station)
-{
-  NS_LOG_FUNCTION (this << station);
-  NS_LOG_DEBUG ("InitSampleTable=" << this);
-
-  station->m_sampleTable = HtSampleRate (station->m_nModes, std::vector<uint32_t> (m_nSampleCol));
-  station->m_col = station->m_index = 0;
-
-  /// for off-seting to make rates fall between 0 and numrates
-  uint32_t numSampleRates = station->m_nModes;
-
-  uint32_t newIndex;
-  for (uint32_t col = 0; col < m_nSampleCol; col++)
-    {
-      for (uint32_t i = 0; i < numSampleRates; i++ )
-        {
-
-          /**
-           * The next two lines basically tries to generate a random number
-           * between 0 and the number of available rates
-           */
-          newIndex = m_uniformRandomVariable->GetInteger (0, numSampleRates) % numSampleRates;
-
-          /// this loop is used for filling in other uninitilized places
-          while (station->m_sampleTable[newIndex][col] != 0)
-            {
-              newIndex = (newIndex + 1) % numSampleRates;
-            }
-
-          station->m_sampleTable[newIndex][col] = i;
-        }
-    }
 }
 
 void

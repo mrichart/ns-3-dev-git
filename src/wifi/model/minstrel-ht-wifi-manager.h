@@ -288,7 +288,7 @@ private:
 
   MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.
 
-  MinstrelWifiManager *m_legacyManager;
+  Ptr<MinstrelWifiManager> m_legacyManager;
 
 
   Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
