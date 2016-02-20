@@ -145,8 +145,10 @@ void RateCallback (std::string path, uint64_t rate, Mac48Address dest)
 int main (int argc, char *argv[])
 {
   uint32_t rtsThreshold = 2346;
-  std::string manager = "ns3::MinstrelWifiManager";
-  std::string outputFileName = "minstrel";
+  std::string staManager = "ns3::MinstrelHtWifiManager";
+  std::string apManager = "ns3::MinstrelHtWifiManager";
+  std::string standard = "802.11n-5GHz";
+  std::string outputFileName = "minstrelHT";
   bool shortGuardInterval = false;
   uint32_t chWidth = 20;
   int ap1_x = 0;
@@ -158,7 +160,9 @@ int main (int argc, char *argv[])
   int stepsTime = 1;
 
   CommandLine cmd;
-  cmd.AddValue ("manager", "PRC Manager", manager);
+  cmd.AddValue ("staManager", "PRC Manager of the STA", staManager);
+  cmd.AddValue ("apManager", "PRC Manager of the AP", apManager);
+  cmd.AddValue ("standard", "Wifi Phy Standard", standard);
   cmd.AddValue ("shortGuardInterval", "Enable Short Guard Interval in all stations", shortGuardInterval);
   cmd.AddValue ("channelWidth", "Channel width of all the stations", chWidth);
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
@@ -182,9 +186,7 @@ int main (int argc, char *argv[])
   NodeContainer wifiStaNodes;
   wifiStaNodes.Create (1);
 
-  WifiHelper wifi = WifiHelper::Default ();
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
-  HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
+
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
   wifiPhy.SetChannel (wifiChannel.Create ());
@@ -195,22 +197,72 @@ int main (int argc, char *argv[])
   NetDeviceContainer wifiStaDevices;
   NetDeviceContainer wifiDevices;
 
-  //Configure the STA node
-  wifi.SetRemoteStationManager (manager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
+  WifiHelper wifi = WifiHelper::Default ();
+  if (standard == "802.11a" || standard == "802.11b" || standard == "802.11g")
+    {
+      if (standard == "802.11a")
+        {
+          wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
+        }
+      else if (standard == "802.11b")
+        {
+          wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+        }
+      else if (standard == "802.11g")
+        {
+          wifi.SetStandard (WIFI_PHY_STANDARD_80211g);
+        }
+      NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
 
-  Ssid ssid = Ssid ("AP");
-  wifiMac.SetType ("ns3::StaWifiMac",
-                   "Ssid", SsidValue (ssid),
-                   "ActiveProbing", BooleanValue (false));
-  wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
+      //Configure the STA node
+      wifi.SetRemoteStationManager (staManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
 
-  //Configure the AP node
-  wifi.SetRemoteStationManager (manager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
+      Ssid ssid = Ssid ("AP");
+      wifiMac.SetType ("ns3::StaWifiMac",
+                       "Ssid", SsidValue (ssid),
+                       "ActiveProbing", BooleanValue (false));
+      wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
 
-  ssid = Ssid ("AP");
-  wifiMac.SetType ("ns3::ApWifiMac",
-                   "Ssid", SsidValue (ssid));
-  wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
+      //Configure the AP node
+      wifi.SetRemoteStationManager (apManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
+
+      ssid = Ssid ("AP");
+      wifiMac.SetType ("ns3::ApWifiMac",
+                       "Ssid", SsidValue (ssid));
+      wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
+    }
+  else if (standard == "802.11n-2.4GHz" || standard == "802.11n-5GHz")
+    {
+      if (standard == "802.11n-2.4GHz")
+        {
+          wifi.SetStandard (WIFI_PHY_STANDARD_80211n_2_4GHZ);
+        }
+      else if (standard == "802.11n-5GHz")
+        {
+          wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+        }
+
+      HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
+      /*wifiMac.SetBlockAckThresholdForAc (AC_BE, 2);
+      wifiMac.SetMpduAggregatorForAc (AC_BE, "ns3::MpduStandardAggregator",
+                                      "MaxAmpduSize", UintegerValue (65535));*/
+      //Configure the STA node
+      wifi.SetRemoteStationManager (staManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
+
+      Ssid ssid = Ssid ("AP");
+      wifiMac.SetType ("ns3::StaWifiMac",
+                       "Ssid", SsidValue (ssid),
+                       "ActiveProbing", BooleanValue (false));
+      wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
+
+      //Configure the AP node
+      wifi.SetRemoteStationManager (apManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
+
+      ssid = Ssid ("AP");
+      wifiMac.SetType ("ns3::ApWifiMac",
+                       "Ssid", SsidValue (ssid));
+      wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
+    }
 
   wifiDevices.Add (wifiStaDevices);
   wifiDevices.Add (wifiApDevices);
@@ -267,7 +319,7 @@ int main (int argc, char *argv[])
                    MakeCallback (&NodeStatistics::RxCallback, &atpCounter));
 
   //Callbacks to print every change of rate
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + apManager + "/RateChange",
                    MakeCallback (RateCallback));
 
   Simulator::Stop (Seconds (simuTime));
