@@ -700,11 +700,10 @@ MinstrelHtWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
             }
         }
 
-      Ptr<WifiPhy> phy = GetPhy();
-      uint32_t nSupportRates = phy->GetNModes();
-
       if (!rateFound)
         {
+          Ptr<WifiPhy> phy = GetPhy();
+          uint32_t nSupportRates = phy->GetNModes();
           for (uint32_t i = 0; i < nSupportRates; i++)
             {
               uint64_t rate = phy->GetMode(i).GetDataRate(20,false,1);
@@ -716,7 +715,7 @@ MinstrelHtWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
             }
         }
 
-      NS_ASSERT(!rateFound);
+      NS_ASSERT(rateFound);
 
       uint32_t channelWidth = GetChannelWidth (station);
         if (channelWidth > 20 && channelWidth != 22)
