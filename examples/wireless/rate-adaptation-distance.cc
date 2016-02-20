@@ -243,9 +243,9 @@ int main (int argc, char *argv[])
         }
 
       HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
-      /*wifiMac.SetBlockAckThresholdForAc (AC_BE, 2);
+      //wifiMac.SetBlockAckThresholdForAc (AC_BE, 2);
       wifiMac.SetMpduAggregatorForAc (AC_BE, "ns3::MpduStandardAggregator",
-                                      "MaxAmpduSize", UintegerValue (65535));*/
+                                      "MaxAmpduSize", UintegerValue (0));
       //Configure the STA node
       wifi.SetRemoteStationManager (staManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
 
