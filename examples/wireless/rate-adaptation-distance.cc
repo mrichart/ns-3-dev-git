@@ -243,16 +243,15 @@ int main (int argc, char *argv[])
         }
 
       HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
-      //wifiMac.SetBlockAckThresholdForAc (AC_BE, 2);
-      wifiMac.SetMpduAggregatorForAc (AC_BE, "ns3::MpduStandardAggregator",
-                                      "MaxAmpduSize", UintegerValue (0));
+
       //Configure the STA node
       wifi.SetRemoteStationManager (staManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
 
       Ssid ssid = Ssid ("AP");
       wifiMac.SetType ("ns3::StaWifiMac",
                        "Ssid", SsidValue (ssid),
-                       "ActiveProbing", BooleanValue (false));
+                       "ActiveProbing", BooleanValue (false),
+                       "BE_MaxAmpduSize", UintegerValue (0)); //Disable A-MPDU;
       wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
 
       //Configure the AP node
@@ -260,7 +259,8 @@ int main (int argc, char *argv[])
 
       ssid = Ssid ("AP");
       wifiMac.SetType ("ns3::ApWifiMac",
-                       "Ssid", SsidValue (ssid));
+                       "Ssid", SsidValue (ssid),
+                       "BE_MaxAmpduSize", UintegerValue (0)); //Disable A-MPDU;
       wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
     }
 
