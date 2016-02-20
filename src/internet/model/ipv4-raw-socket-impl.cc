@@ -237,17 +237,19 @@ Ipv4RawSocketImpl::SendTo (Ptr<Packet> p, uint32_t flags,
       if (route != 0)
         {
           NS_LOG_LOGIC ("Route exists");
+          uint32_t pktSize = p->GetSize ();
           if (!m_iphdrincl)
             {
               ipv4->Send (p, route->GetSource (), dst, m_protocol, route);
             }
           else
             {
+              pktSize += header.GetSerializedSize ();
               ipv4->SendWithHeader (p, header, route);
             }
-          NotifyDataSent (p->GetSize ());
+          NotifyDataSent (pktSize);
           NotifySend (GetTxAvailable ());
-          return p->GetSize ();
+          return pktSize;
         }
       else
         {

@@ -18,6 +18,8 @@
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
 
+#define __STDC_LIMIT_MACROS
+
 #include "ns3/object.h"
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
@@ -65,7 +67,7 @@ TcpSocket::GetTypeId (void)
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("InitialSlowStartThreshold",
                    "TCP initial slow start threshold (bytes)",
-                   UintegerValue (0xffff),
+                   UintegerValue (UINT32_MAX),
                    MakeUintegerAccessor (&TcpSocket::GetInitialSSThresh,
                                          &TcpSocket::SetInitialSSThresh),
                    MakeUintegerChecker<uint32_t> ())

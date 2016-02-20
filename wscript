@@ -546,6 +546,14 @@ def configure(conf):
                                  conf.env['ENABLE_GSL'],
                                  "GSL not found")
 
+    conf.find_program('libgcrypt-config', var='LIBGCRYPT_CONFIG', msg="python-config", mandatory=False)
+    if env.LIBGCRYPT_CONFIG:
+        conf.check_cfg(path=env.LIBGCRYPT_CONFIG, msg="Checking for libgcrypt", args='--cflags --libs', package='',
+                                     define_name="HAVE_CRYPTO", global_define=True, uselib_store='GCRYPT', mandatory=False)
+    conf.report_optional_feature("libgcrypt", "Gcrypt library",
+                                 conf.env.HAVE_GCRYPT, "libgcrypt not found: you can use libgcrypt-config to find its location.")
+
+
     # for compiling C code, copy over the CXX* flags
     conf.env.append_value('CCFLAGS', conf.env['CXXFLAGS'])
 
@@ -739,6 +747,11 @@ def _find_ns3_module(self, name):
 
 def build(bld):
     env = bld.env
+
+    if Options.options.check_profile:
+        print("Build profile: %s" % Options.options.build_profile)
+        raise SystemExit(0)
+        return
 
     # If --enabled-modules option was given, then print a warning
     # message and exit this function.

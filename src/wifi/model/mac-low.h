@@ -280,6 +280,9 @@ public:
   virtual Ptr<MsduAggregator> GetMsduAggregator (void) const;
   /**
    */
+  virtual Ptr<MpduAggregator> GetMpduAggregator (void) const;
+  /**
+   */
   virtual Mac48Address GetSrcAddressForAggregation (const WifiMacHeader &hdr);
   /**
    */
@@ -524,17 +527,6 @@ public:
    * \param manager WifiRemoteStationManager associated with this MacLow
    */
   void SetWifiRemoteStationManager (Ptr<WifiRemoteStationManager> manager);
-  /**
-   * Set up MpduAggregator associated with this MacLow.
-   *
-   * \param aggregator MpduAggregator associated with this MacLow
-   */
-  void SetMpduAggregator (Ptr<MpduAggregator> aggregator);
-  /**
-   *
-   * \return the attached MpduAggregator
-   */
-  Ptr<MpduAggregator> GetMpduAggregator (void);
   /**
    * Set MAC address of this MacLow.
    *
@@ -1013,6 +1005,13 @@ private:
    * \return the time required to transmit the Block ACK (including preamble and FCS)
    */
   Time GetBlockAckDuration (Mac48Address to, WifiTxVector blockAckReqTxVector, enum BlockAckType type) const;
+  /**
+   * Check if the current packet should be sent with a RTS protection.
+   *
+   * \return true if RTS protection should be used,
+   *         false otherwise
+   */
+  bool NeedRts (void);
   /**
    * Check if CTS-to-self mechanism should be used for the current packet.
    *

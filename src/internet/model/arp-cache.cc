@@ -392,8 +392,9 @@ ArpCache::Entry::MarkAlive (Address macAddress)
 void
 ArpCache::Entry::MarkPermanent (void)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << m_macAddress);
   NS_ASSERT (!m_macAddress.IsInvalid ());
+
   m_state = PERMANENT;
   ClearRetries ();
   UpdateSeen ();
@@ -420,6 +421,8 @@ ArpCache::Entry::MarkWaitReply (Ptr<Packet> waiting)
   NS_LOG_FUNCTION (this << waiting);
   NS_ASSERT (m_state == ALIVE || m_state == DEAD);
   NS_ASSERT (m_pending.empty ());
+  NS_ASSERT_MSG (waiting, "Can not add a null packet to the ARP queue");
+
   m_state = WAIT_REPLY;
   m_pending.push_back (waiting);
   UpdateSeen ();

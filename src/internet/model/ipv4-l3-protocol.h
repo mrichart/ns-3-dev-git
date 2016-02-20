@@ -117,65 +117,16 @@ public:
   Ptr<Socket> CreateRawSocket (void);
   void DeleteRawSocket (Ptr<Socket> socket);
 
-  /**
-   * \param protocol a template for the protocol to add to this L4 Demux.
-   * \returns the L4Protocol effectively added.
-   *
-   * Invoke Copy on the input template to get a copy of the input
-   * protocol which can be used on the Node on which this L4 Demux 
-   * is running. The new L4Protocol is registered internally as
-   * a working L4 Protocol and returned from this method.
-   * The caller does not get ownership of the returned pointer.
-   */
-  void Insert (Ptr<IpL4Protocol> protocol);
+  virtual void Insert (Ptr<IpL4Protocol> protocol);
+  virtual void Insert (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
 
-  /**
-   * \brief Add a L4 protocol to a specific interface.
-   *
-   * This may be called multiple times for multiple interfaces for the same
-   * protocol.  To insert for all interfaces, use the separate
-   * Insert (Ptr<IpL4Protocol> protocol) method.
-   *
-   * Setting a protocol on a specific interface will overwrite the
-   * previously bound protocol.
-   *
-   * \param protocol L4 protocol.
-   * \param interfaceIndex interface index.
-   */
-  void Insert (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
+  virtual void Remove (Ptr<IpL4Protocol> protocol);
+  virtual void Remove (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
 
-  /**
-   * \param protocolNumber number of protocol to lookup
-   *        in this L4 Demux
-   * \returns a matching L4 Protocol
-   *
-   * This method is typically called by lower layers
-   * to forward packets up the stack to the right protocol.
-   */
   virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber) const;
-
-  /**
-   * \brief Get L4 protocol by protocol number for the specified interface.
-   * \param protocolNumber protocol number
-   * \param interfaceIndex interface index, -1 means "any" interface.
-   * \return corresponding IpL4Protocol or 0 if not found
-   */
   virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber, int32_t interfaceIndex) const;
 
-  /**
-   * \param protocol protocol to remove from this demux.
-   *
-   * The input value to this method should be the value
-   * returned from the Ipv4L4Protocol::Insert method.
-   */
-  void Remove (Ptr<IpL4Protocol> protocol);
-
-  /**
-   * \brief Remove a L4 protocol from a specific interface.
-   * \param protocol L4 protocol to remove.
-   * \param interfaceIndex interface index.
-   */
-  void Remove (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
+  virtual Ipv4Address SourceAddressSelection (uint32_t interface, Ipv4Address dest);
 
   /**
    * \param ttl default ttl to use
@@ -194,7 +145,7 @@ public:
    * \param device network device
    * \param p the packet
    * \param protocol protocol value
-   * \param from address of the correspondant
+   * \param from address of the correspondent
    * \param to address of the destination
    * \param packetType type of the packet
    */
@@ -464,6 +415,10 @@ private:
    */
   typedef std::vector<Ptr<Ipv4Interface> > Ipv4InterfaceList;
   /**
+   * \brief Container of NetDevices registered to IPv4 and their interface indexes.
+   */
+  typedef std::map<Ptr<const NetDevice>, uint32_t > Ipv4InterfaceReverseContainer;
+  /**
    * \brief Container of the IPv4 Raw Sockets.
    */
   typedef std::list<Ptr<Ipv4RawSocketImpl> > SocketList;
@@ -482,6 +437,7 @@ private:
   bool m_weakEsModel;    //!< Weak ES model state
   L4List_t m_protocols;  //!< List of transport protocol.
   Ipv4InterfaceList m_interfaces; //!< List of IPv4 interfaces.
+  Ipv4InterfaceReverseContainer m_reverseInterfacesContainer; //!< Container of NetDevice / Interface index associations.
   uint8_t m_defaultTos;  //!< Default TOS
   uint8_t m_defaultTtl;  //!< Default TTL
   std::map<std::pair<uint64_t, uint8_t>, uint16_t> m_identification; //!< Identification (for each {src, dst, proto} tuple)

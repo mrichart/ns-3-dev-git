@@ -242,16 +242,18 @@ def build(bld):
         'test/tcp-highspeed-test.cc',
         'test/tcp-hybla-test.cc',
         'test/tcp-zero-window-test.cc',
+        'test/tcp-pkts-acked-test.cc',
         'test/udp-test.cc',
         'test/ipv6-address-generator-test-suite.cc',
         'test/ipv6-dual-stack-test-suite.cc',
         'test/ipv6-fragmentation-test.cc',
         'test/ipv6-forwarding-test.cc',
         'test/ipv6-ripng-test.cc',
-     	'test/ipv6-address-helper-test-suite.cc',
+        'test/ipv6-address-helper-test-suite.cc',
         'test/rtt-test.cc',
         'test/codel-queue-test-suite.cc',
         'test/tcp-endpoint-bug2211.cc',
+        'test/tcp-datasentcb-test.cc',
         ]
     privateheaders = bld(features='ns3privateheader')
     privateheaders.module = 'internet'

@@ -52,7 +52,8 @@ class TcpHeader;
  *
  * \brief Helper class to store RTT measurements
  */
-class RttHistory {
+class RttHistory
+{
 public:
   /**
    * \brief Constructor - builds an RttHistory with the given parameters
@@ -160,7 +161,10 @@ public:
    *
    * \return Congestion window in segments
    */
-  uint32_t GetCwndInSegments () const { return m_cWnd / m_segmentSize; }
+  uint32_t GetCwndInSegments () const
+  {
+    return m_cWnd / m_segmentSize;
+  }
 };
 
 /**
@@ -244,6 +248,12 @@ public:
    * \return the object TypeId
    */
   static TypeId GetTypeId (void);
+
+  /**
+   * \brief Get the instance TypeId
+   * \return the instance TypeId
+   */
+  virtual TypeId GetInstanceTypeId () const;
 
   friend class TcpGeneralTest;
 
@@ -351,7 +361,7 @@ public:
    * \param newValue new congestion state value
    */
   void UpdateCongState (TcpSocketState::TcpCongState_t oldValue,
-                       TcpSocketState::TcpCongState_t newValue);
+                        TcpSocketState::TcpCongState_t newValue);
 
   /**
    * \brief Install a congestion control algorithm on this socket
@@ -388,9 +398,8 @@ public:
    * \param [in] ipv4
    * \param [in] interface
    */
-  typedef void (* TcpTxRxTracedCallback)
-    (const Ptr<const Packet> packet, const TcpHeader& header,
-     const Ptr<const TcpSocketBase> socket);
+  typedef void (* TcpTxRxTracedCallback)(const Ptr<const Packet> packet, const TcpHeader& header,
+                                         const Ptr<const TcpSocketBase> socket);
 
 protected:
   // Implementing ns3::TcpSocket -- Attribute get/set
@@ -736,10 +745,10 @@ protected:
   virtual uint16_t AdvertisedWindowSize (void) const;
 
   /**
-   * \brief Update the receiver window (RWND) based on the value of the 
+   * \brief Update the receiver window (RWND) based on the value of the
    * window field in the header.
    *
-   * This method suppresses updates unless one of the following three 
+   * This method suppresses updates unless one of the following three
    * conditions holds:  1) segment contains new data (advancing the right
    * edge of the receive buffer), 2) segment does not contain new data
    * but the segment acks new data (highest sequence number acked advances),
@@ -815,20 +824,6 @@ protected:
    */
   virtual void DoRetransmit (void);
 
-  /**
-   * \brief Read TCP options from incoming packets
-   *  
-   * This method sequentially checks each kind of option, and if it
-   * is present in the header, starts its processing.
-   *
-   * To deal with hosts which don't have the option enabled (or
-   * implemented) we disable all options, and then re-enable them
-   * if in the packet there is the option itself.
-   *
-   * \param tcpHeader the packet's TCP header
-   */
-  virtual void ReadOptions (const TcpHeader& tcpHeader);
-
   /** \brief Add options to TcpHeader
    *
    * Test each option, and if it is enabled on our side, add it
@@ -873,9 +868,11 @@ protected:
    * to utilize later to calculate RTT.
    *
    * \see EstimateRtt
-   * \param option Option from the packet
+   * \param option Option from the segment
+   * \param seq Sequence number of the segment
    */
-  void ProcessOptionTimestamp (const Ptr<const TcpOption> option);
+  void ProcessOptionTimestamp (const Ptr<const TcpOption> option,
+                               const SequenceNumber32 &seq);
   /**
    * \brief Add the timestamp option to the header
    *
@@ -885,25 +882,6 @@ protected:
    * \param header TcpHeader to which add the option to
    */
   void AddOptionTimestamp (TcpHeader& header);
-
-  /**
-   * \brief Scale the initial SsThresh value to the correct one
-   *
-   * Set the initial SsThresh to the largest possible advertised window
-   * according to the sender scale factor.
-   *
-   * \param scaleFactor the sender scale factor
-   */
-  virtual void ScaleSsThresh (uint8_t scaleFactor);
-
-  /**
-   * \brief Initialize congestion window
-   *
-   * Default cWnd to 1 MSS (RFC2001, sec.1) and must
-   * not be larger than 2 MSS (RFC2581, sec.3.1). Both m_initiaCWnd and
-   * m_segmentSize are set by the attribute system in ns3::TcpSocket.
-   */
-  virtual void InitializeCwnd ();
 
 protected:
   // Counters and events
@@ -959,13 +937,14 @@ protected:
   uint16_t              m_maxWinSize;  //!< Maximum window size to advertise
   TracedValue<uint32_t> m_rWnd;        //!< Receiver window (RCV.WND in RFC793)
   TracedValue<SequenceNumber32> m_highRxMark;     //!< Highest seqno received
+  SequenceNumber32 m_highTxAck;                   //!< Highest ack sent
   TracedValue<SequenceNumber32> m_highRxAckMark;  //!< Highest ack received
   uint32_t                      m_bytesAckedNotProcessed;  //!< Bytes acked, but not processed
 
   // Options
-  bool    m_winScalingEnabled;    //!< Window Scale option enabled
-  uint8_t m_sndScaleFactor;       //!< Sent Window Scale (i.e., the one of the node)
-  uint8_t m_rcvScaleFactor;       //!< Received Window Scale (i.e., the one of the peer)
+  bool    m_winScalingEnabled; //!< Window Scale option enabled (RFC 7323)
+  uint8_t m_rcvWindShift;      //!< Window shift to apply to outgoing segments
+  uint8_t m_sndWindShift;      //!< Window shift to apply to incoming segments
 
   bool     m_timestampEnabled;    //!< Timestamp option enabled
   uint32_t m_timestampToEcho;     //!< Timestamp to echo
@@ -978,11 +957,11 @@ protected:
   bool                   m_limitedTx;    //!< perform limited transmit
 
   // Transmission Control Block
-  Ptr<TcpSocketState>    m_tcb  ;             //!< Congestion control informations
+  Ptr<TcpSocketState>    m_tcb;               //!< Congestion control informations
   Ptr<TcpCongestionOps>  m_congestionControl; //!< Congestion control
 
   // Guesses over the other connection end
-  bool m_isFirstPartialAck;//!< First partial ACK during RECOVERY
+  bool m_isFirstPartialAck; //!< First partial ACK during RECOVERY
 
   // The following two traces pass a packet with a TCP header
   TracedCallback<Ptr<const Packet>, const TcpHeader&,

@@ -47,6 +47,10 @@ New user-visible features
 - (internet) UDP and Ipv6 RAW sockets can now join Ipv6 multicast groups.
   Incomin packets will be filtered according to if there's a socket listening to
   that group. Source filtering is left to the application.
+- (network) ns-3 is now capable of serializing cooked (SLL) headers. This is used 
+  in DCE to allow the generation of pcap directly readable by wireshark.
+- (internet) It is now possible to set custom values for RipNg Link Down (standard is 16).
+- (internet) permanent (static) NDISC entries can be created for IPv6
 
 Bugs fixed
 ----------
@@ -54,8 +58,13 @@ Bugs fixed
 - Bug 1571 - TCP zero-window and flow control window updates by the receiver
 - Bug 1761 - Rounding with olsr::EmfToSeconds
 - Bug 1954 - Serialized size of wifi-net-device differ for TX and RX trace
+- Bug 1999 - PointToPointRemoteChannel invokes PointToPointChannel constructor
 - Bug 2003 - Missing DSSS short PLCP preamble
 - Bug 2041 - TCP RTO needs unit tests
+- Bug 2068 - Timestamp option conforms to RFC 7323
+- Bug 2116 - refactoring aggregation API
+- Bug 2120 - 802.11g networks are not compatible with 802.11b clients
+- Bug 2141 - TCP DataSent callback now correctly notifies sent data, without missing bytes in particular conditions
 - Bug 2150 - The TCP sender keeps retransmitting and does not terminate the connection after some retries.
 - Bug 2159 - TCP advertises wrong receive window
 - Bug 2176 - Building IPv4 address from char* doesn't look reliable
@@ -68,11 +77,33 @@ Bugs fixed
 - Bug 2206 - Split internet-apps from applications
 - Bug 2208 - Interface index based L4 protocols
 - Bug 2211 - Ipv{4,6}EndPoint can cause memory corruption
+- Bug 2213 - Inconsistencies may exist between the selected WifiMacHelper and the chosen 802.11 version
 - Bug 2219 - SixLowPanNetDevice hangs trying to decode a IPv6 Fragment extension header
 - Bug 2233 - Implement RFC 1222 - Strong End System Model
 - Bug 2234 - Ipv6L3Protocol should trash multicast packets not interesting for the node
 - Bug 2238 - Ipv6 routing reorganization
 - Bug 2242 - Mobility of both sender PHY and receiver PHY set to sender mobility in lr-wpan-phy-test.cc example.
+- Bug 2243 - TCP Socket Fork() fails to copy some parameters, causing connections to close prematurely on retransmit
+- Bug 2246 - Some DSR LogComponents and classes are not defined in a unique way.
+- Bug 2247 - Disabled Fast retransmit after an RTO
+- Bug 2252 - Nix needs StaticRouting to work
+- Bug 2254 - Ipv[4,6]RawSocket can return the wrong number of bytes sent.
+- Bug 2255 - Ipv6RawSocket does not call data sent callbacks.
+- Bug 2257 - Ipv[4,6]InterfaceContainer::Add are not consistent
+- Bug 2258 - TcpSocketBase updated options and RTT for out of range segments.
+- Bug 2259 - GSL not successfully enabled for Wi-Fi DSSS error rate model
+- Bug 2262 - Corrected initial slow start threshold value
+- Bug 2266 - NixRouting info are not copied during a packet fragmentation.
+- Bug 2267 - Wrong channel bandwidth value in pcap files
+- Bug 2271 - Decision to enable RTS/CTS handshake for A-MPDUs should be based on the comparison between RtsCtsThreshold and the total A-MPDU size
+- Bug 2272 - SixLowPan NetDevice can not send uncompressed packets larger than 802.15.4 MTU
+- Bug 2273 - WeakEs model should be enforced in Static and Global routing
+- Bug 2279 - Ipv[4,6]L3Protocol::GetInterfaceForDevice speedup.
+- Bug 2286 - Support for SLL header (de)serialization.
+- Bug 2287 - FlowMonitor is confused by IP over IP.
+- Bug 2288 - Ipv4 broadcast and multicast packets are replicated on all the interfaces.
+- Bug 2292 - Uninitialized variables since commit 7c60a9f8f271
+- Bug 2293 - Red Queue Estimator spins when trying to compute queue average size under long idle times.
 
 Known issues
 ------------

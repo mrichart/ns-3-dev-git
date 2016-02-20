@@ -104,53 +104,13 @@ public:
    */
   void SetNode (Ptr<Node> node);
 
-  /**
-   * \brief Add a L4 protocol.
-   * \param protocol L4 protocol
-   */
-  void Insert (Ptr<IpL4Protocol> protocol);
+  virtual void Insert (Ptr<IpL4Protocol> protocol);
+  virtual void Insert (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
 
-  /**
-   * \brief Add a L4 protocol to a specific interface.
-   *
-   * This may be called multiple times for multiple interfaces for the same
-   * protocol.  To insert for all interfaces, use the separate
-   * Insert (Ptr<IpL4Protocol> protocol) method.
-   *
-   * Setting a protocol on a specific interface will overwrite the
-   * previously bound protocol.
-   *
-   * \param protocol L4 protocol.
-   * \param interfaceIndex interface index.
-   */
-  void Insert (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
+  virtual void Remove (Ptr<IpL4Protocol> protocol);
+  virtual void Remove (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
 
-  /**
-   * \brief Remove a L4 protocol.
-   * \param protocol L4 protocol to remove.
-   */
-  void Remove (Ptr<IpL4Protocol> protocol);
-
-  /**
-   * \brief Remove a L4 protocol from a specific interface.
-   * \param protocol L4 protocol to remove.
-   * \param interfaceIndex interface index.
-   */
-  void Remove (Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex);
-
-  /**
-   * \brief Get L4 protocol by protocol number.
-   * \param protocolNumber protocol number
-   * \return corresponding IpL4Protocol or 0 if not found
-   */
   virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber) const;
-
-  /**
-   * \brief Get L4 protocol by protocol number for the specified interface.
-   * \param protocolNumber protocol number
-   * \param interfaceIndex interface index, -1 means "any" interface.
-   * \return corresponding IpL4Protocol or 0 if not found
-   */
   virtual Ptr<IpL4Protocol> GetProtocol (int protocolNumber, int32_t interfaceIndex) const;
 
   /**
@@ -184,23 +144,13 @@ public:
    * \param device network device
    * \param p the packet
    * \param protocol next header value
-   * \param from address of the correspondant
+   * \param from address of the correspondent
    * \param to address of the destination
    * \param packetType type of the packet
    */
   void Receive (Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t protocol, const Address &from, const Address &to, NetDevice::PacketType packetType);
 
-  /**
-   * \brief Higher-level layers call this method to send a packet
-   * down the stack to the MAC and PHY layers.
-   *
-   * \param packet packet to send
-   * \param source source address of packet
-   * \param destination address of packet
-   * \param protocol number of packet
-   * \param route route to take
-   */
-  void Send (Ptr<Packet> packet, Ipv6Address source, Ipv6Address destination, uint8_t protocol, Ptr<Ipv6Route> route);
+  virtual void Send (Ptr<Packet> packet, Ipv6Address source, Ipv6Address destination, uint8_t protocol, Ptr<Ipv6Route> route);
 
   /**
    * \brief Set routing protocol for this stack.
@@ -517,7 +467,12 @@ private:
   /**
    * \brief Container of the IPv6 Interfaces.
    */
-  typedef std::list<Ptr<Ipv6Interface> > Ipv6InterfaceList;
+  typedef std::vector<Ptr<Ipv6Interface> > Ipv6InterfaceList;
+
+  /**
+   * \brief Container of NetDevices registered to IPv6 and their interface indexes.
+   */
+  typedef std::map<Ptr<const NetDevice>, uint32_t > Ipv6InterfaceReverseContainer;
 
   /**
    * \brief Container of the IPv6 Raw Sockets.
@@ -719,6 +674,11 @@ private:
    * \brief List of IPv6 interfaces.
    */
   Ipv6InterfaceList m_interfaces;
+
+  /**
+   * Container of NetDevice / Interface index associations.
+   */
+  Ipv6InterfaceReverseContainer m_reverseInterfacesContainer;
 
   /**
    * \brief Number of IPv6 interfaces managed by the stack.

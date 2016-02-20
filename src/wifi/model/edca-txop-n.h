@@ -47,6 +47,7 @@ class WifiMacQueue;
 class RandomStream;
 class QosBlockedDestinations;
 class MsduAggregator;
+class MpduAggregator;
 class MgtAddBaResponseHeader;
 class BlockAckManager;
 class MgtDelBaHeader;
@@ -161,6 +162,8 @@ public:
   Ptr<MacLow> Low (void);
 
   Ptr<MsduAggregator> GetMsduAggregator (void) const;
+  Ptr<MpduAggregator> GetMpduAggregator (void) const;
+
   /**
    * \param recipient address of the peer station
    * \param tid traffic ID.
@@ -288,13 +291,6 @@ public:
    */
   void StartAccessIfNeeded (void);
   /**
-   * Check if the current packet should be sent with a RTS protection.
-   *
-   * \return true if RTS protection should be used,
-   *         false otherwise
-   */
-  bool NeedRts (void);
-  /**
    * Check if RTS should be re-transmitted if CTS was missed.
    *
    * \return true if RTS should be re-transmitted,
@@ -379,6 +375,7 @@ public:
   void Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr);
 
   void SetMsduAggregator (Ptr<MsduAggregator> aggr);
+  void SetMpduAggregator (Ptr<MpduAggregator> aggr);
 
   /**
    * \param packet packet to send
@@ -543,7 +540,8 @@ private:
   Ptr<const Packet> m_currentPacket;
 
   WifiMacHeader m_currentHdr;
-  Ptr<MsduAggregator> m_aggregator;
+  Ptr<MsduAggregator> m_msduAggregator;
+  Ptr<MpduAggregator> m_mpduAggregator;
   TypeOfStation m_typeOfStation;
   QosBlockedDestinations *m_qosBlockedDestinations;
   BlockAckManager *m_baManager;

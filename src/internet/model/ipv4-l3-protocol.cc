@@ -300,6 +300,8 @@ Ipv4L3Protocol::DoDispose (void)
       *i = 0;
     }
   m_interfaces.clear ();
+  m_reverseInterfacesContainer.clear ();
+
   m_sockets.clear ();
   m_node = 0;
   m_routingProtocol = 0;
@@ -389,6 +391,7 @@ Ipv4L3Protocol::AddIpv4Interface (Ptr<Ipv4Interface>interface)
   NS_LOG_FUNCTION (this << interface);
   uint32_t index = m_interfaces.size ();
   m_interfaces.push_back (interface);
+  m_reverseInterfacesContainer[interface->GetDevice ()] = index;
   return index;
 }
 
@@ -460,15 +463,11 @@ Ipv4L3Protocol::GetInterfaceForDevice (
   Ptr<const NetDevice> device) const
 {
   NS_LOG_FUNCTION (this << device);
-  int32_t interface = 0;
-  for (Ipv4InterfaceList::const_iterator i = m_interfaces.begin (); 
-       i != m_interfaces.end (); 
-       i++, interface++)
+
+  Ipv4InterfaceReverseContainer::const_iterator iter = m_reverseInterfacesContainer.find (device);
+  if (iter != m_reverseInterfacesContainer.end ())
     {
-      if ((*i)->GetDevice () == device)
-        {
-          return interface;
-        }
+      return (*iter).second;
     }
 
   return -1;
@@ -546,31 +545,25 @@ Ipv4L3Protocol::Receive ( Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t p
   NS_LOG_LOGIC ("Packet from " << from << " received on node " << 
                 m_node->GetId ());
 
-  uint32_t interface = 0;
+
+  int32_t interface = GetInterfaceForDevice(device);
+  NS_ASSERT_MSG (interface != -1, "Received a packet from an interface that is not known to IPv4");
+
   Ptr<Packet> packet = p->Copy ();
 
-  Ptr<Ipv4Interface> ipv4Interface;
-  for (Ipv4InterfaceList::const_iterator i = m_interfaces.begin (); 
-       i != m_interfaces.end (); 
-       i++, interface++)
+  Ptr<Ipv4Interface> ipv4Interface = m_interfaces[interface];
+
+  if (ipv4Interface->IsUp ())
     {
-      ipv4Interface = *i;
-      if (ipv4Interface->GetDevice () == device)
-        {
-          if (ipv4Interface->IsUp ())
-            {
-              m_rxTrace (packet, m_node->GetObject<Ipv4> (), interface);
-              break;
-            }
-          else
-            {
-              NS_LOG_LOGIC ("Dropping received packet -- interface is down");
-              Ipv4Header ipHeader;
-              packet->RemoveHeader (ipHeader);
-              m_dropTrace (ipHeader, packet, DROP_INTERFACE_DOWN, m_node->GetObject<Ipv4> (), interface);
-              return;
-            }
-        }
+      m_rxTrace (packet, m_node->GetObject<Ipv4> (), interface);
+    }
+  else
+    {
+      NS_LOG_LOGIC ("Dropping received packet -- interface is down");
+      Ipv4Header ipHeader;
+      packet->RemoveHeader (ipHeader);
+      m_dropTrace (ipHeader, packet, DROP_INTERFACE_DOWN, m_node->GetObject<Ipv4> (), interface);
+      return;
     }
 
   Ipv4Header ipHeader;
@@ -721,14 +714,29 @@ Ipv4L3Protocol::Send (Ptr<Packet> packet,
            ifaceIter != m_interfaces.end (); ifaceIter++, ifaceIndex++)
         {
           Ptr<Ipv4Interface> outInterface = *ifaceIter;
-          Ptr<Packet> packetCopy = packet->Copy ();
+          bool sendIt = false;
+          if (source == Ipv4Address::GetAny ())
+            {
+              sendIt = true;
+            }
+          for (uint32_t index = 0; index < outInterface->GetNAddresses (); index++)
+            {
+              if (outInterface->GetAddress (index).GetLocal () == source)
+                {
+                  sendIt = true;
+                }
+            }
+          if (sendIt)
+            {
+              Ptr<Packet> packetCopy = packet->Copy ();
 
-          NS_ASSERT (packetCopy->GetSize () <= outInterface->GetDevice ()->GetMtu ());
+              NS_ASSERT (packetCopy->GetSize () <= outInterface->GetDevice ()->GetMtu ());
 
-          m_sendOutgoingTrace (ipHeader, packetCopy, ifaceIndex);
-          packetCopy->AddHeader (ipHeader);
-          m_txTrace (packetCopy, m_node->GetObject<Ipv4> (), ifaceIndex);
-          outInterface->Send (packetCopy, destination);
+              m_sendOutgoingTrace (ipHeader, packetCopy, ifaceIndex);
+              packetCopy->AddHeader (ipHeader);
+              m_txTrace (packetCopy, m_node->GetObject<Ipv4> (), ifaceIndex);
+              outInterface->Send (packetCopy, destination);
+            }
         }
       return;
     }
@@ -1129,6 +1137,33 @@ Ipv4L3Protocol::RemoveAddress (uint32_t i, Ipv4Address address)
       return true;
     }
   return false;
+}
+
+Ipv4Address
+Ipv4L3Protocol::SourceAddressSelection (uint32_t interfaceIdx, Ipv4Address dest)
+{
+  NS_LOG_FUNCTION (this << interfaceIdx << " " << dest);
+  if (GetNAddresses (interfaceIdx) == 1)  // common case
+    {
+      return GetAddress (interfaceIdx, 0).GetLocal ();
+    }
+  // no way to determine the scope of the destination, so adopt the
+  // following rule:  pick the first available address (index 0) unless
+  // a subsequent address is on link (in which case, pick the primary
+  // address if there are multiple)
+  Ipv4Address candidate = GetAddress (interfaceIdx, 0).GetLocal ();
+  for (uint32_t i = 0; i < GetNAddresses (interfaceIdx); i++)
+    {
+      Ipv4InterfaceAddress test = GetAddress (interfaceIdx, i);
+      if (test.GetLocal ().CombineMask (test.GetMask ()) == dest.CombineMask (test.GetMask ()))
+        {
+          if (test.IsSecondary () == false)
+            {
+              return test.GetLocal ();
+            }
+        }
+    }
+  return candidate;
 }
 
 Ipv4Address 
