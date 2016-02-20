@@ -149,6 +149,7 @@ int main (int argc, char *argv[])
   std::string apManager = "ns3::MinstrelHtWifiManager";
   std::string standard = "802.11n-5GHz";
   std::string outputFileName = "minstrelHT";
+  uint32_t BE_MaxAmpduSize = 65535;
   bool shortGuardInterval = false;
   uint32_t chWidth = 20;
   int ap1_x = 0;
@@ -166,6 +167,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("shortGuardInterval", "Enable Short Guard Interval in all stations", shortGuardInterval);
   cmd.AddValue ("channelWidth", "Channel width of all the stations", chWidth);
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
+  cmd.AddValue ("BE_MaxAmpduSize", "BE Mac A-MPDU size", BE_MaxAmpduSize);
   cmd.AddValue ("outputFileName", "Output filename", outputFileName);
   cmd.AddValue ("steps", "How many different distances to try", steps);
   cmd.AddValue ("stepsTime", "Time on each step", stepsTime);
@@ -251,7 +253,7 @@ int main (int argc, char *argv[])
       wifiMac.SetType ("ns3::StaWifiMac",
                        "Ssid", SsidValue (ssid),
                        "ActiveProbing", BooleanValue (false),
-                       "BE_MaxAmpduSize", UintegerValue (0)); //Disable A-MPDU;
+                       "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
       wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
 
       //Configure the AP node
@@ -260,7 +262,7 @@ int main (int argc, char *argv[])
       ssid = Ssid ("AP");
       wifiMac.SetType ("ns3::ApWifiMac",
                        "Ssid", SsidValue (ssid),
-                       "BE_MaxAmpduSize", UintegerValue (0)); //Disable A-MPDU;
+                       "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
       wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
     }
 
