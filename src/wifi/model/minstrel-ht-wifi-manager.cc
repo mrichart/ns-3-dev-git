@@ -126,11 +126,6 @@ MinstrelHtWifiManager::MinstrelHtWifiManager ()
    *  or non-HT stations want to associate.
    */
   m_legacyManager = CreateObject<MinstrelWifiManager>();
-//  m_legacyManager->SetAttribute("UpdateStatistics", TimeValue (m_updateStats));
-//  m_legacyManager->SetAttribute("LookAroundRate", DoubleValue (m_lookAroundRate));
-//  m_legacyManager->SetAttribute("EWMA", DoubleValue (m_ewmaLevel));
-//  m_legacyManager->SetAttribute("SampleColumn", UintegerValue (m_nSampleCol));
-//  m_legacyManager->SetAttribute("PacketLength", UintegerValue (m_frameLength));
 }
 
 MinstrelHtWifiManager::~MinstrelHtWifiManager ()
@@ -315,6 +310,11 @@ MinstrelHtWifiManager::CheckInit (MinstrelHtWifiRemoteStation *station)
         {
           NS_LOG_DEBUG ("Non-HT station " << station);
           station->m_isHt = false;
+          m_legacyManager->SetAttribute("UpdateStatistics", TimeValue (m_updateStats));
+          m_legacyManager->SetAttribute("LookAroundRate", DoubleValue (m_lookAroundRate));
+          m_legacyManager->SetAttribute("EWMA", DoubleValue (m_ewmaLevel));
+          m_legacyManager->SetAttribute("SampleColumn", UintegerValue (m_nSampleCol));
+          m_legacyManager->SetAttribute("PacketLength", UintegerValue (m_frameLength));
           m_legacyManager->CheckInit(station);
         }
       else
