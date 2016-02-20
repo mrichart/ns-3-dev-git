@@ -197,7 +197,7 @@ int main (int argc, char *argv[])
   NetDeviceContainer wifiStaDevices;
   NetDeviceContainer wifiDevices;
 
-  WifiHelper wifi = WifiHelper::Default ();
+  WifiHelper wifi;
   if (standard == "802.11a" || standard == "802.11b" || standard == "802.11g")
     {
       if (standard == "802.11a")
