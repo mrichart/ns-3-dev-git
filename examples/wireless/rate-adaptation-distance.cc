@@ -139,7 +139,7 @@ NodeStatistics::GetDatafile ()
 
 void RateCallback (std::string path, uint64_t rate, Mac48Address dest)
 {
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate / 1000000.0);
 }
 
 int main (int argc, char *argv[])

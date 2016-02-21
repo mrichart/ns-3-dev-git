@@ -708,6 +708,7 @@ MinstrelHtWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
        */
 
       // As we are in Minstrel HT, assume the last rate was an HT rate.
+      // FIXME: I think this should be done in parent class??
       WifiMode lastRate = GetMcsSupported(station, GetRateId(station->m_txrate));
       uint8_t streams = m_minstrelGroups[GetGroupId(station->m_txrate)].streams;
       WifiMode referenceRate = lastRate.GetNonHtReferenceRate(streams);
@@ -963,7 +964,7 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
               /// set the rate that we're currently sampling
               station->m_sampleRate = sampleIdx;
 
-              uint64_t dataRate = GetMcsSupported (station, GetRateId (station->m_maxTpRate)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
+              uint64_t dataRate = GetMcsSupported (station, GetRateId (sampleIdx)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
               m_rateChange (dataRate, station->m_state->m_address);
 
               NS_LOG_DEBUG ("FindRate " << "sampleRate=" << sampleIdx);
@@ -990,7 +991,7 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
                   /// set the rate that we're currently sampling
                   station->m_sampleRate = sampleIdx;
 
-                  uint64_t dataRate = GetMcsSupported (station, GetRateId (station->m_maxTpRate)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
+                  uint64_t dataRate = GetMcsSupported (station, GetRateId (sampleIdx)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
                   m_rateChange (dataRate, station->m_state->m_address);
 
                   NS_LOG_DEBUG ("FindRate " << "sampleRate=" << sampleIdx);
