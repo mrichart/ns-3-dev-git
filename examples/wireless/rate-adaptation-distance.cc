@@ -265,6 +265,30 @@ int main (int argc, char *argv[])
                        "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
       wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
     }
+  else if (standard == "802.11ac")
+    {
+      wifi.SetStandard (WIFI_PHY_STANDARD_80211ac);
+      VhtWifiMacHelper wifiMac = VhtWifiMacHelper::Default ();
+
+      //Configure the STA node
+      wifi.SetRemoteStationManager (staManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
+
+      Ssid ssid = Ssid ("AP");
+      wifiMac.SetType ("ns3::StaWifiMac",
+                       "Ssid", SsidValue (ssid),
+                       "ActiveProbing", BooleanValue (false),
+                       "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
+      wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
+
+      //Configure the AP node
+      wifi.SetRemoteStationManager (apManager, "RtsCtsThreshold", UintegerValue (rtsThreshold));
+
+      ssid = Ssid ("AP");
+      wifiMac.SetType ("ns3::ApWifiMac",
+                       "Ssid", SsidValue (ssid),
+                       "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
+      wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
+    }
 
   wifiDevices.Add (wifiStaDevices);
   wifiDevices.Add (wifiApDevices);
