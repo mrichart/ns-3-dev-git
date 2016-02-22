@@ -113,6 +113,9 @@ int main (int argc, char *argv[])
   standards.push_back (StandardInfo ("802.11b", WIFI_PHY_STANDARD_80211b, -5, 11));
   standards.push_back (StandardInfo ("802.11g", WIFI_PHY_STANDARD_80211g, -5, 27));
   standards.push_back (StandardInfo ("802.11n-5GHz", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
+  standards.push_back (StandardInfo ("802.11n-5GHz-40MHz", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
+  standards.push_back (StandardInfo ("802.11n-5GHz-SGI", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
+  standards.push_back (StandardInfo ("802.11n-5GHz-40MHz-SGI", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
 //  standards.push_back (StandardInfo ("802.11ac", WIFI_PHY_STANDARD_80211ac, 5, 27));
 #ifdef NOTYET
   standards.push_back (StandardInfo ("802.11n-2.4GHz", WIFI_PHY_STANDARD_80211n_2_4GHZ, 5, 27));
@@ -160,8 +163,14 @@ int main (int argc, char *argv[])
                            "Ssid", SsidValue (ssid));
           clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
         }
-      else if (standards[i].m_name == "802.11n-5GHz" || standards[i].m_name == "802.11n-2.4GHz")
+      else if (standards[i].m_name == "802.11n-5GHz" || standards[i].m_name == "802.11n-2.4GHz" ||
+               standards[i].m_name == "802.11n-5GHz-40MHz" || standards[i].m_name == "802.11n-5GHz-SGI" ||
+               standards[i].m_name == "802.11n-5GHz-40MHz-SGI")
         {
+          if (standards[i].m_name == "802.11n-5GHz-40MHz-SGI" || standards[i].m_name == "802.11n-5GHz-SGI")
+            {
+              wifiPhy.Set("ShortGuardEnabled", BooleanValue(true));
+            }
           HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
 
           Ssid ssid = Ssid ("AP");
@@ -194,6 +203,13 @@ int main (int argc, char *argv[])
                            "BE_MaxAmpduSize", UintegerValue (0));
           clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
         }
+
+      if (standards[i].m_name == "802.11n-5GHz-40MHz" || standards[i].m_name == "802.11n-5GHz-40MHz-SGI")
+        {
+          // Set channel width
+          Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelWidth", UintegerValue (40));
+        }
+
       NS_ABORT_MSG_IF (serverDevice.GetN () == 0, "unknown standard");
       Config::ConnectWithoutContext ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::MinstrelHtWifiManager/RateChange", MakeCallback(&RateChange));
       // Configure the mobility.
@@ -258,7 +274,8 @@ int main (int argc, char *argv[])
   gnuplot.SetTerminal ("postscript eps color enh \"Times-BoldItalic\"");
   gnuplot.SetLegend ("SNR (dB)", "Rate (Mb/s)");
   gnuplot.SetExtra  ("set xrange [0:50]");
-  gnuplot.SetExtra  ("set yrange [0:72]");
+  gnuplot.SetExtra  ("set yrange [0:150]");
+  gnuplot.SetExtra  ("set key reverse left Left");
   gnuplot.GenerateOutput (outfile);
   outfile.close ();
   return 0;
