@@ -195,7 +195,7 @@ MinstrelHtWifiManager::SetupPhy (Ptr<WifiPhy> phy)
                     {
                       ///Check for invalid VHT MCS
                       ///TODO Other combinations are also invalid
-                      if (!(chWidth == 20) || (chWidth == 20 && i-MAX_HT_GROUP_RATES != 9))
+                      if (!(chWidth == 20) || (chWidth == 20 && phy->GetMcs(i).GetMcsValue() != 9))
                         {
                           if (streams > 4 || chWidth > 40 || i > 7)
                             {

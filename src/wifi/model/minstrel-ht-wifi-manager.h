@@ -141,13 +141,13 @@ typedef std::vector<struct McsGroup> MinstrelMcsGroups;
  * Constants for maximum values.
  */
 
-uint8_t MAX_SUPPORTED_STREAMS = 2;                                    //!< Maximal number of streams supported by the phy layer.
-uint8_t MAX_HT_STREAM_GROUPS = 4;                                     //!< Maximal number of groups per stream in HT (2 possible channel widths and 2 possible SGI configurations).
-uint8_t MAX_VHT_STREAM_GROUPS = 8;                                    //!< Maximal number of groups per stream in VHT (4 possible channel widths and 2 possible SGI configurations).
-uint8_t MAX_HT_GROUP_RATES = 8;                                       //!< Number of rates (or MCS) per HT group.
-uint8_t MAX_VHT_GROUP_RATES = 10;                                     //!< Number of rates (or MCS) per VHT group.
-uint8_t MAX_HT_WIDTH = 40;                                                 //!< Maximal channel width.
-uint8_t MAX_VHT_WIDTH = 160;                                                 //!< Maximal channel width.
+uint8_t MAX_SUPPORTED_STREAMS = 2;  //!< Maximal number of streams supported by the phy layer.
+uint8_t MAX_HT_STREAM_GROUPS = 4;   //!< Maximal number of groups per stream in HT (2 possible channel widths and 2 possible SGI configurations).
+uint8_t MAX_VHT_STREAM_GROUPS = 8;  //!< Maximal number of groups per stream in VHT (4 possible channel widths and 2 possible SGI configurations).
+uint8_t MAX_HT_GROUP_RATES = 8;     //!< Number of rates (or MCS) per HT group.
+uint8_t MAX_VHT_GROUP_RATES = 10;   //!< Number of rates (or MCS) per VHT group.
+uint8_t MAX_HT_WIDTH = 40;          //!< Maximal channel width.
+uint8_t MAX_VHT_WIDTH = 160;        //!< Maximal channel width.
 
 /**
  * \author Ghada Badawy
