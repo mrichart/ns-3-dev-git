@@ -651,7 +651,12 @@ MinstrelHtWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
 
   if (!station->m_isHt)
     {
-      return m_legacyManager->GetDataTxVector(station);
+      WifiTxVector vector = m_legacyManager->GetDataTxVector(station);
+
+      uint64_t dataRate = vector.GetMode().GetDataRate(vector.GetChannelWidth(), vector.IsShortGuardInterval(), vector.GetNss());
+      m_rateChange (dataRate, station->m_state->m_address);
+
+      return vector;
     }
   else
     {
@@ -670,6 +675,10 @@ MinstrelHtWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
           NS_ASSERT_MSG (false,"Inconsistent group selected. Group: (" << (uint32_t)group.streams << "," << (uint32_t)group.sgi << "," << group.chWidth << ")" <<
                          " Station capabilities: (" << GetNumberOfReceiveAntennas (station) << "," << GetShortGuardInterval (station) << "," << GetChannelWidth (station) << ")");
         }
+
+
+      uint64_t dataRate = GetMcsSupported (station, rateId).GetDataRate(group.chWidth, group.sgi, group.streams);
+      m_rateChange (dataRate, station->m_state->m_address);
 
       return WifiTxVector (GetMcsSupported (station, rateId), GetDefaultTxPowerLevel (), GetLongRetryCount (station), group.sgi, group.streams, GetNess (station), group.chWidth, GetAggregation (station), GetStbc (station));
     }
@@ -964,9 +973,6 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
               /// set the rate that we're currently sampling
               station->m_sampleRate = sampleIdx;
 
-              uint64_t dataRate = GetMcsSupported (station, GetRateId (sampleIdx)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
-              m_rateChange (dataRate, station->m_state->m_address);
-
               NS_LOG_DEBUG ("FindRate " << "sampleRate=" << sampleIdx);
               return sampleIdx;
             }
@@ -991,9 +997,6 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
                   /// set the rate that we're currently sampling
                   station->m_sampleRate = sampleIdx;
 
-                  uint64_t dataRate = GetMcsSupported (station, GetRateId (sampleIdx)).GetDataRate(sampleGroup.chWidth, sampleGroup.sgi, sampleGroup.streams);
-                  m_rateChange (dataRate, station->m_state->m_address);
-
                   NS_LOG_DEBUG ("FindRate " << "sampleRate=" << sampleIdx);
                   return sampleIdx;
                 }
@@ -1001,9 +1004,6 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
         }
     }
   ///	Continue using the best rate.
-  McsGroup maxTpGroup = m_minstrelGroups[GetGroupId (station->m_maxTpRate)];
-  uint64_t dataRate = GetMcsSupported (station, GetRateId (station->m_maxTpRate)).GetDataRate(maxTpGroup.chWidth, maxTpGroup.sgi, maxTpGroup.streams);
-  m_rateChange (dataRate, station->m_state->m_address);
 
   NS_LOG_DEBUG ("FindRate " << "maxTpRrate=" << station->m_maxTpRate);
   return station->m_maxTpRate;
