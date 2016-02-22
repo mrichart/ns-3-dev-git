@@ -34,6 +34,7 @@ const double NOISE_DBM = -101.0;
 
 double g_intervalBytes = 0;
 uint64_t g_intervalRate = 0;
+uint32_t g_intervalRateChanges = 0;
 
 void
 PacketRx (Ptr<const Packet> pkt, const Address &addr)
@@ -46,7 +47,8 @@ void
 RateChange (uint64_t newVal, Mac48Address dest)
 {
   NS_LOG_DEBUG ("Change to " << newVal);
-  g_intervalRate = newVal;
+  g_intervalRate += newVal;
+  g_intervalRateChanges++;
 }
 
 struct Step
@@ -74,13 +76,15 @@ ChangeSignalAndReportRate (Ptr<FixedRssLossModel> rssModel, struct Step step, do
 {
   NS_LOG_FUNCTION (rssModel << step.stepSize << step.stepTime << rss);
   double snr = rss - NOISE_DBM; //dB
-  rateDataset.Add (snr, g_intervalRate / 1000000.0);
+  rateDataset.Add (snr, (g_intervalRate/g_intervalRateChanges) / 1000000.0);
   // Calculate received rate since last interval
   double currentRate = ((g_intervalBytes * 8)/step.stepTime) / 1e6; // Mb/s
   actualDataset.Add (snr, currentRate);
   rssModel->SetRss (rss - step.stepSize);
   NS_LOG_INFO ("At time " << Simulator::Now ().As (Time::S) << "; observed rate " << currentRate << "; setting new power to " << rss - step.stepSize);
   g_intervalBytes = 0;
+  g_intervalRate = 0;
+  g_intervalRateChanges = 0;
   Simulator::Schedule (Seconds (step.stepTime), &ChangeSignalAndReportRate, rssModel, step, (rss - step.stepSize), rateDataset, actualDataset);
 }
 int main (int argc, char *argv[])
@@ -105,10 +109,11 @@ int main (int argc, char *argv[])
   cmd.Parse (argc, argv);
   Gnuplot gnuplot = Gnuplot ("minstrel-ht-wifi-manager.eps");
   // 802.11a has interesting values between SNR 3 dB and SNR 27 dB
-  //standards.push_back (StandardInfo ("802.11a", WIFI_PHY_STANDARD_80211a, 3, 27));
-  //standards.push_back (StandardInfo ("802.11b", WIFI_PHY_STANDARD_80211b, -5, 11));
-  //standards.push_back (StandardInfo ("802.11g", WIFI_PHY_STANDARD_80211g, -5, 27));
+  standards.push_back (StandardInfo ("802.11a", WIFI_PHY_STANDARD_80211a, 3, 27));
+  standards.push_back (StandardInfo ("802.11b", WIFI_PHY_STANDARD_80211b, -5, 11));
+  standards.push_back (StandardInfo ("802.11g", WIFI_PHY_STANDARD_80211g, -5, 27));
   standards.push_back (StandardInfo ("802.11n-5GHz", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
+//  standards.push_back (StandardInfo ("802.11ac", WIFI_PHY_STANDARD_80211ac, 5, 27));
 #ifdef NOTYET
   standards.push_back (StandardInfo ("802.11n-2.4GHz", WIFI_PHY_STANDARD_80211n_2_4GHZ, 5, 27));
   standards.push_back (WIFI_PHY_STANDARD_80211_10MHZ);
@@ -120,7 +125,7 @@ int main (int argc, char *argv[])
     {
       std::cout << "Testing " << standards[i].m_name << "..." << std::endl;
       NS_ABORT_MSG_IF (standards[i].m_snrLow >= standards[i].m_snrHigh, "SNR values in wrong order");
-      steps = std::abs ((int) (standards[i].m_snrHigh - standards[i].m_snrLow )/stepTime) + 1;
+      steps = std::abs ((int) (standards[i].m_snrHigh - standards[i].m_snrLow )/stepSize) + 1;
       Ptr<Node> clientNode = CreateObject<Node> ();
       Ptr<Node> serverNode = CreateObject<Node> ();
       WifiHelper wifi = WifiHelper::Default ();
@@ -143,18 +148,50 @@ int main (int argc, char *argv[])
       if (standards[i].m_name == "802.11a" || standards[i].m_name == "802.11b" || standards[i].m_name == "802.11g")
         {
           NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
-          wifiMac.SetType ("ns3::AdhocWifiMac");
+
+          Ssid ssid = Ssid ("AP");
+          wifiMac.SetType ("ns3::StaWifiMac",
+                           "Ssid", SsidValue (ssid),
+                           "ActiveProbing", BooleanValue (false));
           serverDevice = wifi.Install (wifiPhy, wifiMac, serverNode);
+
+          ssid = Ssid ("AP");
+          wifiMac.SetType ("ns3::ApWifiMac",
+                           "Ssid", SsidValue (ssid));
           clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
         }
       else if (standards[i].m_name == "802.11n-5GHz" || standards[i].m_name == "802.11n-2.4GHz")
         {
           HtWifiMacHelper wifiMac = HtWifiMacHelper::Default ();
-          wifiMac.SetType ("ns3::AdhocWifiMac");
-          /*wifiMac.SetBlockAckThresholdForAc (AC_BE, 2);
-          wifiMac.SetMpduAggregatorForAc (AC_BE, "ns3::MpduStandardAggregator",
-                                          "MaxAmpduSize", UintegerValue (65535));*/
+
+          Ssid ssid = Ssid ("AP");
+          wifiMac.SetType ("ns3::StaWifiMac",
+                           "Ssid", SsidValue (ssid),
+                           "ActiveProbing", BooleanValue (false),
+                           "BE_MaxAmpduSize", UintegerValue (0));
           serverDevice = wifi.Install (wifiPhy, wifiMac, serverNode);
+
+          ssid = Ssid ("AP");
+          wifiMac.SetType ("ns3::ApWifiMac",
+                           "Ssid", SsidValue (ssid),
+                           "BE_MaxAmpduSize", UintegerValue (0));
+          clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
+        }
+      else if (standards[i].m_name == "802.11ac")
+        {
+          VhtWifiMacHelper wifiMac = VhtWifiMacHelper::Default ();
+
+          Ssid ssid = Ssid ("AP");
+          wifiMac.SetType ("ns3::StaWifiMac",
+                           "Ssid", SsidValue (ssid),
+                           "ActiveProbing", BooleanValue (false),
+                           "BE_MaxAmpduSize", UintegerValue (0));
+          serverDevice = wifi.Install (wifiPhy, wifiMac, serverNode);
+
+          ssid = Ssid ("AP");
+          wifiMac.SetType ("ns3::ApWifiMac",
+                           "Ssid", SsidValue (ssid),
+                           "BE_MaxAmpduSize", UintegerValue (0));
           clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
         }
       NS_ABORT_MSG_IF (serverDevice.GetN () == 0, "unknown standard");
@@ -171,7 +208,7 @@ int main (int argc, char *argv[])
       mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
       mobility.Install (clientNode);
       mobility.Install (serverNode);
-      Gnuplot2dDataset rateDataset (standards[i].m_name + std::string ("-rate selected"));
+      Gnuplot2dDataset rateDataset (standards[i].m_name + std::string ("-rate selected (average)"));
       Gnuplot2dDataset actualDataset (standards[i].m_name + std::string ("-observed"));
       struct Step step;
       step.stepSize = stepSize;
