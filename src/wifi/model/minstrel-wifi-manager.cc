@@ -158,8 +158,8 @@ MinstrelWifiManager::DoCreateStation (void) const
   station->m_maxTpRate2 = 0;
   station->m_maxProbRate = 0;
   station->m_nModes = 0;
-  station->m_packetCount = 0;
-  station->m_sampleCount = 0;
+  station->m_totalPacketsCount = 0;
+  station->m_samplePacketsCount = 0;
   station->m_isSampling = false;
   station->m_sampleRate = 0;
   station->m_sampleRateSlower = false;
@@ -391,7 +391,7 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 
-  if ((station->m_sampleCount + station->m_packetCount) == 0)
+  if ((station->m_samplePacketsCount + station->m_totalPacketsCount) == 0)
     {
       return 0;
     }
@@ -407,7 +407,7 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
    * note: do it randomly by flipping a coin instead sampling
    * all at once until it reaches the look around rate
    */
-  double sampleRatio = (100 * station->m_sampleCount) / (station->m_sampleCount + station->m_packetCount);
+  double sampleRatio = (100 * station->m_samplePacketsCount) / (station->m_samplePacketsCount + station->m_totalPacketsCount);
   NS_LOG_DEBUG("Decide sampling. SampleRatio: " << (double) sampleRatio << " lookAroundRatio: " << (double) m_lookAroundRate << " coinFlip: " << coinFlip);
   if ((sampleRatio < m_lookAroundRate) && (coinFlip == 1) )
     {
@@ -423,16 +423,16 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
         {
 
           //start sample count
-          station->m_sampleCount++;
+          station->m_samplePacketsCount++;
 
           //set flag that we are currently sampling
           station->m_isSampling = true;
 
           //bookeeping for resetting stuff
-          if (station->m_packetCount >= 10000)
+          if (station->m_totalPacketsCount >= 10000)
             {
-              station->m_sampleCount = 0;
-              station->m_packetCount = 0;
+              station->m_samplePacketsCount = 0;
+              station->m_totalPacketsCount = 0;
             }
 
           //error check
@@ -702,7 +702,7 @@ MinstrelWifiManager::DoReportDataOk (WifiRemoteStation *st,
 
   station->m_minstrelTable[station->m_txrate].numRateSuccess++;
   station->m_minstrelTable[station->m_txrate].numRateAttempt++;
-  station->m_packetCount++;
+  station->m_totalPacketsCount++;
 
   NS_LOG_DEBUG ("DoReportDataOk m_txrate = " << station->m_txrate << ", attempt = " << station->m_minstrelTable[station->m_txrate].numRateAttempt << ", success = " << station->m_minstrelTable[station->m_txrate].numRateSuccess << " (after update).");
 

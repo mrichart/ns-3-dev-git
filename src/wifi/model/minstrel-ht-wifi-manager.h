@@ -217,6 +217,9 @@ private:
   /// Update the number of retries and reset accordingly.
   void UpdateRetry (MinstrelHtWifiRemoteStation *station);
 
+  /// Update the number of sample count variables.
+  void UpdateSampleCounts (MinstrelHtWifiRemoteStation *station);
+
   /// Getting the next sample from Sample Table.
   uint32_t GetNextSample (MinstrelHtWifiRemoteStation *station);
 
@@ -299,7 +302,7 @@ private:
   uint8_t m_numRates;          //!< Number of rates per group Minstrel should consider.
   uint8_t m_maxChWidth;        //!< Number of rates per group Minstrel should consider.
 
-  bool m_useVhtOnly;           //!< Frame length used for calculate modes TxTime.
+  bool m_useVhtOnly;           //!< If only VHT MCS should be used, instead of HT and VHT.
 
   MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.
 
