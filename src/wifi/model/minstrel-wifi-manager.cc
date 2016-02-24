@@ -166,7 +166,6 @@ MinstrelWifiManager::DoCreateStation (void) const
   station->m_shortRetry = 0;
   station->m_longRetry = 0;
   station->m_retry = 0;
-  station->m_err = 0;
   station->m_txrate = 0;
   station->m_initialized = false;
 
@@ -650,7 +649,6 @@ MinstrelWifiManager::DoReportFinalRtsFailed (WifiRemoteStation *st)
   NS_LOG_FUNCTION (this << st);
   MinstrelWifiRemoteStation *station = (MinstrelWifiRemoteStation *)st;
   UpdateRetry (station);
-  station->m_err++;
 }
 
 void
@@ -731,7 +729,6 @@ MinstrelWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   station->m_isSampling = false;
   station->m_sampleRateSlower = false;
-  station->m_err++;
 
   UpdateRetry (station);
   UpdateStats (station);

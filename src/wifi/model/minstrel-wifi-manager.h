@@ -94,7 +94,6 @@ struct MinstrelWifiRemoteStation : public WifiRemoteStation
   uint32_t m_shortRetry;         ///< short retries such as control packts
   uint32_t m_longRetry;          ///< long retries such as data packets
   uint32_t m_retry;              ///< total retries short + long
-  uint32_t m_err;                ///< retry errors
   uint32_t m_txrate;             ///< current transmit rate
   bool m_initialized;            ///< for initializing tables
   MinstrelRate m_minstrelTable;  ///< minstrel table
