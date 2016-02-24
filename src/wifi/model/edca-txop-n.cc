@@ -876,7 +876,7 @@ EdcaTxopN::MissedBlockAck (void)
     }
   if (NeedBarRetransmission ())
     {
-      if (!GetAmpduExist ())
+      if (!GetAmpduExist (m_currentHdr.GetAddr1 ()))
         {
           //should i report this to station addressed by ADDR1?
           NS_LOG_DEBUG ("Retransmit block ack request");
