@@ -201,6 +201,7 @@ private:
   virtual void DoReportFinalDataFailed (WifiRemoteStation *station);
   virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station, uint32_t size);
   virtual WifiTxVector DoGetRtsTxVector (WifiRemoteStation *station);
+  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
   virtual bool IsLowLatency (void) const;
   virtual bool DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally);
   virtual void DoDisposeStation (WifiRemoteStation *station);
@@ -266,6 +267,8 @@ private:
   void CheckInit (MinstrelHtWifiRemoteStation *station);
 
   uint32_t CountRetries (MinstrelHtWifiRemoteStation * station);
+
+  void UpdateRate(MinstrelHtWifiRemoteStation *station);
 
   /**
    * For managing rates from different groups, a global index for
