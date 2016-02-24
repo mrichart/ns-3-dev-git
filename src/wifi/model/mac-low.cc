@@ -72,7 +72,7 @@ MacLowAggregationCapableTransmissionListener::MacLowAggregationCapableTransmissi
 MacLowAggregationCapableTransmissionListener::~MacLowAggregationCapableTransmissionListener ()
 {
 }
-void MacLowAggregationCapableTransmissionListener::SetAmpdu (bool ampdu)
+void MacLowAggregationCapableTransmissionListener::SetAmpdu (Mac48Address dest, bool enableAmpdu)
 {
 }
 void MacLowAggregationCapableTransmissionListener::CompleteTransfer (Mac48Address address, uint8_t tid)
@@ -807,7 +807,7 @@ MacLow::StartTransmission (Ptr<const Packet> packet,
     }
   else
     {
-      if ((m_ctsToSelfSupported || m_stationManager->GetUseProtection ()) && NeedCtsToSelf ())
+      if ((m_ctsToSelfSupported || m_stationManager->GetUseNonErpProtection ()) && NeedCtsToSelf ())
         {
           SendCtsToSelf ();
         }
@@ -843,6 +843,13 @@ MacLow::ReceiveError (Ptr<const Packet> packet, double rxSnr, bool isEndOfFrame)
   NS_LOG_DEBUG ("rx failed ");
   if (isEndOfFrame == true && m_receivedAtLeastOneMpdu == true)
     {
+      WifiMacHeader hdr;
+      packet->PeekHeader (hdr);
+      if (hdr.GetAddr1 () != m_self)
+        {
+          NS_LOG_DEBUG ("hdr addr1 " << hdr.GetAddr1 () << "not for me (" << m_self << "); returning");
+          return;
+        }
       NS_ASSERT (m_lastReceivedHdr.IsQosData ());
       NS_LOG_DEBUG ("last a-mpdu subframe detected/sendImmediateBlockAck from=" << m_lastReceivedHdr.GetAddr2 ());
       m_sendAckEvent = Simulator::Schedule (GetSifs (),
@@ -2796,6 +2803,7 @@ MacLow::RegisterBlockAckListenerForAc (enum AcIndex ac, MacLowAggregationCapable
 void
 MacLow::DeaggregateAmpduAndReceive (Ptr<Packet> aggregatedPacket, double rxSnr, WifiTxVector txVector, WifiPreamble preamble)
 {
+  NS_LOG_FUNCTION (this);
   m_currentTxVector = txVector;
   AmpduTag ampdu;
   bool normalAck = false;
@@ -3167,7 +3175,7 @@ MacLow::AggregateToAmpdu (Ptr<const Packet> packet, const WifiMacHeader hdr)
                   newPacket = currentAggregatedPacket;
                   newPacket->AddPacketTag (ampdutag);
                   NS_LOG_DEBUG ("tx unicast A-MPDU");
-                  listenerIt->second->SetAmpdu (true);
+                  listenerIt->second->SetAmpdu (hdr.GetAddr2 (), true);
                 }
               else
                 {
@@ -3209,7 +3217,7 @@ MacLow::AggregateToAmpdu (Ptr<const Packet> packet, const WifiMacHeader hdr)
               newPacket->AddPacketTag (ampdutag);
 
               NS_LOG_DEBUG ("tx unicast VHT single MPDU with sequence number " << hdr.GetSequenceNumber ());
-              listenerIt->second->SetAmpdu (true);
+              listenerIt->second->SetAmpdu (hdr.GetAddr2 (), true);
             }
         }
     }

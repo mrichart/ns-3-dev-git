@@ -55,8 +55,10 @@ New user-visible features
 Bugs fixed
 ----------
 - Bug 1132 - useless for loops in block-ack-test-suite.cc
+- Bug 1205 - EDCA is incorrectly modelled as DCF
 - Bug 1571 - TCP zero-window and flow control window updates by the receiver
 - Bug 1761 - Rounding with olsr::EmfToSeconds
+- Bug 1783 - BytesInFlight value fixed
 - Bug 1954 - Serialized size of wifi-net-device differ for TX and RX trace
 - Bug 1999 - PointToPointRemoteChannel invokes PointToPointChannel constructor
 - Bug 2003 - Missing DSSS short PLCP preamble
@@ -79,6 +81,7 @@ Bugs fixed
 - Bug 2211 - Ipv{4,6}EndPoint can cause memory corruption
 - Bug 2213 - Inconsistencies may exist between the selected WifiMacHelper and the chosen 802.11 version
 - Bug 2219 - SixLowPanNetDevice hangs trying to decode a IPv6 Fragment extension header
+- Bug 2224 - scope of GetAmpduExist() in EdcaTxopN
 - Bug 2233 - Implement RFC 1222 - Strong End System Model
 - Bug 2234 - Ipv6L3Protocol should trash multicast packets not interesting for the node
 - Bug 2238 - Ipv6 routing reorganization
@@ -104,6 +107,9 @@ Bugs fixed
 - Bug 2288 - Ipv4 broadcast and multicast packets are replicated on all the interfaces.
 - Bug 2292 - Uninitialized variables since commit 7c60a9f8f271
 - Bug 2293 - Red Queue Estimator spins when trying to compute queue average size under long idle times.
+- Bug 2297 - 802.11n/ac networks are not compatible with legacy clients
+- Bug 2302 - Fixing RTT calculation inside TCP Socket
+- Bug 2303 - WifiMacQueue::GetSize should cleanup queue beforehand
 
 Known issues
 ------------

@@ -57,8 +57,11 @@ protected:
 
   virtual void RTOExpired (const Ptr<const TcpSocketState> tcb, SocketWho who);
 
-  void PktDropped (const Ipv4Header &ipH, const TcpHeader& tcpH);
-  void FinalChecks ();
+  void PktDropped (const Ipv4Header &ipH, const TcpHeader& tcpH, Ptr<const Packet> p);
+  virtual void FinalChecks ();
+
+  virtual void ConfigureProperties ();
+  virtual void ConfigureEnvironment ();
 
   bool m_pktDropped;
   bool m_pktWasDropped;

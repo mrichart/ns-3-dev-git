@@ -42,6 +42,9 @@ protected:
   void NormalClose (SocketWho who);
   void FinalChecks ();
 
+  virtual void ConfigureEnvironment ();
+  virtual void ConfigureProperties ();
+
   void IncreaseBufSize ();
 
 protected:
@@ -53,13 +56,29 @@ protected:
 };
 
 TcpZeroWindowTest::TcpZeroWindowTest (const std::string &desc)
-  : TcpGeneralTest (desc, 500, 20, Seconds (0.01), Seconds (0.05), Seconds (2.0),
-                    0xffffffff, 10, 500),
-  m_zeroWindowProbe (false),
-  m_windowUpdated (false),
-  m_senderFinished (false),
-  m_receiverFinished (false)
+  : TcpGeneralTest (desc),
+    m_zeroWindowProbe (false),
+    m_windowUpdated (false),
+    m_senderFinished (false),
+    m_receiverFinished (false)
 {
+}
+
+void
+TcpZeroWindowTest::ConfigureEnvironment ()
+{
+  TcpGeneralTest::ConfigureEnvironment ();
+  SetAppPktCount (20);
+  SetMTU (500);
+  SetTransmitStart (Seconds (2.0));
+  SetPropagationDelay (MilliSeconds (50));
+}
+
+void
+TcpZeroWindowTest::ConfigureProperties ()
+{
+  TcpGeneralTest::ConfigureProperties ();
+  SetInitialCwnd (SENDER, 10);
 }
 
 void
@@ -89,7 +108,7 @@ TcpZeroWindowTest::Tx (const Ptr<const Packet> p, const TcpHeader &h, SocketWho 
 
       if (Simulator::Now ().GetSeconds () <= 6.0)
         {
-          NS_TEST_ASSERT_MSG_EQ (p->GetSize () - h.GetSerializedSize (), 0,
+          NS_TEST_ASSERT_MSG_EQ (p->GetSize (), 0,
                                  "Data packet sent anyway");
         }
       else if (Simulator::Now ().GetSeconds () > 6.0
@@ -99,7 +118,7 @@ TcpZeroWindowTest::Tx (const Ptr<const Packet> p, const TcpHeader &h, SocketWho 
 
           if (!m_zeroWindowProbe)
             {
-              NS_TEST_ASSERT_MSG_EQ (p->GetSize () - h.GetSerializedSize (), 1,
+              NS_TEST_ASSERT_MSG_EQ (p->GetSize (), 1,
                                      "Data packet sent instead of window probe");
               NS_TEST_ASSERT_MSG_EQ (h.GetSequenceNumber (), SequenceNumber32 (1),
                                      "Data packet sent instead of window probe");

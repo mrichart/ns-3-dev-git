@@ -35,6 +35,8 @@
 #include <map>
 #include <list>
 
+class AmpduAggregationTest;
+
 namespace ns3 {
 
 class DcfState;
@@ -83,6 +85,9 @@ enum TypeOfStation
 class EdcaTxopN : public Dcf
 {
 public:
+  // Allow test cases to access private members
+  friend class ::AmpduAggregationTest;
+
   /**
    * typedef for a callback to invoke when a
    * packet transmission was completed successfully.
@@ -93,6 +98,8 @@ public:
    * packet transmission was failed.
    */
   typedef Callback <void, const WifiMacHeader&> TxFailed;
+  
+  std::map<Mac48Address, bool> m_aMpduEnabled;
 
   static TypeId GetTypeId (void);
   EdcaTxopN ();
@@ -408,8 +415,8 @@ public:
   void SetBlockAckInactivityTimeout (uint16_t timeout);
   void SendDelbaFrame (Mac48Address addr, uint8_t tid, bool byOriginator);
   void CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp);
-  bool GetAmpduExist (void);
-  void SetAmpduExist (bool ampdu);
+  bool GetAmpduExist (Mac48Address dest);
+  void SetAmpduExist (Mac48Address dest, bool enableAmpdu);
 
   /**
    * Return the next sequence number for the given header.
@@ -553,7 +560,6 @@ private:
   Time m_currentPacketTimestamp;
   uint16_t m_blockAckInactivityTimeout;
   struct Bar m_currentBar;
-  bool m_ampduExist;
 };
 
 } //namespace ns3

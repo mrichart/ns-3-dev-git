@@ -724,7 +724,7 @@ protected:
    * \brief Return total bytes in flight
    * \returns total bytes in flight
    */
-  virtual uint32_t BytesInFlight (void) const;
+  virtual uint32_t BytesInFlight (void);
 
   /**
    * \brief Return the max possible number of unacked bytes
@@ -786,6 +786,17 @@ protected:
    * \param tcpHeader the packet's TCP header
    */
   virtual void EstimateRtt (const TcpHeader& tcpHeader);
+
+  /**
+   * \brief Update the RTT history, when we send TCP segments
+   *
+   * \param seq The sequence number of the TCP segment
+   * \param sz The segment's size
+   * \param isRetransmission Whether or not the segment is a retransmission
+   */
+
+  virtual void UpdateRttHistory (const SequenceNumber32 &seq, uint32_t sz,
+                                 bool isRetransmission);
 
   /**
    * \brief Update buffers w.r.t. ACK
@@ -883,6 +894,17 @@ protected:
    */
   void AddOptionTimestamp (TcpHeader& header);
 
+  /**
+   * \brief Performs a safe subtraction between a and b (a-b)
+   *
+   * Safe is used to indicate that, if b>a, the results returned is 0.
+   *
+   * \param a first number
+   * \param b second number
+   * \return 0 if b>0, (a-b) otherwise
+   */
+  static uint32_t SafeSubtraction (uint32_t a, uint32_t b);
+
 protected:
   // Counters and events
   EventId           m_retxEvent;       //!< Retransmission event
@@ -940,6 +962,7 @@ protected:
   SequenceNumber32 m_highTxAck;                   //!< Highest ack sent
   TracedValue<SequenceNumber32> m_highRxAckMark;  //!< Highest ack received
   uint32_t                      m_bytesAckedNotProcessed;  //!< Bytes acked, but not processed
+  TracedValue<uint32_t>         m_bytesInFlight; //!< Bytes in flight
 
   // Options
   bool    m_winScalingEnabled; //!< Window Scale option enabled (RFC 7323)
@@ -955,6 +978,7 @@ protected:
   SequenceNumber32       m_recover;      //!< Previous highest Tx seqnum for fast recovery
   uint32_t               m_retxThresh;   //!< Fast Retransmit threshold
   bool                   m_limitedTx;    //!< perform limited transmit
+  uint32_t               m_retransOut;   //!< Number of retransmission in this window
 
   // Transmission Control Block
   Ptr<TcpSocketState>    m_tcb;               //!< Congestion control informations

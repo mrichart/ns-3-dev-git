@@ -156,6 +156,10 @@ TcpSocketBase::GetTypeId (void)
                      "Remote side's flow control window",
                      MakeTraceSourceAccessor (&TcpSocketBase::m_rWnd),
                      "ns3::TracedValueCallback::Uint32")
+    .AddTraceSource ("BytesInFlight",
+                     "Socket estimation of bytes in flight",
+                     MakeTraceSourceAccessor (&TcpSocketBase::m_bytesInFlight),
+                     "ns3::TracedValueCallback::Uint32")
     .AddTraceSource ("HighestRxSequence",
                      "Highest sequence number received from peer",
                      MakeTraceSourceAccessor (&TcpSocketBase::m_highRxMark),
@@ -285,6 +289,7 @@ TcpSocketBase::TcpSocketBase (void)
     m_highTxAck (0),
     m_highRxAckMark (0),
     m_bytesAckedNotProcessed (0),
+    m_bytesInFlight (0),
     m_winScalingEnabled (false),
     m_rcvWindShift (0),
     m_sndWindShift (0),
@@ -294,6 +299,7 @@ TcpSocketBase::TcpSocketBase (void)
     m_recover (0), // Set to the initial sequence number
     m_retxThresh (3),
     m_limitedTx (false),
+    m_retransOut (0),
     m_congestionControl (0),
     m_isFirstPartialAck (true)
 {
@@ -354,6 +360,7 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_highRxMark (sock.m_highRxMark),
     m_highRxAckMark (sock.m_highRxAckMark),
     m_bytesAckedNotProcessed (sock.m_bytesAckedNotProcessed),
+    m_bytesInFlight (sock.m_bytesInFlight),
     m_winScalingEnabled (sock.m_winScalingEnabled),
     m_rcvWindShift (sock.m_rcvWindShift),
     m_sndWindShift (sock.m_sndWindShift),
@@ -362,6 +369,7 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_recover (sock.m_recover),
     m_retxThresh (sock.m_retxThresh),
     m_limitedTx (sock.m_limitedTx),
+    m_retransOut (sock.m_retransOut),
     m_isFirstPartialAck (sock.m_isFirstPartialAck),
     m_txTrace (sock.m_txTrace),
     m_rxTrace (sock.m_rxTrace)
@@ -1196,6 +1204,12 @@ TcpSocketBase::DoForwardUp (Ptr<Packet> packet, const Address &fromAddress,
       // Initialize cWnd and ssThresh
       m_tcb->m_cWnd = GetInitialCwnd () * GetSegSize ();
       m_tcb->m_ssThresh = GetInitialSSThresh ();
+
+      if (tcpHeader.GetFlags () & TcpHeader::ACK)
+        {
+          EstimateRtt (tcpHeader);
+          m_highRxAckMark = tcpHeader.GetAckNumber ();
+        }
     }
   else if (tcpHeader.GetFlags () & TcpHeader::ACK)
     {
@@ -1427,7 +1441,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
         }
       else if (m_tcb->m_congState == TcpSocketState::CA_DISORDER)
         {
-          if ((m_dupAckCount == m_retxThresh) && ((m_highRxAckMark - 1) > m_recover))
+          if ((m_dupAckCount == m_retxThresh) && (m_highRxAckMark >= m_recover))
             {
               // triple duplicate ack triggers fast retransmit (RFC2582 sec.3 bullet #1)
               NS_LOG_DEBUG (TcpSocketState::TcpCongStateName[m_tcb->m_congState] <<
@@ -1505,6 +1519,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
           m_tcb->m_congState = TcpSocketState::CA_OPEN;
           m_congestionControl->PktsAcked (m_tcb, segsAcked, m_lastRtt);
           m_dupAckCount = 0;
+          m_retransOut = 0;
 
           NS_LOG_DEBUG ("DISORDER -> OPEN");
         }
@@ -1527,17 +1542,17 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
                * fast recovery procedure (i.e., if any duplicate ACKs subsequently
                * arrive, execute step 4 of Section 3.2 of [RFC5681]).
                 */
+              m_tcb->m_cWnd = SafeSubtraction (m_tcb->m_cWnd, bytesAcked);
+
               if (segsAcked >= 1)
                 {
-                  m_tcb->m_cWnd += m_tcb->m_segmentSize - bytesAcked;
-                }
-              else
-                {
-                  m_tcb->m_cWnd -= bytesAcked;
+                  m_tcb->m_cWnd += m_tcb->m_segmentSize;
                 }
 
               callCongestionControl = false; // No congestion control on cWnd show be invoked
-              m_dupAckCount -= segsAcked;    // Update the dupAckCount
+              m_dupAckCount = SafeSubtraction (m_dupAckCount, segsAcked); // Update the dupAckCount
+              m_retransOut  = SafeSubtraction (m_retransOut, 1);  // at least one retransmission
+                                                                  // has reached the other side
               m_txBuffer->DiscardUpTo (ackNumber);  //Bug 1850:  retransmit before newack
               DoRetransmit (); // Assume the next seq is lost. Retransmit lost packet
 
@@ -1567,6 +1582,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
                                         BytesInFlight () + m_tcb->m_segmentSize);
               m_isFirstPartialAck = true;
               m_dupAckCount = 0;
+              m_retransOut = 0;
 
               /* This FULL ACK acknowledge the fact that one segment has been
                * previously lost and now successfully received. All others have
@@ -1588,6 +1604,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
           m_isFirstPartialAck = true;
           m_congestionControl->PktsAcked (m_tcb, segsAcked, m_lastRtt);
           m_dupAckCount = 0;
+          m_retransOut = 0;
           m_tcb->m_congState = TcpSocketState::CA_OPEN;
           NS_LOG_DEBUG ("LOSS -> OPEN");
         }
@@ -2148,7 +2165,19 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
           m_rto = m_cnTimeout * backoffCount;
           m_synCount--;
         }
+
+      if (m_synRetries - 1 == m_synCount)
+        {
+          UpdateRttHistory (s, 0, false);
+        }
+      else
+        { // This is SYN retransmission
+          UpdateRttHistory (s, 0, true);
+        }
     }
+
+  m_txTrace (p, header, this);
+
   if (m_endPoint != 0)
     {
       m_tcp->SendPacket (p, header, m_endPoint->GetLocalAddress (),
@@ -2159,8 +2188,6 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
       m_tcp->SendPacket (p, header, m_endPoint6->GetLocalAddress (),
                          m_endPoint6->GetPeerAddress (), m_boundnetdevice);
     }
-
-  m_txTrace (p, header, this);
 
   if (flags & TcpHeader::ACK)
     { // If sending an ACK, cancel the delay ACK as well
@@ -2333,7 +2360,8 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
   NS_LOG_FUNCTION (this << seq << maxSize << withAck);
 
   bool isRetransmission = false;
-  if ( seq == m_txBuffer->HeadSequence () )
+  if (seq == m_txBuffer->HeadSequence ()
+      && m_txBuffer->HeadSequence () != m_highRxAckMark)
     {
       isRetransmission = true;
     }
@@ -2431,6 +2459,8 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
       m_retxEvent = Simulator::Schedule (m_rto, &TcpSocketBase::ReTxTimeout, this);
     }
 
+  m_txTrace (p, header, this);
+
   if (m_endPoint)
     {
       m_tcp->SendPacket (p, header, m_endPoint->GetLocalAddress (),
@@ -2448,12 +2478,28 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
                     ". Header " << header);
     }
 
-  m_txTrace (p, header, this);
+  UpdateRttHistory (seq, sz, isRetransmission);
+
+  // Notify the application of the data being sent unless this is a retransmit
+  if (seq + sz > m_highTxMark)
+    {
+      Simulator::ScheduleNow (&TcpSocketBase::NotifyDataSent, this, (seq + sz - m_highTxMark.Get ()));
+    }
+  // Update highTxMark
+  m_highTxMark = std::max (seq + sz, m_highTxMark.Get ());
+  return sz;
+}
+
+void
+TcpSocketBase::UpdateRttHistory (const SequenceNumber32 &seq, uint32_t sz,
+                                 bool isRetransmission)
+{
+  NS_LOG_FUNCTION (this);
 
   // update the history of sequence numbers used to calculate the RTT
   if (isRetransmission == false)
     { // This is the next expected one, just log at end
-      m_history.push_back (RttHistory (seq, sz, Simulator::Now () ));
+      m_history.push_back (RttHistory (seq, sz, Simulator::Now ()));
     }
   else
     { // This is a retransmit, find in list and mark as re-tx
@@ -2467,15 +2513,6 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
             }
         }
     }
-
-  // Notify the application of the data being sent unless this is a retransmit
-  if (seq + sz > m_highTxMark)
-    {
-      Simulator::ScheduleNow (&TcpSocketBase::NotifyDataSent, this, (seq + sz - m_highTxMark.Get ()));
-    }
-  // Update highTxMark
-  m_highTxMark = std::max (seq + sz, m_highTxMark.Get ());
-  return sz;
 }
 
 /* Send as much pending data as possible according to the Tx window. Note that
@@ -2545,10 +2582,38 @@ TcpSocketBase::UnAckDataCount () const
 }
 
 uint32_t
-TcpSocketBase::BytesInFlight () const
+TcpSocketBase::BytesInFlight ()
 {
   NS_LOG_FUNCTION (this);
-  return m_highTxMark.Get () - m_txBuffer->HeadSequence ();
+  // Previous (see bug 1783):
+  // uint32_t bytesInFlight = m_highTxMark.Get () - m_txBuffer->HeadSequence ();
+  // RFC 4898 page 23
+  // PipeSize=SND.NXT-SND.UNA+(retransmits-dupacks)*CurMSS
+
+  // flightSize == UnAckDataCount (), but we avoid the call to save log lines
+  uint32_t flightSize = m_nextTxSequence.Get () - m_txBuffer->HeadSequence ();
+  uint32_t duplicatedSize;
+  uint32_t bytesInFlight;
+
+  if (m_retransOut > m_dupAckCount)
+    {
+      duplicatedSize = (m_retransOut - m_dupAckCount)*m_tcb->m_segmentSize;
+      bytesInFlight = flightSize + duplicatedSize;
+    }
+  else
+    {
+      duplicatedSize = (m_dupAckCount - m_retransOut)*m_tcb->m_segmentSize;
+      bytesInFlight = duplicatedSize > flightSize ? 0 : flightSize - duplicatedSize;
+    }
+
+  // m_bytesInFlight is traced; avoid useless assignments which would fire
+  // fruitlessly the callback
+  if (m_bytesInFlight != bytesInFlight)
+    {
+      m_bytesInFlight = bytesInFlight;
+    }
+
+  return bytesInFlight;
 }
 
 uint32_t
@@ -2809,6 +2874,8 @@ TcpSocketBase::PersistTimeout ()
     }
   AddOptions (tcpHeader);
 
+  m_txTrace (p, tcpHeader, this);
+
   if (m_endPoint != 0)
     {
       m_tcp->SendPacket (p, tcpHeader, m_endPoint->GetLocalAddress (),
@@ -2819,8 +2886,6 @@ TcpSocketBase::PersistTimeout ()
       m_tcp->SendPacket (p, tcpHeader, m_endPoint6->GetLocalAddress (),
                          m_endPoint6->GetPeerAddress (), m_boundnetdevice);
     }
-
-  m_txTrace (p, tcpHeader, this);
 
   NS_LOG_LOGIC ("Schedule persist timeout at time "
                 << Simulator::Now ().GetSeconds () << " to expire at time "
@@ -2873,15 +2938,15 @@ TcpSocketBase::Retransmit ()
    * are not able to retransmit anything because of local congestion.
    */
 
-  m_nextTxSequence = m_txBuffer->HeadSequence (); // Restart from highest Ack
-  m_dupAckCount = 0;
-
   if (m_tcb->m_congState != TcpSocketState::CA_LOSS)
     {
       m_tcb->m_congState = TcpSocketState::CA_LOSS;
       m_tcb->m_ssThresh = m_congestionControl->GetSsThresh (m_tcb, BytesInFlight ());
       m_tcb->m_cWnd = m_tcb->m_segmentSize;
     }
+
+  m_nextTxSequence = m_txBuffer->HeadSequence (); // Restart from highest Ack
+  m_dupAckCount = 0;
 
   NS_LOG_DEBUG ("RTO. Reset cwnd to " <<  m_tcb->m_cWnd << ", ssthresh to " <<
                 m_tcb->m_ssThresh << ", restart from seqnum " << m_nextTxSequence);
@@ -2930,6 +2995,8 @@ TcpSocketBase::DoRetransmit ()
 
   // Retransmit a data packet: Call SendDataPacket
   uint32_t sz = SendDataPacket (m_txBuffer->HeadSequence (), m_tcb->m_segmentSize, true);
+  ++m_retransOut;
+
   // In case of RTO, advance m_nextTxSequence
   m_nextTxSequence = std::max (m_nextTxSequence.Get (), m_txBuffer->HeadSequence () + sz);
 
@@ -3344,6 +3411,17 @@ Ptr<TcpSocketBase>
 TcpSocketBase::Fork (void)
 {
   return CopyObject<TcpSocketBase> (this);
+}
+
+uint32_t
+TcpSocketBase::SafeSubtraction (uint32_t a, uint32_t b)
+{
+  if (a > b)
+    {
+      return a-b;
+    }
+
+  return 0;
 }
 
 //RttHistory methods
