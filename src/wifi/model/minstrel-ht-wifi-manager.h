@@ -58,6 +58,8 @@ struct HtRateInfo
   uint32_t numRateSuccess;      //!< Number of successful frames transmitted so far.
   uint32_t prob;                //!< (# frame success )/(# total frames)
 
+  bool retryUpdated;            //!< If number of retries was updated already.
+
   /**
    * EWMA calculation
    * ewma_prob =[prob *(100 - ewma_level) + (ewma_prob_old * ewma_level)]/100
@@ -127,7 +129,8 @@ struct McsGroup
   uint8_t streams;
   uint8_t sgi;
   uint32_t chWidth;
-  TxTime calcTxTime;
+  TxTime mpduTxTime;
+  TxTime firstMpduTxTime;
   bool isVht;
 };
 
@@ -207,13 +210,22 @@ private:
   virtual void DoDisposeStation (WifiRemoteStation *station);
 
   /// Estimates the TxTime of a frame with a given mode and group (stream, guard interval and channel width).
-  Time CalculateTxDuration (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
+  Time CalculateMpduTxDuration (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
+
+  /// Estimates the TxTime of a frame with a given mode and group (stream, guard interval and channel width).
+  Time CalculateFirstMpduTxDuration (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
 
   /// Obtain the TXtime saved in the group information.
-  Time GetCalcTxTime (uint32_t groupId, WifiMode mode) const;
+  Time GetMpduTxTime (uint32_t groupId, WifiMode mode) const;
 
   /// Save a TxTime to the vector of groups.
-  void AddCalcTxTime (uint32_t groupId, WifiMode mode, Time t);
+  void AddMpduTxTime (uint32_t groupId, WifiMode mode, Time t);
+
+  /// Obtain the TXtime saved in the group information.
+  Time GetFirstMpduTxTime (uint32_t groupId, WifiMode mode) const;
+
+  /// Save a TxTime to the vector of groups.
+  void AddFirstMpduTxTime (uint32_t groupId, WifiMode mode, Time t);
 
   /// Update the number of retries and reset accordingly.
   void UpdateRetry (MinstrelHtWifiRemoteStation *station);
@@ -235,6 +247,10 @@ private:
 
   /// Initialize Minstrel Table.
   void RateInit (MinstrelHtWifiRemoteStation *station);
+
+  void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t index);
+
+  void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t groupId, uint32_t rateId);
 
   /**
    * Estimate the time to transmit the given packet with the given number of retries.
