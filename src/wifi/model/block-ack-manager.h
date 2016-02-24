@@ -138,11 +138,12 @@ public:
    * \param packet Packet to store.
    * \param hdr 802.11 header for packet.
    * \param tStamp time stamp for packet
+   * \param nRetries number of retries for packet
    *
    * Stores <i>packet</i> for a possible future retransmission. Retransmission occurs
    * if the packet, in a block ack frame, is indicated by recipient as not received.
    */
-  void StorePacket (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp);
+  void StorePacket (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp, uint32_t nRetries);
   /**
    * \param hdr 802.11 header of returned packet (if exists).
    *
@@ -320,7 +321,7 @@ public:
   /*
    * Peek in retransmit queue and get the next packet without removing it from the queue
    */
-  Ptr<const Packet> PeekNextPacket (WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *timestamp);
+  Ptr<const Packet> PeekNextPacket (WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *timestamp, uint32_t *nRetries);
   /**
    * This function returns true if the lifetime of the packets a BAR refers to didn't expire yet else it returns false.
    * If it return false then the BAR will be discarded (i.e. will not be re-transmitted)
@@ -407,10 +408,12 @@ private:
     Item ();
     Item (Ptr<const Packet> packet,
           const WifiMacHeader &hdr,
-          Time tStamp);
+          Time tStamp,
+          uint32_t nRetries);
     Ptr<const Packet> packet;
     WifiMacHeader hdr;
     Time timestamp;
+    uint32_t nRetries;
   };
   /**
    * \param item

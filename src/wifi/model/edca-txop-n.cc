@@ -173,9 +173,9 @@ public:
   {
     return m_txop->SetAmpduExist (dest, enableAmpdu);
   }
-  virtual void CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp)
+  virtual void CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp, uint32_t nRetries)
   {
-    m_txop->CompleteMpduTx (packet, hdr, tstamp);
+    m_txop->CompleteMpduTx (packet, hdr, tstamp, nRetries);
   }
   virtual uint16_t GetNextSequenceNumberfor (WifiMacHeader *hdr)
   {
@@ -185,9 +185,9 @@ public:
   {
     return m_txop->PeekNextSequenceNumberfor (hdr);
   }
-  virtual Ptr<const Packet> PeekNextPacketInBaQueue (WifiMacHeader &header, Mac48Address recipient, uint8_t tid, Time *timestamp)
+  virtual Ptr<const Packet> PeekNextPacketInBaQueue (WifiMacHeader &header, Mac48Address recipient, uint8_t tid, Time *timestamp, uint32_t *nRetries)
   {
-    return m_txop->PeekNextRetransmitPacket (header, recipient, tid, timestamp);
+    return m_txop->PeekNextRetransmitPacket (header, recipient, tid, timestamp, nRetries);
   }
   virtual void RemoveFromBaQueue (uint8_t tid, Mac48Address recipient, uint16_t seqnumber)
   {
@@ -454,9 +454,9 @@ uint16_t EdcaTxopN::PeekNextSequenceNumberfor (WifiMacHeader *hdr)
 }
 
 Ptr<const Packet>
-EdcaTxopN::PeekNextRetransmitPacket (WifiMacHeader &header,Mac48Address recipient, uint8_t tid, Time *timestamp)
+EdcaTxopN::PeekNextRetransmitPacket (WifiMacHeader &header,Mac48Address recipient, uint8_t tid, Time *timestamp, uint32_t *nRetries)
 {
-  return m_baManager->PeekNextPacket (header,recipient,tid, timestamp);
+  return m_baManager->PeekNextPacket (header,recipient,tid, timestamp, nRetries);
 }
 
 void
@@ -870,9 +870,13 @@ EdcaTxopN::MissedBlockAck (void)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("missed block ack");
+  if (GetAmpduExist (m_currentHdr.GetAddr1 ()))
+    {
+      m_stationManager->ReportAmpduTxStatus (m_currentHdr.GetAddr1 (), &m_currentHdr, 0, 0);
+    }
   if (NeedBarRetransmission ())
     {
-      if (!GetAmpduExist (m_currentHdr.GetAddr1 ()))
+      if (!GetAmpduExist ())
         {
           //should i report this to station addressed by ADDR1?
           NS_LOG_DEBUG ("Retransmit block ack request");
@@ -1231,8 +1235,67 @@ EdcaTxopN::GotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address rec
     {
       m_txOkCallback (m_currentHdr);
     }
-  m_currentPacket = 0;
-  m_dcf->ResetCw ();
+  if (NeedBarRetransmission ())
+    {
+      if (!GetAmpduExist (m_currentHdr.GetAddr1()))
+        {
+          //should i report this to station addressed by ADDR1?
+          NS_LOG_DEBUG ("Retransmit block ack request");
+          m_currentHdr.SetRetry ();
+        }
+      else
+        {
+          //standard says when loosing a BlockAck originator may send a BAR page 139
+          NS_LOG_DEBUG ("Transmit Block Ack Request");
+          CtrlBAckRequestHeader reqHdr;
+          reqHdr.SetType (COMPRESSED_BLOCK_ACK);
+          uint8_t tid = 0;
+          if (m_currentHdr.IsQosData ())
+            {
+              tid = m_currentHdr.GetQosTid ();
+              reqHdr.SetStartingSequence (m_currentHdr.GetSequenceNumber ());
+            }
+          else if (m_currentHdr.IsBlockAckReq ())
+            {
+              CtrlBAckRequestHeader baReqHdr;
+              m_currentPacket->PeekHeader (baReqHdr);
+              tid = baReqHdr.GetTidInfo ();
+              reqHdr.SetStartingSequence (baReqHdr.GetStartingSequence ());
+            }
+          else if (m_currentHdr.IsBlockAck ())
+            {
+              CtrlBAckResponseHeader baRespHdr;
+              m_currentPacket->PeekHeader (baRespHdr);
+              tid = baRespHdr.GetTidInfo ();
+              reqHdr.SetStartingSequence (m_currentHdr.GetSequenceNumber ());
+            }
+          reqHdr.SetTidInfo (tid);
+          reqHdr.SetHtImmediateAck (true);
+          Ptr<Packet> bar = Create<Packet> ();
+          bar->AddHeader (reqHdr);
+          Bar request (bar, m_currentHdr.GetAddr1 (), tid, reqHdr.MustSendHtImmediateAck ());
+          m_currentBar = request;
+          WifiMacHeader hdr;
+          hdr.SetType (WIFI_MAC_CTL_BACKREQ);
+          hdr.SetAddr1 (request.recipient);
+          hdr.SetAddr2 (m_low->GetAddress ());
+          hdr.SetAddr3 (m_low->GetBssid ());
+          hdr.SetDsNotTo ();
+          hdr.SetDsNotFrom ();
+          hdr.SetNoRetry ();
+          hdr.SetNoMoreFragments ();
+
+          m_currentPacket = request.bar;
+          m_currentHdr = hdr;
+        }
+      m_dcf->UpdateFailedCw ();
+    }
+  else
+    {
+      //to reset the dcf.
+      m_currentPacket = 0;
+      m_dcf->ResetCw ();
+    }
   m_dcf->StartBackoffNow (m_rng->GetNext (0, m_dcf->GetCw ()));
   RestartAccessIfNeeded ();
 }
@@ -1285,7 +1348,7 @@ EdcaTxopN::CompleteTx (void)
     {
       if (!m_currentHdr.IsRetry ())
         {
-          m_baManager->StorePacket (m_currentPacket, m_currentHdr, m_currentPacketTimestamp);
+          m_baManager->StorePacket (m_currentPacket, m_currentHdr, m_currentPacketTimestamp, 0);
         }
       m_baManager->NotifyMpduTransmission (m_currentHdr.GetAddr1 (), m_currentHdr.GetQosTid (),
                                            m_txMiddle->GetNextSeqNumberByTidAndAddress (m_currentHdr.GetQosTid (),
@@ -1294,10 +1357,10 @@ EdcaTxopN::CompleteTx (void)
 }
 
 void
-EdcaTxopN::CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp)
+EdcaTxopN::CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp, uint32_t nRetries)
 {
   NS_ASSERT (hdr.IsQosData ());
-  m_baManager->StorePacket (packet, hdr, tstamp);
+  m_baManager->StorePacket (packet, hdr, tstamp, nRetries);
   m_baManager->NotifyMpduTransmission (hdr.GetAddr1 (), hdr.GetQosTid (),
                                        m_txMiddle->GetNextSeqNumberByTidAndAddress (hdr.GetQosTid (),
                                                                                     hdr.GetAddr1 ()), WifiMacHeader::NORMAL_ACK);

@@ -41,12 +41,13 @@ BlockAckManager::Item::Item ()
   NS_LOG_FUNCTION (this);
 }
 
-BlockAckManager::Item::Item (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp)
+BlockAckManager::Item::Item (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp, uint32_t nRetries)
   : packet (packet),
     hdr (hdr),
-    timestamp (tStamp)
+    timestamp (tStamp),
+    nRetries (nRetries)
 {
-  NS_LOG_FUNCTION (this << packet << hdr << tStamp);
+  NS_LOG_FUNCTION (this << packet << hdr << tStamp << nRetries);
 }
 
 Bar::Bar ()
@@ -206,7 +207,7 @@ BlockAckManager::UpdateAgreement (const MgtAddBaResponseHeader *respHdr, Mac48Ad
 }
 
 void
-BlockAckManager::StorePacket (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp)
+BlockAckManager::StorePacket (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp, uint32_t nRetries)
 {
   NS_LOG_FUNCTION (this << packet << hdr << tStamp);
   NS_ASSERT (hdr.IsQosData ());
@@ -214,7 +215,7 @@ BlockAckManager::StorePacket (Ptr<const Packet> packet, const WifiMacHeader &hdr
   uint8_t tid = hdr.GetQosTid ();
   Mac48Address recipient = hdr.GetAddr1 ();
 
-  Item item (packet, hdr, tStamp);
+  Item item (packet, hdr, tStamp, nRetries);
   AgreementsI it = m_agreements.find (std::make_pair (recipient, tid));
   NS_ASSERT (it != m_agreements.end ());
   PacketQueueI queueIt = it->second.second.begin ();
@@ -285,7 +286,7 @@ BlockAckManager::GetNextPacket (WifiMacHeader &hdr)
           packet = (*it)->packet->Copy ();
           hdr = (*it)->hdr;
           hdr.SetRetry ();
-          NS_LOG_INFO ("Retry packet seq = " << hdr.GetSequenceNumber ());
+          NS_LOG_INFO ("Retry packet seq = " << hdr.GetSequenceNumber () << " nRetries = " << (*it)->nRetries);
           if (hdr.IsQosData ())
             {
               tid = hdr.GetQosTid ();
@@ -324,7 +325,7 @@ BlockAckManager::GetNextPacket (WifiMacHeader &hdr)
 
 
 Ptr<const Packet>
-BlockAckManager::PeekNextPacket (WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *tstamp)
+BlockAckManager::PeekNextPacket (WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *tstamp, uint32_t *nRetries)
 {
   NS_LOG_FUNCTION (this);
   Ptr<const Packet> packet = 0;
@@ -357,7 +358,8 @@ BlockAckManager::PeekNextPacket (WifiMacHeader &hdr, Mac48Address recipient, uin
           hdr = (*it)->hdr;
           hdr.SetRetry ();
           *tstamp = (*it)->timestamp;
-          NS_LOG_INFO ("Retry packet seq = " << hdr.GetSequenceNumber ());
+          *nRetries = (*it)->nRetries;
+          NS_LOG_INFO ("Retry packet seq = " << hdr.GetSequenceNumber () << " nRetries = " << (*it)->nRetries);
           Mac48Address recipient = hdr.GetAddr1 ();
           if (!agreement->second.first.IsHtSupported ()
               && (ExistsAgreementInState (recipient, tid, OriginatorBlockAckAgreement::ESTABLISHED)
@@ -536,6 +538,8 @@ BlockAckManager::NotifyGotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac4
       if (ExistsAgreementInState (recipient, tid, OriginatorBlockAckAgreement::ESTABLISHED))
         {
           bool foundFirstLost = false;
+          uint32_t nSuccessfulMpdus = 0;
+          uint32_t nFailedMpdus = 0;
           AgreementsI it = m_agreements.find (std::make_pair (recipient, tid));
           PacketQueueI queueEnd = it->second.second.end ();
 
@@ -558,6 +562,7 @@ BlockAckManager::NotifyGotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac4
                   if (blockAck->IsFragmentReceived ((*queueIt).hdr.GetSequenceNumber (),
                                                     (*queueIt).hdr.GetFragmentNumber ()))
                     {
+                      nSuccessfulMpdus++;
                       queueIt = it->second.second.erase (queueIt);
                     }
                   else
@@ -568,12 +573,11 @@ BlockAckManager::NotifyGotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac4
                           sequenceFirstLost = (*queueIt).hdr.GetSequenceNumber ();
                           (*it).second.first.SetStartingSequence (sequenceFirstLost);
                         }
-
-                      if (!AlreadyExists ((*queueIt).hdr.GetSequenceNumber (),recipient,tid))
+                      nFailedMpdus++;
+                      if (!AlreadyExists ((*queueIt).hdr.GetSequenceNumber (), recipient, tid))
                         {
                           InsertInRetryQueue (queueIt);
                         }
-
                       queueIt++;
                     }
                 }
@@ -588,8 +592,7 @@ BlockAckManager::NotifyGotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac4
                       while (queueIt != queueEnd
                              && (*queueIt).hdr.GetSequenceNumber () == currentSeq)
                         {
-                          //notify remote station of successful transmission
-                          m_stationManager->ReportDataOk ((*queueIt).hdr.GetAddr1 (), &(*queueIt).hdr, 0, txMode, 0);
+                          nSuccessfulMpdus++;
                           if (!m_txOkCallback.IsNull ())
                             {
                               m_txOkCallback ((*queueIt).hdr);
@@ -605,18 +608,27 @@ BlockAckManager::NotifyGotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac4
                           sequenceFirstLost = (*queueIt).hdr.GetSequenceNumber ();
                           (*it).second.first.SetStartingSequence (sequenceFirstLost);
                         }
-                      //notify remote station of unsuccessful transmission
-                      m_stationManager->ReportDataFailed ((*queueIt).hdr.GetAddr1 (), &(*queueIt).hdr);
+                      nFailedMpdus++;
                       if (!m_txFailedCallback.IsNull ())
                         {
                           m_txFailedCallback ((*queueIt).hdr);
                         }
-                      if (!AlreadyExists ((*queueIt).hdr.GetSequenceNumber (),recipient,tid))
+                      if (!AlreadyExists ((*queueIt).hdr.GetSequenceNumber (), recipient, tid))
                         {
-                          InsertInRetryQueue (queueIt);
+                          if ((*queueIt).nRetries >= m_stationManager->GetMaxSlrc ())
+                            {
+                              NS_LOG_INFO ("Remove packet with seq = " << (*queueIt).hdr.GetSequenceNumber ());
+                              (*it).second.first.SetStartingSequence ((*queueIt).hdr.GetSequenceNumber ());
+                              queueIt = it->second.second.erase (queueIt);
+                            }
+                          else
+                            {
+                              InsertInRetryQueue (queueIt);
+                              queueIt++;
+                            }
                         }
-                      queueIt++;
                     }
+                  m_stationManager->ReportAmpduTxStatus ((*queueIt).hdr.GetAddr1 (), &(*queueIt).hdr, nSuccessfulMpdus, nFailedMpdus);
                 }
             }
           uint16_t newSeq = m_txMiddle->GetNextSeqNumberByTidAndAddress (tid, recipient);
@@ -931,6 +943,7 @@ void
 BlockAckManager::InsertInRetryQueue (PacketQueueI item)
 {
   NS_LOG_INFO ("Adding to retry queue " << (*item).hdr.GetSequenceNumber ());
+  (*item).nRetries++;
   if (m_retryPackets.size () == 0)
     {
       m_retryPackets.push_back (item);
