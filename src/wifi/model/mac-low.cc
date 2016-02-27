@@ -55,7 +55,7 @@ MacLowTransmissionListener::GotBlockAck (const CtrlBAckResponseHeader *blockAck,
 {
 }
 void
-MacLowTransmissionListener::MissedBlockAck (void)
+MacLowTransmissionListener::MissedBlockAck (uint32_t nMpdus)
 {
 }
 
@@ -368,7 +368,8 @@ MacLow::MacLow ()
     m_listener (0),
     m_phyMacLowListener (0),
     m_ctsToSelfSupported (false),
-    m_receivedAtLeastOneMpdu (false)
+    m_receivedAtLeastOneMpdu (false),
+    m_nTxMpdus (0)
 {
   NS_LOG_FUNCTION (this);
   m_lastNavDuration = Seconds (0);
@@ -1645,6 +1646,7 @@ MacLow::ForwardDown (Ptr<const Packet> packet, const WifiMacHeader* hdr,
       Ptr <const Packet> dequeuedPacket;
       WifiMacHeader newHdr;
       WifiMacTrailer fcs;
+      m_nTxMpdus = m_aggregateQueue->GetSize ();
       uint32_t queueSize = m_aggregateQueue->GetSize ();
       bool vhtSingleMpdu = false;
       bool last = false;
@@ -1792,7 +1794,7 @@ MacLow::BlockAckTimeout (void)
   m_sentMpdus = 0;
   m_ampdu = false;
   FlushAggregateQueue ();
-  listener->MissedBlockAck ();
+  listener->MissedBlockAck (m_nTxMpdus);
 }
 
 void
