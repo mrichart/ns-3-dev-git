@@ -589,18 +589,6 @@ public:
    * \param header MAC header of the DATA packet
    */
   void ReportFinalDataFailed (Mac48Address address, const WifiMacHeader *header);
-  /**
-   * Should be invoked whenever a Block ACK following an A-MPDU transmission
-   * has been received, or when the Block ACK timeout has elapsed.
-   *
-   * \param address the address of the receiver
-   * \param header MAC header of the DATA packet
-   * \param nSuccessfulMpdus number of successfully transmitted MPDUs.
-   * A value of 0 means that the Block ACK was missed.
-   * \param nFailedMpdus number of unsuccessfully transmitted MPDUs.
-   * A value of 0 means that all MPDUs aggregated in the A-MPDU were successfully transmitted.
-   */
-  void ReportAmpduTxStatus (Mac48Address address, const WifiMacHeader *header, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
 
   /**
    * \param address remote address
@@ -1109,17 +1097,6 @@ private:
    */
   virtual void DoReportRxOk (WifiRemoteStation *station,
                              double rxSnr, WifiMode txMode) = 0;
-  /**
-   * This method is a virtual method that must be implemented by the sub-class intended to hanble A-MPDUs.
-   * This allows different types of WifiRemoteStationManager to respond differently,
-   *
-   * \param station the station that sent the DATA to us
-   * \param nSuccessfulMpdus number of successfully transmitted MPDUs.
-   * A value of 0 means that the Block ACK was missed.
-   * \param nFailedMpdus number of unsuccessfully transmitted MPDUs.
-   * A value of 0 means that all MPDUs aggregated in the A-MPDU were successfully transmitted.
-   */
-  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
 
   /**
    * Return the state of the station associated with the given address.

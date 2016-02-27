@@ -228,7 +228,7 @@ public:
    * for a blockack containing the sequence number of this MPDU).
    * It also calls NotifyMpdu transmission that updates the status of OriginatorBlockAckAgreement.
    */
-  virtual void CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp, uint32_t nRetries);
+  virtual void CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp);
   /**
    * Return the next sequence number for the given header.
    *
@@ -246,7 +246,7 @@ public:
   /*
    * Peek in retransmit queue and get the next packet without removing it from the queue
    */
-  virtual Ptr<const Packet> PeekNextPacketInBaQueue (WifiMacHeader &header, Mac48Address recipient, uint8_t tid, Time *timestamp, uint32_t *nRetries);
+  virtual Ptr<const Packet> PeekNextPacketInBaQueue (WifiMacHeader &header, Mac48Address recipient, uint8_t tid, Time *timestamp);
   /**
    * Remove a packet after you peek in the retransmit queue and get it
    */
@@ -1272,7 +1272,7 @@ private:
    * Insert in a temporary queue.
    * It is only used with a RTS/CTS exchange for an A-MPDU transmission.
    */
-  void InsertInTxQueue (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp, uint32_t nRetries);
+  void InsertInTxQueue (Ptr<const Packet> packet, const WifiMacHeader &hdr, Time tStamp);
   /**
    * Perform MSDU aggregation for a given MPDU in an A-MPDU
    *
@@ -1298,7 +1298,6 @@ private:
     Ptr<const Packet> packet;
     WifiMacHeader hdr;
     Time timestamp;
-    uint32_t nRetries;
   } Item;
 
   /**

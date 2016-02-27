@@ -414,7 +414,7 @@ public:
 
   void SetBlockAckInactivityTimeout (uint16_t timeout);
   void SendDelbaFrame (Mac48Address addr, uint8_t tid, bool byOriginator);
-  void CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp, uint32_t nRetries);
+  void CompleteMpduTx (Ptr<const Packet> packet, WifiMacHeader hdr, Time tstamp);
   bool GetAmpduExist (Mac48Address dest);
   void SetAmpduExist (Mac48Address dest, bool enableAmpdu);
 
@@ -441,7 +441,7 @@ public:
   /*
    * Peek in retransmit queue and get the next packet without removing it from the queue
    */
-  Ptr<const Packet> PeekNextRetransmitPacket (WifiMacHeader &header, Mac48Address recipient, uint8_t tid, Time *timestamp, uint32_t *nRetries);
+  Ptr<const Packet> PeekNextRetransmitPacket (WifiMacHeader &header, Mac48Address recipient, uint8_t tid, Time *timestamp);
   /**
    * The packet we sent was successfully received by the receiver
    *
