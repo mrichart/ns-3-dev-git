@@ -481,10 +481,10 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
     {
       m_legacyManager->UpdateRate(station);
     }
-//  else
-//    {
-//      NS_ASSERT_MSG(false,"DoReportDataFailed should not be called in HT or VHT modes.");
-//    }
+  else
+    {
+      UpdateRate(station);
+    }
 }
 
 void
@@ -513,7 +513,7 @@ MinstrelHtWifiManager::UpdateRate(MinstrelHtWifiRemoteStation *station)
     {
       return;
     }
-  station->m_longRetry += 60;
+  station->m_longRetry++;
 
   /**
    * Get the ids for all rates.
@@ -623,10 +623,25 @@ MinstrelHtWifiManager::DoReportDataOk (WifiRemoteStation *st,
         }
     }
 //  ack of management frames (like assoc request/response) generates a call
-//  else
-//    {
-//      NS_ASSERT_MSG(false,"DoReportDataOk should not be called in HT or VHT modes.");
-//    }
+  else
+    {
+      uint32_t rateId = GetRateId (station->m_txrate);
+      uint32_t groupId = GetGroupId (station->m_txrate);
+      station->m_mcsTable[groupId].m_minstrelTable[rateId].numRateSuccess++;
+      station->m_mcsTable[groupId].m_minstrelTable[rateId].numRateAttempt++;
+
+      station->m_isSampling = false;
+      station->m_sampleRateSlower = false;
+
+      UpdateRetry (station);
+      UpdateSampleCounts (station);
+      UpdateStats (station);
+
+      if (station->m_nModes >= 1)
+        {
+          station->m_txrate = FindRate (station);
+        }
+    }
 
   NS_LOG_DEBUG ("Next rate to use TxRate = " << station->m_txrate  );
 }
@@ -659,8 +674,19 @@ MinstrelHtWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
     }
   else
     {
-      NS_ASSERT_MSG(false,"DoReportFinalDataFailed should not be called in HT or VHT modes.");
+      station->m_isSampling = false;
+      station->m_sampleRateSlower = false;
+
+      UpdateRetry (station);
+      UpdateSampleCounts (station);
+      UpdateStats (station);
+
+      if (station->m_nModes >= 1)
+        {
+          station->m_txrate = FindRate (station);
+        }
     }
+  NS_LOG_DEBUG ("Next rate to use TxRate = " << station->m_txrate  );
 }
 
 void
@@ -684,19 +710,21 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus (WifiRemoteStation *st, uint32_t nS
                 nSuccessfulMpdus << " FailedMpdus= " << nFailedMpdus);
 
   station->m_ampduPacketCount++;
-  station->m_ampduLen += nSuccessfulMpdus + nFailedMpdus;// TODO numMpdus;
+  station->m_ampduLen += nSuccessfulMpdus + nFailedMpdus;
 
-  if (nSuccessfulMpdus == 0 && nFailedMpdus == 0)
+
+  uint32_t rateId = GetRateId (station->m_txrate);
+  uint32_t groupId = GetGroupId (station->m_txrate);
+  station->m_mcsTable[groupId].m_minstrelTable[rateId].numRateSuccess += nSuccessfulMpdus;
+  station->m_mcsTable[groupId].m_minstrelTable[rateId].numRateAttempt += nSuccessfulMpdus + nFailedMpdus;
+
+  if (nSuccessfulMpdus == 0 && station->m_longRetry < CountRetries(station))
     {
       // We not receive a BlockAck. The entire AMPDU fail.
-      UpdateRate(station); //TODO we should update attempts with the number of MPDUs
+      UpdateRate(station);
     }
   else
     {
-      uint32_t rateId = GetRateId (station->m_txrate);
-      uint32_t groupId = GetGroupId (station->m_txrate);
-      station->m_mcsTable[groupId].m_minstrelTable[rateId].numRateSuccess += nSuccessfulMpdus;
-      station->m_mcsTable[groupId].m_minstrelTable[rateId].numRateAttempt += nSuccessfulMpdus + nFailedMpdus;
 
       station->m_isSampling = false;
       station->m_sampleRateSlower = false;
