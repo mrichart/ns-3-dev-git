@@ -1789,7 +1789,6 @@ MacLow::BlockAckTimeout (void)
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("block ack timeout");
 
-  m_stationManager->ReportDataFailed (m_currentHdr.GetAddr1 (), &m_currentHdr);
   MacLowTransmissionListener *listener = m_listener;
   m_listener = 0;
   m_sentMpdus = 0;
