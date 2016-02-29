@@ -1687,7 +1687,7 @@ MacLow::ForwardDown (Ptr<const Packet> packet, const WifiMacHeader* hdr,
 
           if (hdr->IsBlockAckReq ())
             {
-              ampdutag.SetNoOfMpdus (queueSize - 1);
+              ampdutag.SetNoOfMpdus (queueSize);
             }
           else
             {
