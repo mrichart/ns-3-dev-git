@@ -2944,8 +2944,7 @@ MacLow::AggregateToAmpdu (Ptr<const Packet> packet, const WifiMacHeader hdr)
   Ptr<Packet> currentAggregatedPacket;
   CtrlBAckRequestHeader blockAckReq;
   //missing hdr.IsAck() since we have no means of knowing the Tid of the Ack yet
-  WifiTxVector dataTxVector = GetDataTxVector (m_currentPacket, &m_currentHdr);
-  if ((hdr.IsQosData () && dataTxVector.IsAggregation()) || hdr.IsBlockAck ()|| hdr.IsBlockAckReq ())
+  if (hdr.IsQosData () || hdr.IsBlockAck ()|| hdr.IsBlockAckReq ())
     {
       Time tstamp;
       uint8_t tid = GetTid (packet, hdr);
