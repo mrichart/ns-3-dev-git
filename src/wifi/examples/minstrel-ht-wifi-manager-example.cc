@@ -92,7 +92,8 @@ int main (int argc, char *argv[])
   std::ofstream outfile ("minstrel-ht-wifi-manager.plt");
   std::vector <StandardInfo> standards;
   int steps;
-  uint32_t rtsThreshold = 2346;
+  uint32_t rtsThreshold = 65535;
+  uint32_t BE_MaxAmpduSize = 65535;
   double stepSize = 1; // dBm
   double stepTime = 1; // seconds
   int broadcast = 0;
@@ -103,6 +104,7 @@ int main (int argc, char *argv[])
 
   CommandLine cmd;
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
+  cmd.AddValue ("BE_MaxAmpduSize", "BE Mac A-MPDU size", BE_MaxAmpduSize);
   cmd.AddValue ("stepSize", "Power between steps (dBm)", stepSize);
   cmd.AddValue ("stepTime", "Time on each step (seconds)", stepTime);
   cmd.AddValue ("broadcast", "Send broadcast instead of unicast", broadcast);
@@ -116,7 +118,7 @@ int main (int argc, char *argv[])
   standards.push_back (StandardInfo ("802.11n-5GHz-40MHz", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
   standards.push_back (StandardInfo ("802.11n-5GHz-SGI", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
   standards.push_back (StandardInfo ("802.11n-5GHz-40MHz-SGI", WIFI_PHY_STANDARD_80211n_5GHZ, 5, 27));
-//  standards.push_back (StandardInfo ("802.11ac", WIFI_PHY_STANDARD_80211ac, 5, 27));
+  standards.push_back (StandardInfo ("802.11ac", WIFI_PHY_STANDARD_80211ac, 5, 27));
 #ifdef NOTYET
   standards.push_back (StandardInfo ("802.11n-2.4GHz", WIFI_PHY_STANDARD_80211n_2_4GHZ, 5, 27));
   standards.push_back (WIFI_PHY_STANDARD_80211_10MHZ);
@@ -177,13 +179,13 @@ int main (int argc, char *argv[])
           wifiMac.SetType ("ns3::StaWifiMac",
                            "Ssid", SsidValue (ssid),
                            "ActiveProbing", BooleanValue (false),
-                           "BE_MaxAmpduSize", UintegerValue (0));
+                           "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
           serverDevice = wifi.Install (wifiPhy, wifiMac, serverNode);
 
           ssid = Ssid ("AP");
           wifiMac.SetType ("ns3::ApWifiMac",
                            "Ssid", SsidValue (ssid),
-                           "BE_MaxAmpduSize", UintegerValue (0));
+                           "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
           clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
         }
       else if (standards[i].m_name == "802.11ac")
@@ -194,13 +196,13 @@ int main (int argc, char *argv[])
           wifiMac.SetType ("ns3::StaWifiMac",
                            "Ssid", SsidValue (ssid),
                            "ActiveProbing", BooleanValue (false),
-                           "BE_MaxAmpduSize", UintegerValue (0));
+                           "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
           serverDevice = wifi.Install (wifiPhy, wifiMac, serverNode);
 
           ssid = Ssid ("AP");
           wifiMac.SetType ("ns3::ApWifiMac",
                            "Ssid", SsidValue (ssid),
-                           "BE_MaxAmpduSize", UintegerValue (0));
+                           "BE_MaxAmpduSize", UintegerValue (BE_MaxAmpduSize));
           clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
         }
 
