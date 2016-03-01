@@ -811,7 +811,7 @@ MinstrelHtWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
       uint64_t dataRate = GetMcsSupported (station, rateId).GetDataRate(group.chWidth, group.sgi, group.streams);
       m_rateChange (dataRate, station->m_state->m_address);
 
-      return WifiTxVector (GetMcsSupported (station, rateId), GetDefaultTxPowerLevel (), GetLongRetryCount (station), group.sgi, group.streams, GetNess (station), group.chWidth, GetAggregation (station), GetStbc (station));
+      return WifiTxVector (GetMcsSupported (station, rateId), GetDefaultTxPowerLevel (), GetLongRetryCount (station), group.sgi, group.streams, GetNess (station), group.chWidth, !station->m_isSampling, GetStbc (station));
     }
 }
 
