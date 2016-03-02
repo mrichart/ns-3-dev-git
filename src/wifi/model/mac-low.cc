@@ -2796,13 +2796,13 @@ void
 MacLow::DeaggregateAmpduAndReceive (Ptr<Packet> aggregatedPacket, double rxSnr, WifiTxVector txVector, WifiPreamble preamble)
 {
   NS_LOG_FUNCTION (this);
-  m_currentTxVector = txVector;
   AmpduTag ampdu;
   bool normalAck = false;
   bool ampduSubframe = false; //flag indicating the packet belongs to an A-MPDU and is not a VHT single MPDU
   if (aggregatedPacket->RemovePacketTag (ampdu))
     {
       ampduSubframe = true;
+      m_currentTxVector = txVector;
       MpduAggregator::DeaggregatedMpdus packets = MpduAggregator::Deaggregate (aggregatedPacket);
       MpduAggregator::DeaggregatedMpdusCI n = packets.begin ();
 
