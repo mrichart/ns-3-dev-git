@@ -38,6 +38,37 @@
 
 namespace ns3 {
 
+
+/**
+ * Data structure to save transmission times calculations per rate.
+ * A vector fo Time, WifiMode pairs.
+ */
+typedef std::vector<std::pair<Time, WifiMode> > TxTime;
+
+/**
+ * Data structure to contain the information that defines a group.
+ * It also contains the transmission times for all the MCS in the group.
+ * A group is a collection of MCS defined by the number of spatial streams,
+ * if it uses or not Short Guard Interval and the channel width used.
+ */
+struct McsGroup
+{
+  uint8_t streams;
+  uint8_t sgi;
+  uint32_t chWidth;
+  bool isVht;
+
+  //To accurately account TX times we separate the TX time of the first MPDU in an A-MPDU from the rest of the MPDUs.
+  TxTime ratesTxTimeTable;
+  TxTime ratesFirstMpduTxTimeTable;
+};
+
+/**
+ * Data structure for a table of group definitions.
+ * A vector of a McsGroup.
+ */
+typedef std::vector<struct McsGroup> MinstrelMcsGroups;
+
 struct MinstrelHtWifiRemoteStation;
 /**
  * A struct to contain all statistics information related to a data rate.
@@ -56,7 +87,7 @@ struct HtRateInfo
   uint32_t adjustedRetryCount;  //!< Adjust the retry limit for this rate.
   uint32_t numRateAttempt;      //!< Number of transmission attempts so far.
   uint32_t numRateSuccess;      //!< Number of successful frames transmitted so far.
-  uint32_t prob;                //!< (# frame success )/(# total frames)
+  double prob;                //!< (# frame success )/(# total frames)
 
   bool retryUpdated;            //!< If number of retries was updated already.
 
@@ -64,19 +95,19 @@ struct HtRateInfo
    * EWMA calculation
    * ewma_prob =[prob *(100 - ewma_level) + (ewma_prob_old * ewma_level)]/100
    */
-  uint32_t ewmaProb;
+  double ewmaProb;
 
   uint32_t prevNumRateAttempt;  //!< Number of transmission attempts with previous rate.
   uint32_t prevNumRateSuccess;  //!< Number of successful frames transmitted with previous rate.
   uint32_t numSamplesSkipped;   //!< Number of times this rate statistics were not updated because no attempts have been made.
   uint64_t successHist;         //!< Aggregate of all transmission successes.
   uint64_t attemptHist;         //!< Aggregate of all transmission attempts.
-  uint32_t throughput;          //!< Throughput of this rate.
+  double throughput;          //!< Throughput of this rate.
 };
 
 /**
  * Data structure for a Minstrel Rate table.
- * A vector of a struct RateInfo.
+ * A vector of a struct HtRateInfo.
  */
 typedef std::vector<struct HtRateInfo> HtMinstrelRate;
 
@@ -97,7 +128,7 @@ struct GroupInfo
   uint32_t m_maxTpRate2;          //!< The second max throughput rate of this group.
   uint32_t m_maxProbRate;         //!< The highest success probability rate of this group.
 
-  HtMinstrelRate m_minstrelTable; //!< Information about rates of this group.
+  HtMinstrelRate m_ratesTable; //!< Information about rates of this group.
 };
 
 /**
@@ -111,34 +142,6 @@ typedef std::vector<struct GroupInfo> McsGroupData;
  * A vector of a vector uint32_t.
  */
 typedef std::vector<std::vector<uint32_t> > HtSampleRate;
-
-/**
- * Data structure to save transmission times calculations per rate.
- * A vector fo Time, WifiMode pairs.
- */
-typedef std::vector<std::pair<Time,WifiMode> > TxTime;
-
-/**
- * Data structure to contain the information that defines a group.
- * It also contains the transmission times for all the MCS in the group.
- * A group is a collection of MCS defined by the number of spatial streams,
- * if it uses or not Short Guard Interval and the channel width used.
- */
-struct McsGroup
-{
-  uint8_t streams;
-  uint8_t sgi;
-  uint32_t chWidth;
-  TxTime mpduTxTime;
-  TxTime firstMpduTxTime;
-  bool isVht;
-};
-
-/**
- * Data structure for a table of group definitions.
- * A vector of a McsGroup.
- */
-typedef std::vector<struct McsGroup> MinstrelMcsGroups;
 
 /**
  * Constants for maximum values.
@@ -209,7 +212,8 @@ private:
   virtual bool DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally);
   virtual void DoDisposeStation (WifiRemoteStation *station);
 
-  bool IsValidMcs (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
+  /// Check the validity of a combination of number of streams, chWidth and mode.
+  bool IsValidMcs (Ptr<WifiPhy> phy, uint8_t streams, uint32_t chWidth, WifiMode mode);
 
   /// Estimates the TxTime of a frame with a given mode and group (stream, guard interval and channel width).
   Time CalculateMpduTxDuration (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
@@ -250,6 +254,12 @@ private:
   /// Initialize Minstrel Table.
   void RateInit (MinstrelHtWifiRemoteStation *station);
 
+  double CalculateThroughput (MinstrelHtWifiRemoteStation *station, uint32_t groupId, uint32_t rateId, double ewmaProb);
+
+  void SetBestStationThRates (MinstrelHtWifiRemoteStation *station, uint32_t index);
+
+  void SetBestProbabilityRate(MinstrelHtWifiRemoteStation *station, uint32_t index);
+
   void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t index);
 
   void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t groupId, uint32_t rateId);
@@ -280,6 +290,9 @@ private:
 
   /// Printing Minstrel Table.
   void PrintTable (MinstrelHtWifiRemoteStation *station, std::ostream &os);
+
+  /// Print group statistics.
+  void StatsDump (MinstrelHtWifiRemoteStation *station, uint32_t index, std::ostream &os);
 
   /// Check for initializations.
   void CheckInit (MinstrelHtWifiRemoteStation *station);
