@@ -208,8 +208,8 @@ MinstrelHtWifiManager::SetupPhy (Ptr<WifiPhy> phy)
                   for (uint8_t i = 0; i < m_numRates; i++)
                     {
                       ///Check for invalid VHT MCS
-                      ///TODO Other combinations are also invalid
-                      if (!(chWidth == 20) || (chWidth == 20 && phy->GetMcs(i).GetMcsValue() != 9))
+                      WifiMode mode = phy->GetMcs (i);
+                      if (IsValidMcs(phy, streams, sgi, chWidth, mode))
                         {
                           if (streams > 4 || chWidth > 40 || i > 7)
                             {
@@ -219,7 +219,6 @@ MinstrelHtWifiManager::SetupPhy (Ptr<WifiPhy> phy)
                             {
                               m_minstrelGroups[GetGroupId (streams, sgi, chWidth)].isVht = false;
                             }
-                          WifiMode mode = phy->GetMcs (i);
                           AddFirstMpduTxTime (GetGroupId (streams, sgi, chWidth), mode, CalculateFirstMpduTxDuration (phy, streams, sgi, chWidth, mode));
                           AddMpduTxTime (GetGroupId (streams, sgi, chWidth), mode, CalculateMpduTxDuration (phy, streams, sgi, chWidth, mode));
                         }
@@ -240,6 +239,21 @@ MinstrelHtWifiManager::SetupMac (Ptr<WifiMac> mac)
 {
   m_legacyManager->SetupMac(mac);
   WifiRemoteStationManager::SetupMac (mac);
+}
+
+bool
+MinstrelHtWifiManager::IsValidMcs (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode)
+{
+  NS_LOG_FUNCTION (this << phy << (int)streams << (int)sgi << chWidth << mode);
+
+  WifiTxVector txvector;
+  txvector.SetNss (streams);
+  txvector.SetShortGuardInterval (sgi);
+  txvector.SetChannelWidth (chWidth);
+  txvector.SetNess (0);
+  txvector.SetStbc (phy->GetStbc ());
+  txvector.SetMode (mode);
+  return phy->IsValidTxVector(txvector);
 }
 
 Time

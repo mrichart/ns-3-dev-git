@@ -209,6 +209,8 @@ private:
   virtual bool DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally);
   virtual void DoDisposeStation (WifiRemoteStation *station);
 
+  bool IsValidMcs (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
+
   /// Estimates the TxTime of a frame with a given mode and group (stream, guard interval and channel width).
   Time CalculateMpduTxDuration (Ptr<WifiPhy> phy, uint8_t streams, uint8_t sgi, uint32_t chWidth, WifiMode mode);
 
