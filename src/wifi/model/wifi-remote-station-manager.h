@@ -404,11 +404,11 @@ public:
   /**
    * Invoked in a STA or AP to store all of the MCS supported
    * by a destination which is also supported locally.
-   * The set of supported modes includes the BSSBasicRateSet.
    *
    * \param address the address of the station being recorded
    */
   void AddAllSupportedMcs (Mac48Address address);
+  /**
 
   /**
    * Record whether the short PLCP preamble is supported by the station.
@@ -484,7 +484,6 @@ public:
    * \param address remote address
    * \param header MAC header
    * \param packet the packet to queue
-   * \param fullPacketSize the size of the packet after its 802.11 MAC header has been added.
    *
    * This method is typically invoked just before queuing a packet for transmission.
    * It is a no-op unless the IsLowLatency attribute of the attached ns3::WifiRemoteStationManager
@@ -492,24 +491,23 @@ public:
    * the packet as a tag. These tx parameters are later retrieved from GetDadaMode and GetRtsMode.
    */
   void PrepareForQueue (Mac48Address address, const WifiMacHeader *header,
-                        Ptr<const Packet> packet, uint32_t fullPacketSize);
+                        Ptr<const Packet> packet);
 
   /**
    * \param address remote address
    * \param header MAC header
    * \param packet the packet to send
-   * \param fullPacketSize the size of the packet after its 802.11 MAC header has been added.
    *
-   * \return the transmission mode to use to send this packet
+   * \return the TXVECTOR to use to send this packet
    */
   WifiTxVector GetDataTxVector (Mac48Address address, const WifiMacHeader *header,
-                                Ptr<const Packet> packet, uint32_t fullPacketSize);
+                                Ptr<const Packet> packet);
   /**
    * \param address remote address
    * \param header MAC header
    * \param packet the packet to send
    *
-   * \return the transmission mode to use to send the RTS prior to the
+   * \return the TXVECTOR to use to send the RTS prior to the
    *         transmission of the data packet itself.
    */
   WifiTxVector GetRtsTxVector (Mac48Address address, const WifiMacHeader *header,
@@ -879,15 +877,7 @@ protected:
    *
    * \return the number of receive antennas the station has
    */
-  uint32_t GetNumberOfReceiveAntennas (const WifiRemoteStation *station) const;
-  /**
-   * Return the number of transmit antennas the station has.
-   *
-   * \param station the station being queried
-   *
-   * \return the number of transmit antennas the station has
-   */
-  uint32_t GetNumberOfTransmitAntennas (const WifiRemoteStation *station) const;
+  uint8_t GetNumberOfSupportedRxAntennas (const WifiRemoteStation *station) const;
   /**
    * \returns the number of Ness the station has.
    *
@@ -994,14 +984,13 @@ private:
   virtual WifiRemoteStation* DoCreateStation (void) const = 0;
   /**
     * \param station the station that we need to communicate
-    * \param size size of the packet or fragment we want to send
     *
-    * \return the transmission mode to use to send a packet to the station
+    * \return the TXVECTOR to use to send a packet to the station
     *
     * Note: This method is called before sending a unicast packet or a fragment
     *       of a unicast packet to decide which transmission mode to use.
     */
-  virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station, uint32_t size) = 0;
+  virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station) = 0;
   /**
    * \param station the station that we need to communicate
    *
@@ -1284,8 +1273,7 @@ struct WifiRemoteStationState
 
   uint32_t m_channelWidth;    //!< Channel width (in MHz) supported by the remote station
   bool m_shortGuardInterval;  //!< Flag if short guard interval is supported by the remote station
-  uint32_t m_rx;              //!< Number of RX antennas of the remote station
-  uint32_t m_tx;              //!< Number of TX antennas of the remote station
+  uint8_t m_rx;               //!< Number of supported RX streams by the remote station
   uint32_t m_ness;            //!< Number of streams in beamforming of the remote station
   bool m_stbc;                //!< Flag if STBC is supported by the remote station
   bool m_aggregation;         //!< Flag if MPDU aggregation is used by the remote station

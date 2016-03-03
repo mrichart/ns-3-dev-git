@@ -131,14 +131,14 @@ YansWifiPhy::GetTypeId (void)
                    MakeUintegerAccessor (&YansWifiPhy::GetFrequency,
                                          &YansWifiPhy::SetFrequency),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("Transmitters",
-                   "The number of transmitters.",
+    .AddAttribute ("TxAntennas",
+                   "The number of supported Tx antennas.",
                    UintegerValue (1),
                    MakeUintegerAccessor (&YansWifiPhy::GetNumberOfTransmitAntennas,
                                          &YansWifiPhy::SetNumberOfTransmitAntennas),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("Receivers",
-                   "The number of receivers.",
+    .AddAttribute ("RxAntennas",
+                   "The number of supported Rx antennas.",
                    UintegerValue (1),
                    MakeUintegerAccessor (&YansWifiPhy::GetNumberOfReceiveAntennas,
                                          &YansWifiPhy::SetNumberOfReceiveAntennas),
@@ -410,9 +410,9 @@ YansWifiPhy::GetMobility (void)
 }
 
 double
-YansWifiPhy::CalculateSnr (WifiMode txMode, double ber) const
+YansWifiPhy::CalculateSnr (WifiTxVector txVector, double ber) const
 {
-  return m_interference.GetErrorRateModel ()->CalculateSnr (txMode, ber);
+  return m_interference.GetErrorRateModel ()->CalculateSnr (txVector, ber);
 }
 
 Ptr<WifiChannel>
@@ -779,7 +779,9 @@ YansWifiPhy::SendPacket (Ptr<const Packet> packet, WifiTxVector txVector, WifiPr
 void
 YansWifiPhy::SendPacket (Ptr<const Packet> packet, WifiTxVector txVector, WifiPreamble preamble, enum mpduType mpdutype)
 {
-  NS_LOG_FUNCTION (this << packet << txVector.GetMode () << txVector.GetMode ().GetDataRate (txVector.GetChannelWidth (), txVector.IsShortGuardInterval (), 1) << preamble << (uint32_t)txVector.GetTxPowerLevel () << (uint32_t)mpdutype);
+  NS_LOG_FUNCTION (this << packet << txVector.GetMode () 
+    << txVector.GetMode ().GetDataRate (txVector)
+    << preamble << (uint32_t)txVector.GetTxPowerLevel () << (uint32_t)mpdutype);
   /* Transmission can happen if:
    *  - we are syncing on a packet. It is the responsability of the
    *    MAC layer to avoid doing this but the PHY does nothing to
@@ -988,6 +990,39 @@ YansWifiPhy::Configure80211n (void)
   m_deviceMcsSet.push_back (WifiPhy::GetHtMcs5 ());
   m_deviceMcsSet.push_back (WifiPhy::GetHtMcs6 ());
   m_deviceMcsSet.push_back (WifiPhy::GetHtMcs7 ());
+  if (GetNumberOfTransmitAntennas () > 1)
+  {
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs8 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs9 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs10 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs11 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs12 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs13 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs14 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs15 ());
+  }
+  if (GetNumberOfTransmitAntennas () > 2)
+  {
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs16 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs17 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs18 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs19 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs20 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs21 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs22 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs23 ());
+  }
+  if (GetNumberOfTransmitAntennas () > 3)
+  {
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs24 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs25 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs26 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs27 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs28 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs29 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs30 ());
+    m_deviceMcsSet.push_back (WifiPhy::GetHtMcs31 ());
+  }
 
   m_bssMembershipSelectorSet.push_back (HT_PHY);
 }
@@ -1149,7 +1184,7 @@ YansWifiPhy::EndReceive (Ptr<Packet> packet, enum WifiPreamble preamble, enum mp
 
   if (m_plcpSuccess == true)
     {
-      NS_LOG_DEBUG ("mode=" << (event->GetPayloadMode ().GetDataRate (event->GetTxVector ().GetChannelWidth (), event->GetTxVector ().IsShortGuardInterval (), 1)) <<
+      NS_LOG_DEBUG ("mode=" << (event->GetPayloadMode ().GetDataRate (event->GetTxVector ())) <<
                     ", snr(dB)=" << RatioToDb (snrPer.snr) << ", per=" << snrPer.per << ", size=" << packet->GetSize ());
 
       if (m_random->GetValue () > snrPer.per)
@@ -1302,12 +1337,45 @@ YansWifiPhy::SetChannelWidth (uint32_t channelwidth)
 {
   NS_ASSERT_MSG (channelwidth == 5 || channelwidth == 10 || channelwidth == 20 || channelwidth == 22 || channelwidth == 40 || channelwidth == 80 || channelwidth == 160, "wrong channel width value");
   m_channelWidth = channelwidth;
+  AddSupportedChannelWidth (channelwidth);
 }
 
 uint32_t
 YansWifiPhy::GetChannelWidth (void) const
 {
   return m_channelWidth;
+}
+
+uint8_t 
+YansWifiPhy::GetSupportedRxSpatialStreams (void) const
+{
+  return (static_cast<uint8_t> (GetNumberOfReceiveAntennas ()));
+}
+
+uint8_t 
+YansWifiPhy::GetSupportedTxSpatialStreams (void) const
+{
+  return (static_cast<uint8_t> (GetNumberOfTransmitAntennas ()));
+}
+
+void
+YansWifiPhy::AddSupportedChannelWidth (uint32_t width)
+{
+  NS_LOG_FUNCTION (this << width);
+  for (std::vector<uint32_t>::size_type i = 0; i != m_supportedChannelWidthSet.size (); i++)
+    {
+      if (m_supportedChannelWidthSet[i] == width)
+        {
+          return;
+        }
+    }
+  m_supportedChannelWidthSet.push_back (width);
+}
+
+std::vector<uint32_t> 
+YansWifiPhy::GetSupportedChannelWidthSet (void) const
+{
+  return m_supportedChannelWidthSet;
 }
 
 uint32_t

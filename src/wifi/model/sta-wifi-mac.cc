@@ -575,10 +575,11 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
           for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
             {
               WifiMode mode = m_phy->GetMode (i);
-              if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, 1)))
+              uint8_t nss = 1; // Assume 1 spatial stream
+              if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, nss)))
                 {
                   m_stationManager->AddSupportedMode (hdr->GetAddr2 (), mode);
-                  if (rates.IsBasicRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, 1)))
+                  if (rates.IsBasicRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, nss)))
                     {
                       m_stationManager->AddBasicMode (mode);
                     }
@@ -664,7 +665,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                 {
                   HtCapabilities htcapabilities = assocResp.GetHtCapabilities ();
                   HtOperations htOperations = assocResp.GetHtOperations ();
-                  m_stationManager->AddStationHtCapabilities (hdr->GetAddr2 (),htcapabilities);
+                  m_stationManager->AddStationHtCapabilities (hdr->GetAddr2 (), htcapabilities);
                 }
               if (m_vhtSupported)
                 {
@@ -675,10 +676,11 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
                 {
                   WifiMode mode = m_phy->GetMode (i);
-                  if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, 1)))
+                  uint8_t nss = 1; // Assume 1 spatial stream
+                  if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, nss)))
                     {
                       m_stationManager->AddSupportedMode (hdr->GetAddr2 (), mode);
-                      if (rates.IsBasicRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, 1)))
+                      if (rates.IsBasicRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, nss)))
                         {
                           m_stationManager->AddBasicMode (mode);
                         }
@@ -734,6 +736,7 @@ SupportedRates
 StaWifiMac::GetSupportedRates (void) const
 {
   SupportedRates rates;
+  uint8_t nss = 1;  // Number of spatial streams is 1 for non-MIMO modes
   if (m_htSupported || m_vhtSupported)
     {
       for (uint32_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
@@ -744,7 +747,9 @@ StaWifiMac::GetSupportedRates (void) const
   for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
     {
       WifiMode mode = m_phy->GetMode (i);
-      rates.AddSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth (), false, 1));
+      uint64_t modeDataRate = mode.GetDataRate (m_phy->GetChannelWidth (), false, nss);
+      NS_LOG_DEBUG ("Adding supported rate of " << modeDataRate);
+      rates.AddSupportedRate (modeDataRate);
     }
   return rates;
 }
@@ -755,75 +760,6 @@ StaWifiMac::GetCapabilities (void) const
   CapabilityInformation capabilities;
   capabilities.SetShortPreamble (m_phy->GetShortPlcpPreambleSupported () || m_erpSupported);
   capabilities.SetShortSlotTime (GetShortSlotTimeSupported () && m_erpSupported);
-  return capabilities;
-}
-
-HtCapabilities
-StaWifiMac::GetHtCapabilities (void) const
-{
-  HtCapabilities capabilities;
-  capabilities.SetHtSupported (1);
-  if (m_htSupported)
-    {
-      capabilities.SetLdpc (m_phy->GetLdpc ());
-      capabilities.SetSupportedChannelWidth (m_phy->GetChannelWidth () == 40);
-      capabilities.SetShortGuardInterval20 (m_phy->GetGuardInterval ());
-      capabilities.SetShortGuardInterval40 (m_phy->GetChannelWidth () == 40 && m_phy->GetGuardInterval ());
-      capabilities.SetGreenfield (m_phy->GetGreenfield ());
-      capabilities.SetMaxAmsduLength (1); //hardcoded for now (TBD)
-      capabilities.SetLSigProtectionSupport (!m_phy->GetGreenfield ());
-      capabilities.SetMaxAmpduLength (3); //hardcoded for now (TBD)
-      uint64_t maxSupportedRate = 0; //in bit/s
-      for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
-        {
-          WifiMode mcs = m_phy->GetMcs (i);
-          capabilities.SetRxMcsBitmask (mcs.GetMcsValue ());
-          if ((mcs.GetModulationClass () == WIFI_MOD_CLASS_HT)
-              && (mcs.GetDataRate (m_phy->GetChannelWidth (), m_phy->GetGuardInterval (), 1) > maxSupportedRate))
-            {
-              maxSupportedRate = mcs.GetDataRate (m_phy->GetChannelWidth (), m_phy->GetGuardInterval (), 1);
-            }
-        }
-      capabilities.SetRxHighestSupportedDataRate (maxSupportedRate / 1e6); //in Mbit/s
-      capabilities.SetTxMcsSetDefined (m_phy->GetNMcs () > 0);
-      capabilities.SetTxMaxNSpatialStreams (m_phy->GetNumberOfTransmitAntennas ());
-    }
-  return capabilities;
-}
-
-VhtCapabilities
-StaWifiMac::GetVhtCapabilities (void) const
-{
-  VhtCapabilities capabilities;
-  capabilities.SetVhtSupported (1);
-  if (m_vhtSupported)
-    {
-      if (m_phy->GetChannelWidth () == 160)
-        {
-          capabilities.SetSupportedChannelWidthSet (1);
-        }
-      else
-        {
-          capabilities.SetSupportedChannelWidthSet (0);
-        }
-      capabilities.SetMaxMpduLength (2); //hardcoded for now (TBD)
-      capabilities.SetRxLdpc (m_phy->GetLdpc ());
-      capabilities.SetShortGuardIntervalFor80Mhz ((m_phy->GetChannelWidth () == 80) && m_phy->GetGuardInterval ());
-      capabilities.SetShortGuardIntervalFor160Mhz ((m_phy->GetChannelWidth () == 160) && m_phy->GetGuardInterval ());
-      capabilities.SetMaxAmpduLengthExponent (7); //hardcoded for now (TBD)
-      uint8_t maxMcs = 0;
-      for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
-        {
-          WifiMode mcs = m_phy->GetMcs (i);
-          if ((mcs.GetModulationClass () == WIFI_MOD_CLASS_VHT)
-              && (mcs.GetMcsValue () > maxMcs))
-            {
-              maxMcs = mcs.GetMcsValue ();
-            }
-        }
-      capabilities.SetRxMcsMap (maxMcs, 1); //Only 1 SS is currently supported
-      capabilities.SetTxMcsMap (maxMcs, 1); //Only 1 SS is currently supported
-    }
   return capabilities;
 }
 

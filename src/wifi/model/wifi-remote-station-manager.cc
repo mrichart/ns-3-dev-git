@@ -678,17 +678,16 @@ WifiRemoteStationManager::RecordDisassociated (Mac48Address address)
 }
 
 void
-WifiRemoteStationManager::PrepareForQueue (Mac48Address address, const WifiMacHeader *header,
-                                           Ptr<const Packet> packet, uint32_t fullPacketSize)
+WifiRemoteStationManager::PrepareForQueue (Mac48Address address, const WifiMacHeader *header, Ptr<const Packet> packet)
 {
-  NS_LOG_FUNCTION (this << address << *header << packet << fullPacketSize);
+  NS_LOG_FUNCTION (this << address << *header << packet);
   if (IsLowLatency () || address.IsGroup ())
     {
       return;
     }
   WifiRemoteStation *station = Lookup (address, header);
   WifiTxVector rts = DoGetRtsTxVector (station);
-  WifiTxVector data = DoGetDataTxVector (station, fullPacketSize);
+  WifiTxVector data = DoGetDataTxVector (station);
   WifiTxVector ctstoself = DoGetCtsToSelfTxVector ();
   HighLatencyDataTxVectorTag datatag;
   HighLatencyRtsTxVectorTag rtstag;
@@ -707,10 +706,9 @@ WifiRemoteStationManager::PrepareForQueue (Mac48Address address, const WifiMacHe
 }
 
 WifiTxVector
-WifiRemoteStationManager::GetDataTxVector (Mac48Address address, const WifiMacHeader *header,
-                                           Ptr<const Packet> packet, uint32_t fullPacketSize)
+WifiRemoteStationManager::GetDataTxVector (Mac48Address address, const WifiMacHeader *header, Ptr<const Packet> packet)
 {
-  NS_LOG_FUNCTION (this << address << *header << packet << fullPacketSize);
+  NS_LOG_FUNCTION (this << address << *header << packet);
   if (address.IsGroup ())
     {
       WifiTxVector v;
@@ -734,7 +732,7 @@ WifiRemoteStationManager::GetDataTxVector (Mac48Address address, const WifiMacHe
       (void) found;
       return datatag.GetDataTxVector ();
     }
-  return DoGetDataTxVector (Lookup (address, header), fullPacketSize);
+  return DoGetDataTxVector (Lookup (address, header));
 }
 
 WifiTxVector
@@ -1129,12 +1127,13 @@ WifiRemoteStationManager::GetControlAnswerMode (Mac48Address address, WifiMode r
   NS_LOG_FUNCTION (this << address << reqMode);
   WifiMode mode = GetDefaultMode ();
   bool found = false;
+  uint8_t nss = 1;  // Use one spatial stream for control response
   //First, search the BSS Basic Rate set
   for (WifiModeListIterator i = m_bssBasicRateSet.begin (); i != m_bssBasicRateSet.end (); i++)
     {
-      if ((!found || i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
-          && (i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
-          && (i->GetConstellationSize (1) <= reqMode.GetConstellationSize (1))
+      if ((!found || i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
+          && (i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
+          && (i->GetConstellationSize (nss) <= reqMode.GetConstellationSize (nss))
           && ((i->GetModulationClass () == reqMode.GetModulationClass ())
               || (reqMode.GetModulationClass () == WIFI_MOD_CLASS_HT)
               || (reqMode.GetModulationClass () == WIFI_MOD_CLASS_VHT)))
@@ -1147,6 +1146,7 @@ WifiRemoteStationManager::GetControlAnswerMode (Mac48Address address, WifiMode r
           found = true;
         }
     }
+  nss = 1;  // Continue the assumption that MIMO not used for control response
   if (HasHtSupported () || HasVhtSupported ())
     {
       if (!found)
@@ -1154,8 +1154,8 @@ WifiRemoteStationManager::GetControlAnswerMode (Mac48Address address, WifiMode r
           mode = GetDefaultMcs ();
           for (WifiModeListIterator i = m_bssBasicMcsSet.begin (); i != m_bssBasicMcsSet.end (); i++)
             {
-              if ((!found || i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
-                  && i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
+              if ((!found || i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
+                  && i->GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
               //&& thismode.GetModulationClass () == reqMode.GetModulationClass ()) //TODO: check standard
                 {
                   mode = *i;
@@ -1192,6 +1192,7 @@ WifiRemoteStationManager::GetControlAnswerMode (Mac48Address address, WifiMode r
    * \todo Note that we're ignoring the last sentence for now, because
    * there is not yet any manipulation here of PHY options.
    */
+  nss = 1;  // Continue the assumption that MIMO not used for control response
   for (uint32_t idx = 0; idx < m_wifiPhy->GetNModes (); idx++)
     {
       WifiMode thismode = m_wifiPhy->GetMode (idx);
@@ -1206,9 +1207,9 @@ WifiRemoteStationManager::GetControlAnswerMode (Mac48Address address, WifiMode r
        * ...then it's our best choice so far.
        */
       if (thismode.IsMandatory ()
-          && (!found || thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
-          && (thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
-          && (thismode.GetConstellationSize (1) <= reqMode.GetConstellationSize (1))
+          && (!found || thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
+          && (thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
+          && (thismode.GetConstellationSize (nss) <= reqMode.GetConstellationSize (nss))
           && ((thismode.GetModulationClass () == reqMode.GetModulationClass ())
               || (reqMode.GetModulationClass () == WIFI_MOD_CLASS_HT)
               || (reqMode.GetModulationClass () == WIFI_MOD_CLASS_HT)))
@@ -1221,14 +1222,15 @@ WifiRemoteStationManager::GetControlAnswerMode (Mac48Address address, WifiMode r
           found = true;
         }
     }
+  nss = 1;  // Continue the assumption that MIMO not used for control response
   if (HasHtSupported () || HasVhtSupported ())
     {
       for (uint32_t idx = 0; idx < m_wifiPhy->GetNMcs (); idx++)
         {
           WifiMode thismode = m_wifiPhy->GetMcs (idx);
           if (thismode.IsMandatory ()
-              && (!found || thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
-              && thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, 1))
+              && (!found || thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) > mode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
+              && thismode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss) <= reqMode.GetPhyRate (m_wifiPhy->GetChannelWidth (), 0, nss))
               //&& thismode.GetModulationClass () == reqMode.GetModulationClass ()) //TODO: check standard
             {
               mode = thismode;
@@ -1447,7 +1449,6 @@ WifiRemoteStationManager::LookupState (Mac48Address address) const
   state->m_shortGuardInterval = m_wifiPhy->GetGuardInterval ();
   state->m_greenfield = m_wifiPhy->GetGreenfield ();
   state->m_rx = 1;
-  state->m_tx = 1;
   state->m_ness = 0;
   state->m_aggregation = false;
   state->m_stbc = false;
@@ -1514,6 +1515,7 @@ WifiRemoteStationManager::AddStationHtCapabilities (Mac48Address from, HtCapabil
     }
   state->m_htSupported = true;
   state->m_greenfield = htCapabilities.GetGreenfield ();
+  state->m_rx = htCapabilities.GetRxHighestSupportedAntennas ();
 }
 
 void
@@ -1791,16 +1793,10 @@ WifiRemoteStationManager::GetStbc (const WifiRemoteStation *station) const
   return station->m_state->m_stbc;
 }
 
-uint32_t
-WifiRemoteStationManager::GetNumberOfReceiveAntennas (const WifiRemoteStation *station) const
+uint8_t
+WifiRemoteStationManager::GetNumberOfSupportedRxAntennas (const WifiRemoteStation *station) const
 {
   return station->m_state->m_rx;
-}
-
-uint32_t
-WifiRemoteStationManager::GetNumberOfTransmitAntennas (const WifiRemoteStation *station) const
-{
-  return station->m_state->m_tx;
 }
 
 uint32_t

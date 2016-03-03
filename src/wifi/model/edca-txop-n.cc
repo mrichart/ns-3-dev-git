@@ -742,9 +742,7 @@ EdcaTxopN::Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
   WifiMacTrailer fcs;
-  uint32_t fullPacketSize = hdr.GetSerializedSize () + packet->GetSize () + fcs.GetSerializedSize ();
-  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr,
-                                     packet, fullPacketSize);
+  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
   m_queue->Enqueue (packet, hdr);
   StartAccessIfNeeded ();
 }
@@ -1201,9 +1199,7 @@ EdcaTxopN::PushFront (Ptr<const Packet> packet, const WifiMacHeader &hdr)
 {
   NS_LOG_FUNCTION (this << packet << &hdr);
   WifiMacTrailer fcs;
-  uint32_t fullPacketSize = hdr.GetSerializedSize () + packet->GetSize () + fcs.GetSerializedSize ();
-  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr,
-                                     packet, fullPacketSize);
+  m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
   m_queue->PushFront (packet, hdr);
   StartAccessIfNeeded ();
 }

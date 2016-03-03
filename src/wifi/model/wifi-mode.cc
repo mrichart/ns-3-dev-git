@@ -20,6 +20,7 @@
  */
 
 #include "wifi-mode.h"
+#include "wifi-tx-vector.h"
 #include "ns3/simulator.h"
 #include "ns3/assert.h"
 #include "ns3/log.h"
@@ -97,22 +98,23 @@ WifiMode::GetPhyRate (uint32_t channelWidth, bool isShortGuardInterval, uint8_t 
 }
 
 uint64_t
+WifiMode::GetPhyRate (WifiTxVector txVector) const
+{
+  return GetPhyRate (txVector.GetChannelWidth (), txVector.IsShortGuardInterval (), txVector.GetNss ());
+}
+
+uint64_t
 WifiMode::GetDataRate (uint32_t channelWidth, bool isShortGuardInterval, uint8_t nss) const
 {
   struct WifiModeFactory::WifiModeItem *item = WifiModeFactory::GetFactory ()->Get (m_uid);
   uint64_t dataRate = 0;
-  if (nss > 1)
-    {
-      NS_FATAL_ERROR ("MIMO is not supported");
-      return 0;
-    }
   if (item->modClass == WIFI_MOD_CLASS_DSSS)
     {
-      dataRate = (11000000 / 11) * log2 (GetConstellationSize (1));
+      dataRate = (11000000 / 11) * log2 (GetConstellationSize (nss));
     }
   else if (item->modClass == WIFI_MOD_CLASS_HR_DSSS)
     {
-      dataRate = (11000000 / 8) * log2 (GetConstellationSize (1));
+      dataRate = (11000000 / 8) * log2 (GetConstellationSize (nss));
     }
   else if (item->modClass == WIFI_MOD_CLASS_OFDM || item->modClass == WIFI_MOD_CLASS_ERP_OFDM)
     {
@@ -134,7 +136,7 @@ WifiMode::GetDataRate (uint32_t channelWidth, bool isShortGuardInterval, uint8_t
         }
 
       double codingRate;
-      switch (GetCodeRate (1))
+      switch (GetCodeRate (nss))
         {
         case WIFI_CODE_RATE_3_4:
           codingRate = (3.0 / 4.0);
@@ -151,18 +153,22 @@ WifiMode::GetDataRate (uint32_t channelWidth, bool isShortGuardInterval, uint8_t
           break;
         }
 
-      uint32_t numberOfBitsPerSubcarrier = log2 (GetConstellationSize (1));
+      uint32_t numberOfBitsPerSubcarrier = log2 (GetConstellationSize (nss));
 
       dataRate = lrint (ceil (symbolRate * usableSubCarriers * numberOfBitsPerSubcarrier * codingRate));
     }
   else if (item->modClass == WIFI_MOD_CLASS_HT || item->modClass == WIFI_MOD_CLASS_VHT)
     {
-      if (item->mcsValue == 9)
+      if (item->modClass == WIFI_MOD_CLASS_VHT && item->mcsValue == 9 && nss != 3)
         {
-          //VHT MCS 9 forbidden at 20 MHz
+          //VHT MCS 9 forbidden at 20 MHz (only allowed when NSS = 3)
           NS_ASSERT (channelWidth != 20);
         }
-
+      if (item->modClass == WIFI_MOD_CLASS_VHT && item->mcsValue == 6 && nss == 3)
+        {
+          //VHT MCS 6 forbidden at 80 MHz when NSS = 3
+          NS_ASSERT (channelWidth != 80);
+        }
       double symbolRate;
       if (!isShortGuardInterval)
         {
@@ -208,7 +214,7 @@ WifiMode::GetDataRate (uint32_t channelWidth, bool isShortGuardInterval, uint8_t
           break;
         case WIFI_CODE_RATE_UNDEFINED:
         default:
-          NS_FATAL_ERROR ("trying to get datarate for a mcs without any coding rate defined");
+          NS_FATAL_ERROR ("trying to get datarate for a mcs without any coding rate defined with nss: " << (uint16_t) nss);
           break;
         }
 
@@ -220,7 +226,14 @@ WifiMode::GetDataRate (uint32_t channelWidth, bool isShortGuardInterval, uint8_t
     {
       NS_ASSERT ("undefined datarate for the modulation class!");
     }
+  dataRate *= nss; // number of spatial streams
   return dataRate;
+}
+
+uint64_t
+WifiMode::GetDataRate (WifiTxVector txVector) const
+{
+  return GetDataRate (txVector.GetChannelWidth (), txVector.IsShortGuardInterval (), txVector.GetNss ());
 }
 
 enum WifiCodeRate
@@ -230,8 +243,7 @@ WifiMode::GetCodeRate (uint8_t nss) const
   if (item->modClass == WIFI_MOD_CLASS_HT)
     {
       NS_ASSERT (nss <= 4);
-      NS_ASSERT ((item->mcsValue - (8 * (nss - 1))) >= 0 || (item->mcsValue - (8 * (nss - 1))) <= 7);
-      switch (item->mcsValue - (8 * (nss - 1)))
+      switch (item->mcsValue % 8)
         {
         case 0:
         case 1:
@@ -286,7 +298,7 @@ WifiMode::GetConstellationSize (uint8_t nss) const
     {
       NS_ASSERT (nss <= 4);
       NS_ASSERT ((item->mcsValue - (8 * (nss - 1))) >= 0 || (item->mcsValue - (8 * (nss - 1))) <= 7);
-      switch (item->mcsValue - (8 * (nss - 1)))
+      switch (item->mcsValue % 8)
         {
         case 0:
           return 2;
