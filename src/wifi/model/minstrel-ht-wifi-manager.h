@@ -87,22 +87,25 @@ struct HtRateInfo
   uint32_t adjustedRetryCount;  //!< Adjust the retry limit for this rate.
   uint32_t numRateAttempt;      //!< Number of transmission attempts so far.
   uint32_t numRateSuccess;      //!< Number of successful frames transmitted so far.
-  double prob;                //!< (# frame success )/(# total frames)
+  double prob;                  //!< Current probability within last time interval. (# frame success )/(# total frames)
 
   bool retryUpdated;            //!< If number of retries was updated already.
 
   /**
-   * EWMA calculation
+   * Exponential weighted moving average of probability.
+   * EWMA calculation:
    * ewma_prob =[prob *(100 - ewma_level) + (ewma_prob_old * ewma_level)]/100
    */
   double ewmaProb;
+
+  double ewmsdProb;                //!< Exponential weighted moving standard deviation of probability.
 
   uint32_t prevNumRateAttempt;  //!< Number of transmission attempts with previous rate.
   uint32_t prevNumRateSuccess;  //!< Number of successful frames transmitted with previous rate.
   uint32_t numSamplesSkipped;   //!< Number of times this rate statistics were not updated because no attempts have been made.
   uint64_t successHist;         //!< Aggregate of all transmission successes.
   uint64_t attemptHist;         //!< Aggregate of all transmission attempts.
-  double throughput;          //!< Throughput of this rate.
+  double throughput;            //!< Throughput of this rate (in pkts per second).
 };
 
 /**
@@ -237,7 +240,7 @@ private:
   void UpdateRetry (MinstrelHtWifiRemoteStation *station);
 
   /// Update the number of sample count variables.
-  void UpdateSampleCounts (MinstrelHtWifiRemoteStation *station);
+  void UpdateSampleCounts (MinstrelHtWifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
 
   /// Getting the next sample from Sample Table.
   uint32_t GetNextSample (MinstrelHtWifiRemoteStation *station);
@@ -282,17 +285,22 @@ private:
    */
   Time CalculateTimeUnicastPacket (Time dataTransmissionTime, uint32_t shortRetries, uint32_t longRetries);
 
+  /*
+   * Perform EWMSD (Exponentially Weighted Moving Standard Deviation) calculation
+   */
+  double CalculateEwmsd(double oldEwmsd, double currentProb, double ewmaProb, uint32_t weight);
+
   /// Initialize Sample Table.
   void InitSampleTable (MinstrelHtWifiRemoteStation *station);
 
   /// Printing Sample Table.
-  void PrintSampleTable (MinstrelHtWifiRemoteStation *station, std::ostream &os);
+  void PrintSampleTable (MinstrelHtWifiRemoteStation *station);
 
   /// Printing Minstrel Table.
-  void PrintTable (MinstrelHtWifiRemoteStation *station, std::ostream &os);
+  void PrintTable (MinstrelHtWifiRemoteStation *station);
 
   /// Print group statistics.
-  void StatsDump (MinstrelHtWifiRemoteStation *station, uint32_t index, std::ostream &os);
+  void StatsDump (MinstrelHtWifiRemoteStation *station, uint32_t index, std::ofstream &of);
 
   /// Check for initializations.
   void CheckInit (MinstrelHtWifiRemoteStation *station);
@@ -337,6 +345,10 @@ private:
   uint8_t m_maxChWidth;        //!< Number of rates per group Minstrel should consider.
 
   bool m_useVhtOnly;           //!< If only VHT MCS should be used, instead of HT and VHT.
+
+  bool m_printStats;           //!< If statistics table should be printed.
+  std::string m_statsFileName; //!< File name where to print the stats.
+
 
   MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.
 
