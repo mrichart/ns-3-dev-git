@@ -107,7 +107,6 @@ ChangeSignalAndReportRate (Ptr<FixedRssLossModel> rssModel, struct Step step, do
 }
 int main (int argc, char *argv[])
 {
-  std::ofstream outfile ("minstrel-ht-wifi-manager.plt");
   std::vector <StandardInfo> standards;
   int steps;
   uint32_t rtsThreshold = 65535;
@@ -123,6 +122,7 @@ int main (int argc, char *argv[])
   uint32_t channelWidth = 20;
   std::string wifiStandard ("802.11b");
   StandardInfo selectedStandard;
+  std::string outfileName ("minstrel-ht-");
 
   CommandLine cmd;
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
@@ -134,7 +134,10 @@ int main (int argc, char *argv[])
   cmd.AddValue ("wifiStandard", "Set standard (802.11a, 802.11b, 802.11g, 802.11n-5GHz, 802.11n-2.4GHz, 802.11ac)", wifiStandard);
   cmd.Parse (argc, argv);
 
-  Gnuplot gnuplot = Gnuplot ("minstrel-ht-wifi-manager.eps");
+  outfileName.append(wifiStandard);
+  std::string tmp = outfileName + ".plt";
+  std::ofstream outfile (tmp.c_str());
+  Gnuplot gnuplot = Gnuplot (outfileName + ".eps");
 
   // The first number is channel width, second is minimum SNR, third is maximum
   // SNR, fourth and fifth provide xrange axis limits, and sixth the yaxis
@@ -186,7 +189,7 @@ int main (int argc, char *argv[])
   wifiPhy.SetChannel (wifiChannel);
   wifiPhy.Set("ShortGuardEnabled", BooleanValue(selectedStandard.m_sgi));
 
-  wifi.SetRemoteStationManager ("ns3::MinstrelHtWifiManager", "RtsCtsThreshold", UintegerValue (rtsThreshold));
+  wifi.SetRemoteStationManager ("ns3::MinstrelHtWifiManager", "RtsCtsThreshold", UintegerValue (rtsThreshold), "PrintStats", BooleanValue(true));
 
   // Use Adhoc so we don't get into association issues
   NetDeviceContainer serverDevice;
