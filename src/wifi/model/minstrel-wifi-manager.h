@@ -25,6 +25,7 @@
 #include "wifi-mode.h"
 #include "ns3/nstime.h"
 #include "ns3/random-variable-stream.h"
+#include <fstream>
 
 namespace ns3 {
 
@@ -44,14 +45,17 @@ struct RateInfo
   uint32_t numRateAttempt;      ///< how many number of attempts so far
   uint32_t numRateSuccess;      ///< number of successful pkts
   uint32_t prob;                ///< (# pkts success )/(# total pkts)
-
   /**
    * EWMA calculation
    * ewma_prob =[prob *(100 - ewma_level) + (ewma_prob_old * ewma_level)]/100
    */
   uint32_t ewmaProb;
-
   uint32_t throughput;  ///< throughput of a rate
+
+  uint32_t prevNumRateAttempt;  //!< Number of transmission attempts with previous rate.
+  uint32_t prevNumRateSuccess;  //!< Number of successful frames transmitted with previous rate.
+  uint64_t successHist;         //!< Aggregate of all transmission successes.
+  uint64_t attemptHist;         //!< Aggregate of all transmission attempts.
 };
 
 /**
@@ -98,6 +102,7 @@ struct MinstrelWifiRemoteStation : public WifiRemoteStation
   bool m_initialized;            ///< for initializing tables
   MinstrelRate m_minstrelTable;  ///< minstrel table
   SampleRate m_sampleTable;      ///< sample table
+  std::ofstream m_statsFile;
 };
 
 
@@ -229,6 +234,7 @@ private:
   uint32_t m_sampleCol;     ///< number of sample columns
   uint32_t m_pktLen;        ///< packet length used for calculate mode TxTime
   uint32_t m_nsupported;    ///< modes supported
+  bool m_printStats;        ///< If statistics table should be printed.
 
   //Provides uniform random variables.
   Ptr<UniformRandomVariable> m_uniformRandomVariable;

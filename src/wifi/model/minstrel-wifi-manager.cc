@@ -34,9 +34,11 @@
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
+#include "ns3/boolean.h"
 #include "ns3/wifi-mac.h"
 #include "ns3/assert.h"
 #include <vector>
+#include <iomanip>
 
 #define Min(a,b) ((a < b) ? a : b)
 
@@ -78,6 +80,11 @@ MinstrelWifiManager::GetTypeId (void)
                    UintegerValue (1200),
                    MakeUintegerAccessor (&MinstrelWifiManager::m_pktLen),
                    MakeUintegerChecker <uint32_t> ())
+    .AddAttribute ("PrintStats",
+                   "Print statistics table",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&MinstrelWifiManager::m_printStats),
+                   MakeBooleanChecker ())
   ;
   return tid;
 }
@@ -187,9 +194,9 @@ MinstrelWifiManager::CheckInit (MinstrelWifiRemoteStation *station)
       InitSampleTable (station);
       RateInit (station);
       station->m_initialized = true;
-
-      PrintTable (station);
-      PrintSampleTable (station);
+      std::ostringstream tmp;
+      tmp << "minstrel-stats-" << station->m_state->m_address << ".txt";
+      station->m_statsFile.open (tmp.str ().c_str (), std::ios::out);
     }
 }
 
@@ -199,8 +206,6 @@ MinstrelWifiManager::UpdateRate(MinstrelWifiRemoteStation *station)
   NS_LOG_FUNCTION (this << station);
   station->m_longRetry++;
   station->m_minstrelTable[station->m_txrate].numRateAttempt++;
-
-  PrintTable (station);
 
   NS_LOG_DEBUG ("DoReportDataFailed " << station << " rate " << station->m_txrate << " longRetry " << station->m_longRetry);
 
@@ -533,6 +538,10 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
         }
 
       //bookeeping
+      station->m_minstrelTable[i].successHist += station->m_minstrelTable[i].numRateSuccess;
+      station->m_minstrelTable[i].attemptHist += station->m_minstrelTable[i].numRateAttempt;
+      station->m_minstrelTable[i].prevNumRateSuccess = station->m_minstrelTable[i].numRateSuccess;
+      station->m_minstrelTable[i].prevNumRateAttempt = station->m_minstrelTable[i].numRateAttempt;
       station->m_minstrelTable[i].numRateSuccess = 0;
       station->m_minstrelTable[i].numRateAttempt = 0;
 
@@ -617,6 +626,8 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
   NS_LOG_DEBUG ("max throughput=" << index_max_tp << "(" << GetSupported (station, index_max_tp) <<
                 ")\tsecond max throughput=" << index_max_tp2 << "(" << GetSupported (station, index_max_tp2) <<
                 ")\tmax prob=" << index_max_prob << "(" << GetSupported (station, index_max_prob) << ")");
+  if (m_printStats)
+    PrintTable(station);
 }
 
 void
@@ -932,12 +943,65 @@ MinstrelWifiManager::PrintSampleTable (MinstrelWifiRemoteStation *station)
 void
 MinstrelWifiManager::PrintTable (MinstrelWifiRemoteStation *station)
 {
+  NS_LOG_FUNCTION (this << station);
   NS_LOG_DEBUG ("PrintTable=" << station);
+
+  station->m_statsFile << "best   _______________rate________________    ________statistics________    ________last_______    ______sum-of________\n" <<
+                          "rate  [      name       idx airtime max_tp]  [avg(tp) avg(prob) sd(prob)]  [prob.|retry|suc|att]  [#success | #attempts]\n";
+
+  uint32_t maxTpRate = station->m_maxTpRate;
+  uint32_t maxTpRate2 = station->m_maxTpRate2;
+  uint32_t maxProbRate = station->m_maxProbRate;
 
   for (uint32_t i = 0; i < station->m_nModes; i++)
     {
-      NS_LOG_DEBUG (i << " (" << GetSupported (station, i) << "): "  << station->m_minstrelTable[i].perfectTxTime << ", retryCount = " << station->m_minstrelTable[i].retryCount << ", adjustedRetryCount = " << station->m_minstrelTable[i].adjustedRetryCount);
+      RateInfo rate = station->m_minstrelTable[i];
+
+      if (i == maxTpRate)
+        {
+          station->m_statsFile << 'A';
+        }
+      else
+        {
+          station->m_statsFile << ' ';
+        }
+      if (i == maxTpRate2)
+        {
+          station->m_statsFile << 'B';
+        }
+      else
+        {
+          station->m_statsFile << ' ';
+        }
+      if (i == maxProbRate)
+        {
+          station->m_statsFile << 'P';
+        }
+      else
+        {
+          station->m_statsFile << ' ';
+        }
+
+      float tmpTh = rate.throughput / 100000.0;
+      station->m_statsFile << "   " <<
+          std::setw(17) << GetSupported(station, i) << "  " <<
+          std::setw(2) << i << "  " <<
+          std::setw(4) << rate.perfectTxTime.GetMicroSeconds() <<
+          std::setw(8) << "    -----    " <<
+          std::setw(8) << tmpTh << "    " <<
+          std::setw(3) << rate.ewmaProb / 180 <<
+          std::setw(3) << "       ---      " <<
+          std::setw(3) << rate.prob / 180 << "     " <<
+          std::setw(1) << rate.adjustedRetryCount << "   " <<
+          std::setw(3) << rate.prevNumRateSuccess << " " <<
+          std::setw(3) << rate.prevNumRateAttempt << "   " <<
+          std::setw(9) << rate.successHist << "   " <<
+          std::setw(9) << rate.attemptHist << "\n";
     }
+  station->m_statsFile << "\nTotal packet count:    ideal " << station->m_totalPacketsCount - station->m_samplePacketsCount
+      << "      lookaround " << station->m_samplePacketsCount << "\n\n";
+
+  station->m_statsFile.flush ();
 }
 
 } //namespace ns3
