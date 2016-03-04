@@ -347,7 +347,6 @@ private:
   bool m_useVhtOnly;           //!< If only VHT MCS should be used, instead of HT and VHT.
 
   bool m_printStats;           //!< If statistics table should be printed.
-  std::string m_statsFileName; //!< File name where to print the stats.
 
 
   MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.

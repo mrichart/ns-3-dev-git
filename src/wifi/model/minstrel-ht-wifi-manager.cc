@@ -140,11 +140,6 @@ MinstrelHtWifiManager::GetTypeId (void)
                    BooleanValue (false),
                    MakeBooleanAccessor (&MinstrelHtWifiManager::m_printStats),
                    MakeBooleanChecker ())
-    .AddAttribute ("PrintStatsFile",
-                   "File name where to print the statistics table",
-                   StringValue ("minstrel-ht-stats.txt"),
-                   MakeStringAccessor (&MinstrelHtWifiManager::m_statsFileName),
-                   MakeStringChecker ())
     .AddTraceSource ("RateChange",
                      "The transmission rate has change",
                      MakeTraceSourceAccessor (&MinstrelHtWifiManager::m_rateChange),
@@ -439,6 +434,7 @@ MinstrelHtWifiManager::CheckInit (MinstrelHtWifiRemoteStation *station)
           m_legacyManager->SetAttribute ("EWMA", DoubleValue (m_ewmaLevel));
           m_legacyManager->SetAttribute ("SampleColumn", UintegerValue (m_nSampleCol));
           m_legacyManager->SetAttribute ("PacketLength", UintegerValue (m_frameLength));
+          m_legacyManager->SetAttribute ("PrintStats", BooleanValue (m_printStats));
           m_legacyManager->CheckInit (station);
         }
       else
