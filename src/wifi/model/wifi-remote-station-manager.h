@@ -409,8 +409,6 @@ public:
    */
   void AddAllSupportedMcs (Mac48Address address);
   /**
-
-  /**
    * Record whether the short PLCP preamble is supported by the station.
    *
    * \param address the address of the station

@@ -751,10 +751,9 @@ MinstrelWifiManager::UpdateRetry (MinstrelWifiRemoteStation *station)
 }
 
 WifiTxVector
-MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
-                                        uint32_t size)
+MinstrelWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
 {
-  NS_LOG_FUNCTION (this << st << size);
+  NS_LOG_FUNCTION (this << st);
   MinstrelWifiRemoteStation *station = (MinstrelWifiRemoteStation *) st;
   return GetDataTxVector(station);
 }
