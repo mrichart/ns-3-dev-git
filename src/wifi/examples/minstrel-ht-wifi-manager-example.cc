@@ -151,6 +151,9 @@ int main (int argc, char *argv[])
   standards.push_back (StandardInfo ("802.11n-5GHz-40MHz-SGI", WIFI_PHY_STANDARD_80211n_5GHZ, 40, true, 5, 30, 0, 35, 80));
   standards.push_back (StandardInfo ("802.11n-2.4GHz", WIFI_PHY_STANDARD_80211n_2_4GHZ, 20, false, 5, 30, 0, 35, 80));
   standards.push_back (StandardInfo ("802.11ac", WIFI_PHY_STANDARD_80211ac, 20, false, 5, 30, 0, 35, 80));
+  standards.push_back (StandardInfo ("802.11ac-40MHz", WIFI_PHY_STANDARD_80211ac, 40, false, 5, 30, 0, 35, 80));
+  standards.push_back (StandardInfo ("802.11ac-80MHz", WIFI_PHY_STANDARD_80211ac, 80, false, 5, 30, 0, 35, 80));
+  standards.push_back (StandardInfo ("802.11ac-160MHz", WIFI_PHY_STANDARD_80211ac, 160, false, 5, 30, 0, 35, 80));
 #ifdef NOTYET
   standards.push_back (StandardInfo ("802.11n-2.4GHz", WIFI_PHY_STANDARD_80211n_2_4GHZ, 5, 27));
   standards.push_back (WIFI_PHY_STANDARD_80211_10MHZ);
@@ -216,7 +219,7 @@ int main (int argc, char *argv[])
   mobility.Install (clientNode);
   mobility.Install (serverNode);
 
-  Gnuplot2dDataset rateDataset (selectedStandard.m_name + std::string ("-rate selected (average)"));
+  Gnuplot2dDataset rateDataset (selectedStandard.m_name + std::string ("-rate selected"));
   Gnuplot2dDataset actualDataset (selectedStandard.m_name + std::string ("-observed"));
   struct Step step;
   step.stepSize = stepSize;
