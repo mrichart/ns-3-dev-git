@@ -373,7 +373,7 @@ MinstrelHtWifiManager::DoCreateStation (void) const
   station->m_samplePacketsCount = 0;
   station->m_isSampling = false;
   station->m_sampleRate = 0;
-  station->m_sampleRateSlower = false;
+  station->m_sampleDeferred = false;
   station->m_shortRetry = 0;
   station->m_longRetry = 0;
   station->m_txrate = 0;
@@ -517,14 +517,6 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       return;
     }
 
-  station->m_totalPacketsCount++;
-
-  if (station->m_totalPacketsCount == ~0)
-    {
-      station->m_samplePacketsCount = 0;
-      station->m_totalPacketsCount = 0;
-    }
-
   if (!station->m_isHt)
     {
       m_legacyManager->UpdateRate (station);
@@ -536,11 +528,6 @@ MinstrelHtWifiManager::DoReportDataFailed (WifiRemoteStation *st)
       uint32_t rateId = GetRateId (station->m_txrate);
       uint32_t groupId = GetGroupId (station->m_txrate);
       station->m_groupsTable[groupId].m_ratesTable[rateId].numRateAttempt++; // Increment the attempts counter for the rate used.
-
-      if (station->m_isSampling)
-        {
-          station->m_samplePacketsCount++;
-        }
 
       UpdateRate (station);
     }
@@ -561,21 +548,12 @@ MinstrelHtWifiManager::DoReportDataOk (WifiRemoteStation *st,
 
   NS_LOG_DEBUG ("Data OK - Txrate = " << station->m_txrate  );
 
-  station->m_isSampling = false;
-  station->m_sampleRateSlower = false;
-
-  station->m_totalPacketsCount++;
-
-  if (station->m_totalPacketsCount == ~0)
-    {
-      station->m_samplePacketsCount = 0;
-      station->m_totalPacketsCount = 0;
-    }
-
   if (!station->m_isHt)
     {
       station->m_minstrelTable[station->m_txrate].numRateSuccess++;
       station->m_minstrelTable[station->m_txrate].numRateAttempt++;
+
+      m_legacyManager->UpdatePacketCounters(station);
 
       UpdateRetry (station);
       m_legacyManager->UpdateStats (station);
@@ -592,10 +570,10 @@ MinstrelHtWifiManager::DoReportDataOk (WifiRemoteStation *st,
       station->m_groupsTable[groupId].m_ratesTable[rateId].numRateSuccess++;
       station->m_groupsTable[groupId].m_ratesTable[rateId].numRateAttempt++;
 
-      UpdateSampleCounts (station, 1, 0);
+      UpdatePacketCounters (station, 1, 0);
 
       station->m_isSampling = false;
-      station->m_sampleRateSlower = false;
+      station->m_sampleDeferred = false;
 
       UpdateRetry (station);
       UpdateStats (station);
@@ -623,12 +601,12 @@ MinstrelHtWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 
   NS_LOG_DEBUG ("DoReportFinalDataFailed - TxRate=" << station->m_txrate);
 
-  station->m_isSampling = false;
-  station->m_sampleRateSlower = false;
-  UpdateRetry (station);
-
   if (!station->m_isHt)
     {
+      m_legacyManager->UpdatePacketCounters(station);
+
+      UpdateRetry (station);
+
       m_legacyManager->UpdateStats (station);
       if (station->m_nModes >= 1)
         {
@@ -637,8 +615,10 @@ MinstrelHtWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
     }
   else
     {
+      UpdatePacketCounters(station, 0, 1);
+
       station->m_isSampling = false;
-      station->m_sampleRateSlower = false;
+      station->m_sampleDeferred = false;
 
       UpdateRetry (station);
       UpdateStats (station);
@@ -674,15 +654,7 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus (WifiRemoteStation *st, uint32_t nS
   station->m_ampduPacketCount++;
   station->m_ampduLen += nSuccessfulMpdus + nFailedMpdus;
 
-  station->m_totalPacketsCount += nSuccessfulMpdus + nFailedMpdus;
-
-  if (station->m_totalPacketsCount == ~0)
-    {
-      station->m_samplePacketsCount = 0;
-      station->m_totalPacketsCount = 0;
-    }
-
-  UpdateSampleCounts (station, nSuccessfulMpdus, nFailedMpdus);
+  UpdatePacketCounters (station, nSuccessfulMpdus, nFailedMpdus);
 
   uint32_t rateId = GetRateId (station->m_txrate);
   uint32_t groupId = GetGroupId (station->m_txrate);
@@ -697,7 +669,7 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus (WifiRemoteStation *st, uint32_t nS
   else
     {
       station->m_isSampling = false;
-      station->m_sampleRateSlower = false;
+      station->m_sampleDeferred = false;
 
       UpdateRetry (station);
       UpdateStats (station);
@@ -821,19 +793,28 @@ MinstrelHtWifiManager::UpdateRetry (MinstrelHtWifiRemoteStation *station)
 }
 
 void
-MinstrelHtWifiManager::UpdateSampleCounts (MinstrelHtWifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus)
+MinstrelHtWifiManager::UpdatePacketCounters (MinstrelHtWifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus)
 {
   NS_LOG_FUNCTION (this << station << nSuccessfulMpdus << nFailedMpdus);
+
+  station->m_totalPacketsCount += nSuccessfulMpdus + nFailedMpdus;
+  if (station->m_isSampling)
+    {
+      station->m_samplePacketsCount += nSuccessfulMpdus + nFailedMpdus;
+    }
+  if (station->m_totalPacketsCount == ~0)
+    {
+      station->m_samplePacketsCount = 0;
+      station->m_totalPacketsCount = 0;
+    }
+
   if (!station->m_sampleWait && !station->m_sampleTries && station->m_sampleCount > 0)
     {
       station->m_sampleWait = 16 + 2 * station->m_avgAmpduLen;
       station->m_sampleTries = 1;
       station->m_sampleCount--;
     }
-  if (station->m_isSampling)
-    {
-      station->m_samplePacketsCount += nSuccessfulMpdus + nFailedMpdus;
-    }
+
 }
 void
 MinstrelHtWifiManager::DoDisposeStation (WifiRemoteStation *st)

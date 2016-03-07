@@ -240,7 +240,7 @@ private:
   void UpdateRetry (MinstrelHtWifiRemoteStation *station);
 
   /// Update the number of sample count variables.
-  void UpdateSampleCounts (MinstrelHtWifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
+  void UpdatePacketCounters (MinstrelHtWifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
 
   /// Getting the next sample from Sample Table.
   uint32_t GetNextSample (MinstrelHtWifiRemoteStation *station);
