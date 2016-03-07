@@ -56,6 +56,9 @@ struct RateInfo
   uint32_t prevNumRateSuccess;  //!< Number of successful frames transmitted with previous rate.
   uint64_t successHist;         //!< Aggregate of all transmission successes.
   uint64_t attemptHist;         //!< Aggregate of all transmission attempts.
+
+  uint8_t numSamplesSkipped;
+  int sampleLimit;
 };
 
 /**
@@ -92,9 +95,10 @@ struct MinstrelWifiRemoteStation : public WifiRemoteStation
   uint32_t m_nModes;             ///< number of modes supported
   int m_totalPacketsCount;             ///< total number of packets as of now
   int m_samplePacketsCount;             ///< how many packets we have sample so far
+  int m_numSamplesDeferred;
   bool m_isSampling;             ///< a flag to indicate we are currently sampling
   uint32_t m_sampleRate;         ///< current sample rate
-  bool  m_sampleRateSlower;      ///< a flag to indicate sample rate is slower
+  bool  m_sampleDeferred;        ///< a flag to indicate sample rate is on the second stage
   uint32_t m_shortRetry;         ///< short retries such as control packts
   uint32_t m_longRetry;          ///< long retries such as data packets
   uint32_t m_retry;              ///< total retries short + long
@@ -150,6 +154,8 @@ public:
   WifiTxVector GetRtsTxVector (MinstrelWifiRemoteStation *station);
 
   uint32_t CountRetries (MinstrelWifiRemoteStation *station);
+
+  void UpdatePacketCounters (MinstrelWifiRemoteStation *station);
 
   //update the number of retries and reset accordingly
   void UpdateRetry (MinstrelWifiRemoteStation *station);
