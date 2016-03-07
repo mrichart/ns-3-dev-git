@@ -63,18 +63,6 @@ public:
 
 private:
   virtual void Receive (Ptr<Packet> packet, const WifiMacHeader *hdr);
-  /**
-   * Return the HT capability of the current device.
-   *
-   * \return the HT capability that we support
-   */
-  HtCapabilities GetHtCapabilities (void) const;
-  /**
-   * Return the VHT capability of the current device.
-   *
-   * \return the VHT capability that we support
-   */
-  VhtCapabilities GetVhtCapabilities (void) const;
 };
 
 } //namespace ns3
