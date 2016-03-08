@@ -144,7 +144,7 @@ void RateCallback (std::string path, uint64_t rate, Mac48Address dest)
 
 int main (int argc, char *argv[])
 {
-  uint32_t rtsThreshold = 2346;
+  uint32_t rtsThreshold = 65535;
   std::string staManager = "ns3::MinstrelHtWifiManager";
   std::string apManager = "ns3::MinstrelHtWifiManager";
   std::string standard = "802.11n-5GHz";
