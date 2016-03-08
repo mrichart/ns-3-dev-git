@@ -362,7 +362,7 @@ MinstrelHtWifiManager::DoCreateStation (void) const
   MinstrelHtWifiRemoteStation *station = new MinstrelHtWifiRemoteStation ();
 
   // Initialize variables common to both stations.
-  station->m_nextStatsUpdate = Simulator::Now ();
+  station->m_nextStatsUpdate = Simulator::Now () + m_updateStats;
   station->m_col = 0;
   station->m_index = 0;
   station->m_maxTpRate = 0;
@@ -576,7 +576,10 @@ MinstrelHtWifiManager::DoReportDataOk (WifiRemoteStation *st,
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
-      UpdateStats (station);
+      if (Simulator::Now () <  station->m_nextStatsUpdate)
+        {
+          UpdateStats (station);
+        }
 
       if (station->m_nModes >= 1)
         {
@@ -621,7 +624,10 @@ MinstrelHtWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
-      UpdateStats (station);
+      if (Simulator::Now () <  station->m_nextStatsUpdate)
+        {
+          UpdateStats (station);
+        }
 
       if (station->m_nModes >= 1)
         {
@@ -672,7 +678,10 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus (WifiRemoteStation *st, uint32_t nS
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
-      UpdateStats (station);
+      if (Simulator::Now () <  station->m_nextStatsUpdate)
+        {
+          UpdateStats (station);
+        }
 
       if (station->m_nModes >= 1)
         {
@@ -753,7 +762,7 @@ MinstrelHtWifiManager::UpdateRate (MinstrelHtWifiRemoteStation *station)
         }
       else
         {
-          NS_ASSERT_MSG (false,"Max retries reached and m_longRetry not cleared properly.");
+          NS_ASSERT_MSG (false,"Max retries reached and m_longRetry not cleared properly. longRetry= " << station->m_longRetry);
         }
     }
 
@@ -777,7 +786,7 @@ MinstrelHtWifiManager::UpdateRate (MinstrelHtWifiRemoteStation *station)
         }
       else
         {
-          NS_ASSERT_MSG (false,"Max retries reached and m_longRetry not cleared properly.");
+          NS_ASSERT_MSG (false,"Max retries reached and m_longRetry not cleared properly. longRetry= " << station->m_longRetry);
         }
     }
   NS_LOG_DEBUG ("Next rate to use TxRate = " << station->m_txrate);
@@ -840,7 +849,8 @@ MinstrelHtWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       WifiTxVector vector = m_legacyManager->GetDataTxVector (station);
 
       uint64_t dataRate = vector.GetMode ().GetDataRate (vector.GetChannelWidth (), vector.IsShortGuardInterval (), vector.GetNss ());
-      m_rateChange (dataRate, station->m_state->m_address);
+      if (!station->m_isSampling)
+        m_rateChange (dataRate, station->m_state->m_address);
 
       return vector;
     }
@@ -864,7 +874,8 @@ MinstrelHtWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
 
 
       uint64_t dataRate = GetMcsSupported (station, rateId).GetDataRate (group.chWidth, group.sgi, group.streams);
-      m_rateChange (dataRate, station->m_state->m_address);
+      if (!station->m_isSampling)
+        m_rateChange (dataRate, station->m_state->m_address);
 
       return WifiTxVector (GetMcsSupported (station, rateId), GetDefaultTxPowerLevel (), GetLongRetryCount (station),
                            group.sgi, group.streams, GetNess (station), group.chWidth, !station->m_isSampling, GetStbc (station));
@@ -906,8 +917,7 @@ MinstrelHtWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
       // As we are in Minstrel HT, assume the last rate was an HT rate.
       WifiMode lastRate = GetMcsSupported (station, GetRateId (station->m_txrate));
       uint8_t streams = m_minstrelGroups[GetGroupId (station->m_txrate)].streams;
-      WifiMode referenceRate = lastRate.GetNonHtReferenceRate (streams);
-      uint64_t lastDataRate = referenceRate.GetDataRate (20,false,1);
+      uint64_t lastDataRate = lastRate.GetNonHtReferenceRate (streams);
       uint32_t nBasicRates = GetNBasicModes ();
 
       WifiMode rtsRate;
@@ -1176,10 +1186,6 @@ void
 MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
-  if (Simulator::Now () <  station->m_nextStatsUpdate)
-    {
-      return;
-    }
 
   NS_LOG_DEBUG ("Updating stats=" << this);
 

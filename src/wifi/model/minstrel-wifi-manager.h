@@ -239,7 +239,6 @@ private:
   double m_ewmaLevel;       ///< exponential weighted moving average
   uint32_t m_sampleCol;     ///< number of sample columns
   uint32_t m_pktLen;        ///< packet length used for calculate mode TxTime
-  uint32_t m_nsupported;    ///< modes supported
   bool m_printStats;        ///< If statistics table should be printed.
 
   //Provides uniform random variables.

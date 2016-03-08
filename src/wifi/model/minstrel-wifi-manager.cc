@@ -411,8 +411,8 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
   if (delta >= 0)
     {
       NS_LOG_DEBUG ("Search next sampling rate");
-
-      if (delta > station->m_nModes * 2) {
+      int ratesSupported = station->m_nModes;
+      if (delta > ratesSupported * 2) {
           /* From Linux implementation:
            * With multi-rate retry, not every planned sample
            * attempt actually gets used, due to the way the retry
@@ -423,7 +423,7 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
            * starts getting worse, minstrel would start bursting
            * out lots of sampling frames, which would result
            * in a large throughput loss. */
-          station->m_samplePacketsCount += (delta - station->m_nModes * 2);
+          station->m_samplePacketsCount += (delta - ratesSupported * 2);
         }
 
       //now go through the table and find an index rate
