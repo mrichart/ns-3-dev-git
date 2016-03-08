@@ -576,7 +576,7 @@ MinstrelHtWifiManager::DoReportDataOk (WifiRemoteStation *st,
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
-      if (Simulator::Now () <  station->m_nextStatsUpdate)
+      if (Simulator::Now () >=  station->m_nextStatsUpdate)
         {
           UpdateStats (station);
         }
@@ -624,7 +624,7 @@ MinstrelHtWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
-      if (Simulator::Now () <  station->m_nextStatsUpdate)
+      if (Simulator::Now () >=  station->m_nextStatsUpdate)
         {
           UpdateStats (station);
         }
@@ -678,7 +678,7 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus (WifiRemoteStation *st, uint32_t nS
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
-      if (Simulator::Now () <  station->m_nextStatsUpdate)
+      if (Simulator::Now () >=  station->m_nextStatsUpdate)
         {
           UpdateStats (station);
         }
