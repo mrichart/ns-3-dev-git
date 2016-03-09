@@ -17,6 +17,7 @@ SOURCES = \
 	source/internet-models.rst \
 	source/network.rst \
 	source/emulation-overview.rst \
+	source/traffic-control.rst \
 	$(SRC)/antenna/doc/source/antenna.rst \
 	$(SRC)/antenna/doc/source/antenna-design.rst \
 	$(SRC)/antenna/doc/source/antenna-user.rst \
@@ -61,7 +62,6 @@ SOURCES = \
 	$(SRC)/internet/doc/ipv6.rst \
 	$(SRC)/internet/doc/routing-overview.rst \
 	$(SRC)/internet/doc/tcp.rst \
-	$(SRC)/internet/doc/codel.rst \
 	$(SRC)/internet-apps/doc/internet-apps.rst \
 	$(SRC)/mobility/doc/mobility.rst \
 	$(SRC)/olsr/doc/olsr.rst \
@@ -75,6 +75,11 @@ SOURCES = \
 	$(SRC)/wimax/doc/wimax.rst \
 	$(SRC)/uan/doc/uan.rst \
 	$(SRC)/topology-read/doc/topology.rst \
+	$(SRC)/traffic-control/doc/traffic-control-layer.rst \
+	$(SRC)/traffic-control/doc/queue-discs.rst \
+	$(SRC)/traffic-control/doc/pfifo-fast.rst \
+	$(SRC)/traffic-control/doc/red.rst \
+	$(SRC)/traffic-control/doc/codel.rst \
 	$(SRC)/spectrum/doc/spectrum.rst \
 	$(SRC)/stats/doc/adaptor.rst \
 	$(SRC)/stats/doc/aggregator.rst \
@@ -264,6 +269,8 @@ SOURCEFIGS = \
 	$(SRC)/spectrum/doc/spectrum-tv-rand-geo-points.eps \
 	$(SRC)/spectrum/doc/spectrum-tv-8vsb.png \
 	$(SRC)/spectrum/doc/spectrum-tv-cofdm.png \
+	$(SRC)/traffic-control/doc/classful-queue-disc.dia \
+	$(SRC)/traffic-control/doc/multi-queue-aware-queue-disc.dia \
 	$(SRC)/lr-wpan/doc/lr-wpan-arch.dia \
 	$(SRC)/lr-wpan/doc/lr-wpan-data-example.dia \
 	$(SRC)/lr-wpan/doc/lr-wpan-primitives.dia \
@@ -350,6 +357,8 @@ IMAGES_EPS = \
 	$(FIGURES)/auvmobility-classes.eps \
 	$(FIGURES)/spectrum-analyzer-example.eps \
 	$(FIGURES)/spectrum-tv-rand-geo-points.eps \
+	$(FIGURES)/classful-queue-disc.eps \
+	$(FIGURES)/multi-queue-aware-queue-disc.eps \
 	$(FIGURES)/lr-wpan-primitives.eps \
 	$(FIGURES)/lr-wpan-data-example.eps \
 	$(FIGURES)/lr-wpan-arch.eps \

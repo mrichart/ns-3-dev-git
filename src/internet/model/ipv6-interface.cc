@@ -23,6 +23,7 @@
 #include "ns3/packet.h"
 
 #include "ipv6-interface.h"
+#include "ipv6-queue-disc-item.h"
 #include "ns3/net-device.h"
 #include "loopback-net-device.h"
 #include "ns3/mac16-address.h"
@@ -30,6 +31,7 @@
 #include "ipv6-l3-protocol.h"
 #include "icmpv6-l4-protocol.h"
 #include "ndisc-cache.h"
+#include "ns3/traffic-control-layer.h"
 
 namespace ns3
 {
@@ -53,6 +55,7 @@ Ipv6Interface::Ipv6Interface ()
     m_metric (1),
     m_node (0),
     m_device (0),
+    m_tc (0),
     m_ndCache (0),
     m_curHopLimit (0),
     m_baseReachableTime (0),
@@ -72,6 +75,7 @@ void Ipv6Interface::DoDispose ()
   NS_LOG_FUNCTION_NOARGS ();
   m_node = 0;
   m_device = 0;
+  m_tc = 0;
   m_ndCache = 0;
   Object::DoDispose ();
 }
@@ -142,6 +146,13 @@ void Ipv6Interface::SetDevice (Ptr<NetDevice> device)
   NS_LOG_FUNCTION (this << device);
   m_device = device;
   DoSetup ();
+}
+
+void
+Ipv6Interface::SetTrafficControl (Ptr<TrafficControlLayer> tc)
+{
+  NS_LOG_FUNCTION (this << tc);
+  m_tc = tc;
 }
 
 Ptr<NetDevice> Ipv6Interface::GetDevice () const
@@ -369,36 +380,41 @@ Ipv6InterfaceAddress Ipv6Interface::GetAddressMatchingDestination (Ipv6Address d
   return ret; /* quiet compiler */
 }
 
-void Ipv6Interface::Send (Ptr<Packet> p, Ipv6Address dest)
+void Ipv6Interface::Send (Ptr<Packet> p, const Ipv6Header & hdr, Ipv6Address dest)
 {
   NS_LOG_FUNCTION (this << p << dest);
-  Ptr<Ipv6L3Protocol> ipv6 = m_node->GetObject<Ipv6L3Protocol> ();
 
   if (!IsUp ())
     {
       return;
     }
 
-  /* check if destination is localhost (::1) */
+  Ptr<Ipv6L3Protocol> ipv6 = m_node->GetObject<Ipv6L3Protocol> ();
+
+  /* check if destination is localhost (::1), if yes we don't pass through
+   * traffic control layer */
   if (DynamicCast<LoopbackNetDevice> (m_device))
     {
       /** \todo additional checks needed here (such as whether multicast
        * goes to loopback)?
        */
+      p->AddHeader (hdr);
       m_device->Send (p, m_device->GetBroadcast (), Ipv6L3Protocol::PROT_NUMBER);
       return;
     }
+
+  NS_ASSERT (m_tc != 0);
 
   /* check if destination is for one of our interface */
   for (Ipv6InterfaceAddressListCI it = m_addresses.begin (); it != m_addresses.end (); ++it)
     {
       if (dest == it->first.GetAddress ())
         {
-          ipv6->Receive (m_device, p, Ipv6L3Protocol::PROT_NUMBER,
+          p->AddHeader (hdr);
+          m_tc->Receive (m_device, p, Ipv6L3Protocol::PROT_NUMBER,
                          m_device->GetBroadcast (),
                          m_device->GetBroadcast (),
-                         NetDevice::PACKET_HOST // note: linux uses PACKET_LOOPBACK here
-                         );
+                         NetDevice::PACKET_HOST);
           return;
         }
     }
@@ -424,19 +440,19 @@ void Ipv6Interface::Send (Ptr<Packet> p, Ipv6Address dest)
       else
         {
           NS_LOG_LOGIC ("NDISC Lookup");
-          found = icmpv6->Lookup (p, dest, GetDevice (), m_ndCache, &hardwareDestination);
+          found = icmpv6->Lookup (p, hdr, dest, GetDevice (), m_ndCache, &hardwareDestination);
         }
 
       if (found)
         {
           NS_LOG_LOGIC ("Address Resolved.  Send.");
-          m_device->Send (p, hardwareDestination, Ipv6L3Protocol::PROT_NUMBER);
+          m_tc->Send (m_device, Create<Ipv6QueueDiscItem> (p, hardwareDestination, Ipv6L3Protocol::PROT_NUMBER, hdr));
         }
     }
   else
     {
       NS_LOG_LOGIC ("Doesn't need ARP");
-      m_device->Send (p, m_device->GetBroadcast (), Ipv6L3Protocol::PROT_NUMBER);
+      m_tc->Send (m_device, Create<Ipv6QueueDiscItem> (p, m_device->GetBroadcast (), Ipv6L3Protocol::PROT_NUMBER, hdr));
     }
 }
 

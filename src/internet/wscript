@@ -104,7 +104,7 @@ def configure(conf):
 
 def build(bld):
     # bridge and mpi dependencies are due to global routing
-    obj = bld.create_ns3_module('internet', ['bridge', 'mpi', 'network', 'core'])
+    obj = bld.create_ns3_module('internet', ['bridge', 'mpi', 'traffic-control', 'network', 'core'])
     obj.source = [
         'model/ip-l4-protocol.cc',
         'model/udp-header.cc',
@@ -160,6 +160,8 @@ def build(bld):
         'model/ipv4-interface-address.cc',
         'model/ipv4-address-generator.cc',
         'model/ipv4-header.cc',
+        'model/ipv4-queue-disc-item.cc',
+        'model/ipv4-packet-filter.cc',
         'model/ipv4-route.cc',
         'model/ipv4-routing-protocol.cc',
         'model/udp-socket.cc',
@@ -169,6 +171,8 @@ def build(bld):
         'model/ipv4.cc',
         'model/ipv4-raw-socket-factory.cc',
         'model/ipv6-header.cc',
+        'model/ipv6-queue-disc-item.cc',
+        'model/ipv6-packet-filter.cc',
         'model/ipv6-interface-address.cc',
         'model/ipv6-route.cc',
         'model/ipv6.cc',
@@ -188,7 +192,6 @@ def build(bld):
         'model/global-route-manager.cc',
         'model/global-route-manager-impl.cc',
         'model/candidate-queue.cc',
-        'model/codel-queue.cc',
         'model/ipv4-global-routing.cc',
         'helper/ipv4-global-routing-helper.cc',
         'helper/internet-stack-helper.cc',
@@ -231,6 +234,7 @@ def build(bld):
         'test/ipv6-packet-info-tag-test-suite.cc',
         'test/ipv6-test.cc',
         'test/ipv6-raw-test.cc',
+        'test/pfifo-fast-queue-disc-test-suite.cc',
         'test/tcp-test.cc',
         'test/tcp-timestamp-test.cc',
         'test/tcp-wscaling-test.cc',
@@ -256,7 +260,6 @@ def build(bld):
         'test/ipv6-ripng-test.cc',
         'test/ipv6-address-helper-test-suite.cc',
         'test/rtt-test.cc',
-        'test/codel-queue-test-suite.cc',
         'test/tcp-endpoint-bug2211.cc',
         'test/tcp-datasentcb-test.cc',
         'test/ipv4-rip-test.cc',
@@ -301,6 +304,8 @@ def build(bld):
         'model/ipv4-interface-address.h',
         'model/ipv4-address-generator.h',
         'model/ipv4-header.h',
+        'model/ipv4-queue-disc-item.h',
+        'model/ipv4-packet-filter.h',
         'model/ipv4-route.h',
         'model/ipv4-routing-protocol.h',
         'model/udp-socket.h',
@@ -311,6 +316,8 @@ def build(bld):
         'model/ipv4-raw-socket-factory.h',
         'model/ipv4-raw-socket-impl.h',
         'model/ipv6-header.h',
+        'model/ipv6-queue-disc-item.h',
+        'model/ipv6-packet-filter.h',
         'model/ipv6-interface-address.h',
         'model/ipv6-route.h',
         'model/ipv6.h',
@@ -330,7 +337,6 @@ def build(bld):
         'model/global-route-manager.h',
         'model/global-route-manager-impl.h',
         'model/candidate-queue.h',
-        'model/codel-queue.h',
         'model/ipv4-global-routing.h',
         'helper/ipv4-global-routing-helper.h',
         'helper/internet-stack-helper.h',

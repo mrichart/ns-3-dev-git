@@ -16,11 +16,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Marcos Talau (talau@users.sourceforge.net)
+ * Modified by:   Pasquale Imputato <p.imputato@gmail.com>
  *
  */
 
 #include "ns3/test.h"
-#include "ns3/red-queue.h"
+#include "ns3/red-queue-disc.h"
+#include "ns3/drop-tail-queue.h"
 #include "ns3/uinteger.h"
 #include "ns3/string.h"
 #include "ns3/double.h"
@@ -29,23 +31,49 @@
 
 using namespace ns3;
 
-class RedQueueTestCase : public TestCase
+class RedQueueDiscTestItem : public QueueDiscItem {
+public:
+  RedQueueDiscTestItem (Ptr<Packet> p, const Address & addr, uint16_t protocol);
+  virtual ~RedQueueDiscTestItem ();
+  virtual void AddHeader (void);
+
+private:
+  RedQueueDiscTestItem ();
+  RedQueueDiscTestItem (const RedQueueDiscTestItem &);
+  RedQueueDiscTestItem &operator = (const RedQueueDiscTestItem &);
+};
+
+RedQueueDiscTestItem::RedQueueDiscTestItem (Ptr<Packet> p, const Address & addr, uint16_t protocol)
+  : QueueDiscItem (p, addr, protocol)
+{
+}
+
+RedQueueDiscTestItem::~RedQueueDiscTestItem ()
+{
+}
+
+void
+RedQueueDiscTestItem::AddHeader (void)
+{
+}
+
+class RedQueueDiscTestCase : public TestCase
 {
 public:
-  RedQueueTestCase ();
+  RedQueueDiscTestCase ();
   virtual void DoRun (void);
 private:
-  void Enqueue (Ptr<RedQueue> queue, uint32_t size, uint32_t nPkt);
+  void Enqueue (Ptr<RedQueueDisc> queue, uint32_t size, uint32_t nPkt);
   void RunRedTest (StringValue mode);
 };
 
-RedQueueTestCase::RedQueueTestCase ()
+RedQueueDiscTestCase::RedQueueDiscTestCase ()
   : TestCase ("Sanity check on the red queue implementation")
 {
 }
 
 void
-RedQueueTestCase::RunRedTest (StringValue mode)
+RedQueueDiscTestCase::RunRedTest (StringValue mode)
 {
   uint32_t pktSize = 0;
   // 1 for packets; pktSize for bytes
@@ -53,7 +81,7 @@ RedQueueTestCase::RunRedTest (StringValue mode)
   double minTh = 2;
   double maxTh = 5;
   uint32_t qSize = 8;
-  Ptr<RedQueue> queue = CreateObject<RedQueue> ();
+  Ptr<RedQueueDisc> queue = CreateObject<RedQueueDisc> ();
 
   // test 1: simple enqueue/dequeue with no drops
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
@@ -67,12 +95,14 @@ RedQueueTestCase::RunRedTest (StringValue mode)
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QW", DoubleValue (0.002)), true,
                          "Verify that we can actually set the attribute QW");
 
-  if (queue->GetMode () == RedQueue::QUEUE_MODE_BYTES)
+  Address dest;
+  
+  if (queue->GetMode () == Queue::QUEUE_MODE_BYTES)
     {
       pktSize = 1000;
       modeSize = pktSize;
-      queue->SetTh (minTh * pktSize, maxTh * pktSize);
-      queue->SetQueueLimit (qSize * pktSize);
+      queue->SetTh (minTh * modeSize, maxTh * modeSize);
+      queue->SetQueueLimit (qSize * modeSize);
     }
 
   Ptr<Packet> p1, p2, p3, p4, p5, p6, p7, p8;
@@ -85,48 +115,49 @@ RedQueueTestCase::RunRedTest (StringValue mode)
   p7 = Create<Packet> (pktSize);
   p8 = Create<Packet> (pktSize);
 
+  queue->Initialize ();
   NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 0 * modeSize, "There should be no packets in there");
-  queue->Enqueue (p1);
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p1, dest, 0));
   NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 1 * modeSize, "There should be one packet in there");
-  queue->Enqueue (p2);
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p2, dest, 0));
   NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 2 * modeSize, "There should be two packets in there");
-  queue->Enqueue (p3);
-  queue->Enqueue (p4);
-  queue->Enqueue (p5);
-  queue->Enqueue (p6);
-  queue->Enqueue (p7);
-  queue->Enqueue (p8);
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p3, dest, 0));
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p4, dest, 0));
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p5, dest, 0));
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p6, dest, 0));
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p7, dest, 0));
+  queue->Enqueue (Create<RedQueueDiscTestItem> (p8, dest, 0));
   NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 8 * modeSize, "There should be eight packets in there");
 
-  Ptr<Packet> p;
+  Ptr<QueueDiscItem> item;
 
-  p = queue->Dequeue ();
-  NS_TEST_EXPECT_MSG_EQ ((p != 0), true, "I want to remove the first packet");
+  item = queue->Dequeue ();
+  NS_TEST_EXPECT_MSG_EQ ((item != 0), true, "I want to remove the first packet");
   NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 7 * modeSize, "There should be seven packets in there");
-  NS_TEST_EXPECT_MSG_EQ (p->GetUid (), p1->GetUid (), "was this the first packet ?");
+  NS_TEST_EXPECT_MSG_EQ (item->GetPacket ()->GetUid (), p1->GetUid (), "was this the first packet ?");
 
-  p = queue->Dequeue ();
-  NS_TEST_EXPECT_MSG_EQ ((p != 0), true, "I want to remove the second packet");
+  item = queue->Dequeue ();
+  NS_TEST_EXPECT_MSG_EQ ((item != 0), true, "I want to remove the second packet");
   NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 6 * modeSize, "There should be six packet in there");
-  NS_TEST_EXPECT_MSG_EQ (p->GetUid (), p2->GetUid (), "Was this the second packet ?");
+  NS_TEST_EXPECT_MSG_EQ (item->GetPacket ()->GetUid (), p2->GetUid (), "Was this the second packet ?");
 
-  p = queue->Dequeue ();
-  NS_TEST_EXPECT_MSG_EQ ((p != 0), true, "I want to remove the third packet");
+  item = queue->Dequeue ();
+  NS_TEST_EXPECT_MSG_EQ ((item != 0), true, "I want to remove the third packet");
   NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 5 * modeSize, "There should be five packets in there");
-  NS_TEST_EXPECT_MSG_EQ (p->GetUid (), p3->GetUid (), "Was this the third packet ?");
+  NS_TEST_EXPECT_MSG_EQ (item->GetPacket ()->GetUid (), p3->GetUid (), "Was this the third packet ?");
 
-  p = queue->Dequeue ();
-  p = queue->Dequeue ();
-  p = queue->Dequeue ();
-  p = queue->Dequeue ();
-  p = queue->Dequeue ();
+  item = queue->Dequeue ();
+  item = queue->Dequeue ();
+  item = queue->Dequeue ();
+  item = queue->Dequeue ();
+  item = queue->Dequeue ();
 
-  p = queue->Dequeue ();
-  NS_TEST_EXPECT_MSG_EQ ((p == 0), true, "There are really no packets in there");
+  item = queue->Dequeue ();
+  NS_TEST_EXPECT_MSG_EQ ((item == 0), true, "There are really no packets in there");
 
 
   // test 2: more data, but with no drops
-  queue = CreateObject<RedQueue> ();
+  queue = CreateObject<RedQueueDisc> ();
   minTh = 70 * modeSize;
   maxTh = 150 * modeSize;
   qSize = 300 * modeSize;
@@ -138,8 +169,9 @@ RedQueueTestCase::RunRedTest (StringValue mode)
                          "Verify that we can actually set the attribute MaxTh");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QueueLimit", UintegerValue (qSize)), true,
                          "Verify that we can actually set the attribute QueueLimit");
+  queue->Initialize ();
   Enqueue (queue, pktSize, 300);
-  RedQueue::Stats st = StaticCast<RedQueue> (queue)->GetStats ();
+  RedQueueDisc::Stats st = StaticCast<RedQueueDisc> (queue)->GetStats ();
   NS_TEST_EXPECT_MSG_EQ (st.unforcedDrop, 0, "There should zero dropped packets due probability mark");
   NS_TEST_EXPECT_MSG_EQ (st.forcedDrop, 0, "There should zero dropped packets due hardmark mark");
   NS_TEST_EXPECT_MSG_EQ (st.qLimDrop, 0, "There should zero dropped packets due queue full");
@@ -155,7 +187,7 @@ RedQueueTestCase::RunRedTest (StringValue mode)
 
 
   // test 3: more data, now drops due QW change
-  queue = CreateObject<RedQueue> ();
+  queue = CreateObject<RedQueueDisc> ();
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
                          "Verify that we can actually set the attribute Mode");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MinTh", DoubleValue (minTh)), true,
@@ -166,15 +198,16 @@ RedQueueTestCase::RunRedTest (StringValue mode)
                          "Verify that we can actually set the attribute QueueLimit");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QW", DoubleValue (0.020)), true,
                          "Verify that we can actually set the attribute QW");
+  queue->Initialize ();
   Enqueue (queue, pktSize, 300);
-  st = StaticCast<RedQueue> (queue)->GetStats ();
+  st = StaticCast<RedQueueDisc> (queue)->GetStats ();
   drop.test3 = st.unforcedDrop + st.forcedDrop + st.qLimDrop;
   NS_TEST_EXPECT_MSG_NE (drop.test3, 0, "There should be some dropped packets");
 
 
   // test 4: reduced maxTh, this causes more drops
   maxTh = 100 * modeSize;
-  queue = CreateObject<RedQueue> ();
+  queue = CreateObject<RedQueueDisc> ();
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
                          "Verify that we can actually set the attribute Mode");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MinTh", DoubleValue (minTh)), true,
@@ -185,15 +218,16 @@ RedQueueTestCase::RunRedTest (StringValue mode)
                          "Verify that we can actually set the attribute QueueLimit");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QW", DoubleValue (0.020)), true,
                          "Verify that we can actually set the attribute QW");
+  queue->Initialize ();
   Enqueue (queue, pktSize, 300);
-  st = StaticCast<RedQueue> (queue)->GetStats ();
+  st = StaticCast<RedQueueDisc> (queue)->GetStats ();
   drop.test4 = st.unforcedDrop + st.forcedDrop + st.qLimDrop;
   NS_TEST_EXPECT_MSG_GT (drop.test4, drop.test3, "Test 4 should have more drops than test 3");
 
 
   // test 5: change drop probability to a high value (LInterm)
   maxTh = 150 * modeSize;
-  queue = CreateObject<RedQueue> ();
+  queue = CreateObject<RedQueueDisc> ();
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
                          "Verify that we can actually set the attribute Mode");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MinTh", DoubleValue (minTh)), true,
@@ -206,14 +240,15 @@ RedQueueTestCase::RunRedTest (StringValue mode)
                          "Verify that we can actually set the attribute QW");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("LInterm", DoubleValue (5)), true,
                          "Verify that we can actually set the attribute LInterm");
+  queue->Initialize ();
   Enqueue (queue, pktSize, 300);
-  st = StaticCast<RedQueue> (queue)->GetStats ();
+  st = StaticCast<RedQueueDisc> (queue)->GetStats ();
   drop.test5 = st.unforcedDrop + st.forcedDrop + st.qLimDrop;
   NS_TEST_EXPECT_MSG_GT (drop.test5, drop.test3, "Test 5 should have more drops than test 3");
 
 
   // test 6: disable Gentle param
-  queue = CreateObject<RedQueue> ();
+  queue = CreateObject<RedQueueDisc> ();
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
                          "Verify that we can actually set the attribute Mode");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MinTh", DoubleValue (minTh)), true,
@@ -226,14 +261,15 @@ RedQueueTestCase::RunRedTest (StringValue mode)
                          "Verify that we can actually set the attribute QW");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Gentle", BooleanValue (false)), true,
                          "Verify that we can actually set the attribute Gentle");
+  queue->Initialize ();
   Enqueue (queue, pktSize, 300);
-  st = StaticCast<RedQueue> (queue)->GetStats ();
+  st = StaticCast<RedQueueDisc> (queue)->GetStats ();
   drop.test6 = st.unforcedDrop + st.forcedDrop + st.qLimDrop;
   NS_TEST_EXPECT_MSG_GT (drop.test6, drop.test3, "Test 6 should have more drops than test 3");
 
 
   // test 7: disable Wait param
-  queue = CreateObject<RedQueue> ();
+  queue = CreateObject<RedQueueDisc> ();
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
                          "Verify that we can actually set the attribute Mode");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MinTh", DoubleValue (minTh)), true,
@@ -246,23 +282,25 @@ RedQueueTestCase::RunRedTest (StringValue mode)
                          "Verify that we can actually set the attribute QW");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Wait", BooleanValue (false)), true,
                          "Verify that we can actually set the attribute Wait");
+  queue->Initialize ();
   Enqueue (queue, pktSize, 300);
-  st = StaticCast<RedQueue> (queue)->GetStats ();
+  st = StaticCast<RedQueueDisc> (queue)->GetStats ();
   drop.test7 = st.unforcedDrop + st.forcedDrop + st.qLimDrop;
   NS_TEST_EXPECT_MSG_GT (drop.test7, drop.test3, "Test 7 should have more drops than test 3");
 }
 
 void 
-RedQueueTestCase::Enqueue (Ptr<RedQueue> queue, uint32_t size, uint32_t nPkt)
+RedQueueDiscTestCase::Enqueue (Ptr<RedQueueDisc> queue, uint32_t size, uint32_t nPkt)
 {
+  Address dest;
   for (uint32_t i = 0; i < nPkt; i++)
     {
-      queue->Enqueue (Create<Packet> (size));
+      queue->Enqueue (Create<RedQueueDiscTestItem> (Create<Packet> (size), dest, 0));
     }
 }
 
 void
-RedQueueTestCase::DoRun (void)
+RedQueueDiscTestCase::DoRun (void)
 {
   RunRedTest (StringValue ("QUEUE_MODE_PACKETS"));
   RunRedTest (StringValue ("QUEUE_MODE_BYTES"));
@@ -270,12 +308,12 @@ RedQueueTestCase::DoRun (void)
 
 }
 
-static class RedQueueTestSuite : public TestSuite
+static class RedQueueDiscTestSuite : public TestSuite
 {
 public:
-  RedQueueTestSuite ()
-    : TestSuite ("red-queue", UNIT)
+  RedQueueDiscTestSuite ()
+    : TestSuite ("red-queue-disc", UNIT)
   {
-    AddTestCase (new RedQueueTestCase (), TestCase::QUICK);
+    AddTestCase (new RedQueueDiscTestCase (), TestCase::QUICK);
   }
 } g_redQueueTestSuite;

@@ -58,28 +58,27 @@
  * [0] S.Floyd, K.Fall http://icir.org/floyd/papers/redsims.ps
  */
 
-#ifndef RED_QUEUE_H
-#define RED_QUEUE_H
+#ifndef RED_QUEUE_DISC_H
+#define RED_QUEUE_DISC_H
 
-#include <queue>
 #include "ns3/packet.h"
-#include "ns3/queue.h"
+#include "ns3/queue-disc.h"
 #include "ns3/nstime.h"
 #include "ns3/boolean.h"
 #include "ns3/data-rate.h"
 #include "ns3/nstime.h"
+#include "ns3/random-variable-stream.h"
 
 namespace ns3 {
 
 class TraceContainer;
-class UniformRandomVariable;
 
 /**
- * \ingroup queue
+ * \ingroup traffic-control
  *
- * \brief A RED packet queue
+ * \brief A RED packet queue disc
  */
-class RedQueue : public Queue
+class RedQueueDisc : public QueueDisc
 {
 public:
   /**
@@ -88,18 +87,18 @@ public:
    */
   static TypeId GetTypeId (void);
   /**
-   * \brief RedQueue Constructor
+   * \brief RedQueueDisc Constructor
    *
-   * Create a RED queue
+   * Create a RED queue disc
    */
-  RedQueue ();
+  RedQueueDisc ();
 
   /**
    * \brief Destructor
    *
    * Destructor
    */ 
-  virtual ~RedQueue ();
+  virtual ~RedQueueDisc ();
 
   /**
    * \brief Stats
@@ -127,7 +126,7 @@ public:
    *
    * \param mode The operating mode of this queue.
    */
-  void SetMode (RedQueue::QueueMode mode);
+  void SetMode (Queue::QueueMode mode);
 
   /**
    * \brief Get the encapsulation mode of this queue.
@@ -135,7 +134,7 @@ public:
    *
    * \returns The encapsulation mode of this queue.
    */
-  RedQueue::QueueMode GetMode (void);
+  Queue::QueueMode GetMode (void);
 
   /**
    * \brief Get the current value of the queue in bytes or packets.
@@ -143,6 +142,34 @@ public:
    * \returns The queue size in bytes or packets.
    */
   uint32_t GetQueueSize (void);
+
+   /**
+    * \brief Set the alpha value to adapt m_curMaxP.
+    *
+    * \param alpha The value of alpha to adapt m_curMaxP.
+    */
+   void SetAredAlpha (double alpha);
+
+   /**
+    * \brief Get the alpha value to adapt m_curMaxP.
+    *
+    * \returns The alpha value to adapt m_curMaxP.
+    */
+   double GetAredAlpha (void);
+
+   /**
+    * \brief Set the beta value to adapt m_curMaxP.
+    *
+    * \param beta The value of beta to adapt m_curMaxP.
+    */
+   void SetAredBeta (double beta);
+
+   /**
+    * \brief Get the beta value to adapt m_curMaxP.
+    *
+    * \returns The beta value to adapt m_curMaxP.
+    */
+   double GetAredBeta (void);
 
   /**
    * \brief Set the limit of the queue.
@@ -176,10 +203,17 @@ public:
   */
   int64_t AssignStreams (int64_t stream);
 
+protected:
+  /**
+   * \brief Dispose of the object
+   */
+  virtual void DoDispose (void);
+
 private:
-  virtual bool DoEnqueue (Ptr<Packet> p);
-  virtual Ptr<Packet> DoDequeue (void);
-  virtual Ptr<const Packet> DoPeek (void) const;
+  virtual bool DoEnqueue (Ptr<QueueDiscItem> item);
+  virtual Ptr<QueueDiscItem> DoDequeue (void);
+  virtual Ptr<const QueueDiscItem> DoPeek (void) const;
+  virtual bool CheckConfig (void);
 
   /**
    * \brief Initialize the queue parameters.
@@ -189,7 +223,7 @@ private:
    * This should be fixed, but it would require some extra parameters,
    * and didn't seem worth the trouble...
    */
-  void InitializeParams (void);
+  virtual void InitializeParams (void);
   /**
    * \brief Compute the average queue size
    * \param nQueued number of queued packets
@@ -199,13 +233,19 @@ private:
    * \returns new average queue size
    */
   double Estimator (uint32_t nQueued, uint32_t m, double qAvg, double qW);
+   /**
+    * \brief Update m_curMaxP
+    * \param newAve new average queue length
+    * \param now Current Time
+    */
+  void UpdateMaxP (double newAve, Time now);
   /**
-   * \brief Check if packet p needs to be dropped due to probability mark
-   * \param p packet
+   * \brief Check if a packet needs to be dropped due to probability mark
+   * \param item queue item
    * \param qSize queue size
    * \returns 0 for no drop/mark, 1 for drop
    */
-  uint32_t DropEarly (Ptr<Packet> p, uint32_t qSize);
+  uint32_t DropEarly (Ptr<QueueDiscItem> item, uint32_t qSize);
   /**
    * \brief Returns a probability using these function parameters for the DropEarly function
    * \param qAvg Average queue length
@@ -233,23 +273,28 @@ private:
   double ModifyP (double p, uint32_t count, uint32_t countBytes,
                   uint32_t meanPktSize, bool wait, uint32_t size);
 
-  std::list<Ptr<Packet> > m_packets; //!< packets in the queue
-
-  uint32_t m_bytesInQueue; //!< bytes in the queue
-  bool m_hasRedStarted; //!< True if RED has started
   Stats m_stats; //!< RED statistics
 
   // ** Variables supplied by user
-  QueueMode m_mode;         //!< Mode (Bytes or packets)
+  Queue::QueueMode m_mode;  //!< Mode (Bytes or packets)
   uint32_t m_meanPktSize;   //!< Avg pkt size
   uint32_t m_idlePktSize;   //!< Avg pkt size used during idle times
   bool m_isWait;            //!< True for waiting between dropped packets
   bool m_isGentle;          //!< True to increases dropping prob. slowly when ave queue exceeds maxthresh
+  bool m_isARED;            //!< True to enable Adaptive RED
+  bool m_isAdaptMaxP;       //!< True to adapt m_curMaxP
   double m_minTh;           //!< Min avg length threshold (bytes)
   double m_maxTh;           //!< Max avg length threshold (bytes), should be >= 2*minTh
   uint32_t m_queueLimit;    //!< Queue limit in bytes / packets
   double m_qW;              //!< Queue weight given to cur queue size sample
   double m_lInterm;         //!< The max probability of dropping a packet
+  Time m_targetDelay;       //!< Target average queuing delay in ARED
+  Time m_interval;          //!< Time interval to update m_curMaxP
+  double m_top;             //!< Upper bound for m_curMaxP in ARED
+  double m_bottom;          //!< Lower bound for m_curMaxP in ARED
+  double m_alpha;           //!< Increment parameter for m_curMaxP in ARED
+  double m_beta;            //!< Decrement parameter for m_curMaxP in ARED
+  Time m_rtt;               //!< Rtt to be considered while automatically setting m_bottom in ARED
   bool m_isNs1Compat;       //!< Ns-1 compatibility
   DataRate m_linkBandwidth; //!< Link bandwidth
   Time m_linkDelay;         //!< Link delay
@@ -261,6 +306,7 @@ private:
   double m_vC;              //!< (1.0 - m_curMaxP) / m_maxTh - used in "gentle" mode
   double m_vD;              //!< 2.0 * m_curMaxP - 1.0 - used in "gentle" mode
   double m_curMaxP;         //!< Current max_p
+  Time m_lastSet;           //!< Last time m_curMaxP was updated
   double m_vProb;           //!< Prob. of packet drop
   uint32_t m_countBytes;    //!< Number of bytes since last drop
   uint32_t m_old;           //!< 0 when average queue first exceeds threshold
@@ -282,4 +328,4 @@ private:
 
 }; // namespace ns3
 
-#endif // RED_QUEUE_H
+#endif // RED_QUEUE_DISC_H
