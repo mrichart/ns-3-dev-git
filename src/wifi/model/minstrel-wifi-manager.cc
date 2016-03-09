@@ -601,7 +601,7 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
 
   NS_LOG_DEBUG ("Attempt/success resetted to 0");
 
-  uint32_t max_prob = 0, index_max_prob = 0, max_tp = 0, index_max_tp = 0, index_max_tp2 = 0;
+  uint32_t max_tp = 0, index_max_tp = 0, index_max_tp2 = 0;
 
   //go find max throughput, second maximum throughput, high probability succ
   NS_LOG_DEBUG ("Finding the maximum throughput, second maximum throughput, and highest probability");
@@ -617,14 +617,7 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
           index_max_tp = i;
           max_tp = station->m_minstrelTable[i].throughput;
         }
-
-      if (max_prob < station->m_minstrelTable[i].ewmaProb)
-        {
-          index_max_prob = i;
-          max_prob = station->m_minstrelTable[i].ewmaProb;
-        }
     }
-
 
   max_tp = 0;
   //find the second highest max
@@ -634,6 +627,21 @@ MinstrelWifiManager::UpdateStats (MinstrelWifiRemoteStation *station)
         {
           index_max_tp2 = i;
           max_tp = station->m_minstrelTable[i].throughput;
+        }
+    }
+
+  uint32_t max_prob = 0, index_max_prob = 0;
+  for (uint32_t i = 0; i < station->m_nModes; i++)
+    {
+      if ((station->m_minstrelTable[i].ewmaProb >= 95*180) && (station->m_minstrelTable[i].throughput >= station->m_minstrelTable[index_max_prob].throughput))
+        {
+          index_max_prob = i;
+          max_prob = station->m_minstrelTable[i].ewmaProb;
+        }
+      else if (station->m_minstrelTable[i].ewmaProb >= max_prob)
+        {
+          index_max_prob = i;
+          max_prob = station->m_minstrelTable[i].ewmaProb;
         }
     }
 
