@@ -443,8 +443,9 @@ WifiMode::GetNonHtReferenceRate (uint8_t nss) const
         }
     }
   else
-    NS_FATAL_ERROR ("Trying to get reference rate for a non-HT rate");
-
+    {
+      NS_FATAL_ERROR ("Trying to get reference rate for a non-HT rate");
+    }
   return dataRate;
 }
 

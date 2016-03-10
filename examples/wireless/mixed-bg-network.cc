@@ -269,7 +269,7 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::ProtectionMode", StringValue ("Rts-Cts"));
   
   throughput = experiment.Run (true, false, false, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 19 || throughput > 20)
+  if (throughput < 11 || throughput > 12)
     {
       NS_LOG_ERROR ("Obtained throughput is not in the expected boundaries!");
       exit (1);
@@ -277,7 +277,7 @@ int main (int argc, char *argv[])
   std::cout << "RTS/CTS" << "\t\t\t" << "Long" << "\t\t\t\t" << "Long" << "\t\t\t\t" << "Mixed" << "\t\t" << throughput <<" Mbit/s" << std::endl;
   
   throughput = experiment.Run (true, false, true, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 19 || throughput > 20)
+  if (throughput < 13 || throughput > 14)
     {
       NS_LOG_ERROR ("Obtained throughput is not in the expected boundaries!");
       exit (1);
@@ -287,7 +287,7 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::ProtectionMode", StringValue ("Cts-To-Self"));
   
   throughput = experiment.Run (true, false, false, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 21 || throughput > 22)
+  if (throughput < 15 || throughput > 16)
     {
       NS_LOG_ERROR ("Obtained throughput is not in the expected boundaries!");
       exit (1);
@@ -295,7 +295,7 @@ int main (int argc, char *argv[])
   std::cout << "CTS-TO-SELF" << "\t\t" << "Long" << "\t\t\t\t" << "Long" << "\t\t\t\t" << "Mixed" << "\t\t" << throughput <<" Mbit/s" << std::endl;
   
   throughput = experiment.Run (true, false, true, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 21 || throughput > 22)
+  if (throughput < 17 || throughput > 18)
     {
       NS_LOG_ERROR ("Obtained throughput is not in the expected boundaries!");
       exit (1);

@@ -846,8 +846,16 @@ MacLow::ReceiveError (Ptr<Packet> packet, double rxSnr, bool isEndOfFrame)
   if (isEndOfFrame == true && m_receivedAtLeastOneMpdu == true)
     {
       WifiMacHeader hdr;
-      MpduAggregator::DeaggregatedMpdus mpdu = MpduAggregator::Deaggregate (packet);
-      mpdu.begin ()->first->PeekHeader (hdr);
+      AmpduTag ampdu;
+      if (packet->RemovePacketTag (ampdu))
+        {
+          MpduAggregator::DeaggregatedMpdus mpdu = MpduAggregator::Deaggregate (packet);
+          mpdu.begin ()->first->PeekHeader (hdr);
+        }
+      else
+        {
+          packet->PeekHeader (hdr);
+        }
       if (hdr.GetAddr1 () != m_self)
         {
           NS_LOG_DEBUG ("hdr addr1 " << hdr.GetAddr1 () << "not for me (" << m_self << "); returning");
@@ -1636,7 +1644,7 @@ MacLow::ForwardDown (Ptr<const Packet> packet, const WifiMacHeader* hdr,
                 ", mode=" << txVector.GetMode  () <<
                 ", duration=" << hdr->GetDuration () <<
                 ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
-  if (!m_ampdu || hdr->IsRts ())
+  if (!m_ampdu || hdr->IsRts () || hdr->IsBlockAck ())
     {
       m_phy->SendPacket (packet, txVector, preamble);
     }
@@ -1780,7 +1788,6 @@ MacLow::BlockAckTimeout (void)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("block ack timeout");
-
   MacLowTransmissionListener *listener = m_listener;
   m_listener = 0;
   m_sentMpdus = 0;
@@ -2884,6 +2891,12 @@ MacLow::DeaggregateAmpduAndReceive (Ptr<Packet> aggregatedPacket, double rxSnr, 
 bool
 MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size) const
 {
+  if (peekedPacket == 0)
+    {
+      NS_LOG_DEBUG ("no more packets in queue");
+      return true;
+    }
+
   WifiPreamble preamble;
 
   uint8_t tid = GetTid (peekedPacket, peekedHdr);
@@ -2909,12 +2922,6 @@ MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peeke
   else
     {
       preamble = WIFI_PREAMBLE_LONG;
-    }
-
-  if (peekedPacket == 0)
-    {
-      NS_LOG_DEBUG ("no more packets in queue");
-      return true;
     }
 
   //An HT STA shall not transmit a PPDU that has a duration that is greater than aPPDUMaxTime (10 milliseconds)
