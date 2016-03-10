@@ -22,16 +22,13 @@
  *
  * Some Comments:
  *
- * 1) By default, Minstrel applies the multi-rate retry(the core of Minstrel
+ * 1) By default, Minstrel applies the multi-rate retry (the core of Minstrel
  *    algorithm). Otherwise, please use ConstantRateWifiManager instead.
  *
- * 2) Currently it doesn't support aggregation. It is not considered in tx time calculations
- *    and in retries.
- *
- * 3) Sampling is done different as it was in legacy Minstrel. Minstrel-HT tries to sample
+ * 2) Sampling is done different as it was in legacy Minstrel. Minstrel-HT tries to sample
  * all rates in all groups at least once and to avoid many consecutive samplings.
  *
- * 4) Sample rate is tried only once, at first place of the MRR chain.
+ * 3) Sample rate is tried only once, at first place of the MRR chain.
  *
  * reference: http://lwn.net/Articles/376765/
  */
@@ -66,19 +63,19 @@ struct MinstrelHtWifiRemoteStation : MinstrelWifiRemoteStation
 
   uint32_t m_sampleGroup;     //!< The group that the sample rate belongs to.
 
-  uint32_t m_sampleWait;    //!< How many transmission attempts to wait until a new sample.
-  uint32_t m_sampleTries;   //!< Number of sample tries after waiting sampleWait.
-  uint32_t m_sampleCount;   //!< Max number of samples per update interval.
+  uint32_t m_sampleWait;      //!< How many transmission attempts to wait until a new sample.
+  uint32_t m_sampleTries;     //!< Number of sample tries after waiting sampleWait.
+  uint32_t m_sampleCount;     //!< Max number of samples per update interval.
   uint32_t m_numSamplesSlow;  //!< Number of times a slow rate was sampled.
 
-  double m_avgAmpduLen;    //!< Average number of MPDUs in an A-MPDU.
-  double m_ampduLen;    //!< Number of MPDUs in an A-MPDU.
-  uint32_t m_ampduPacketCount;  //!< Number of A-MPDUs transmitted.
+  double m_avgAmpduLen;       //!< Average number of MPDUs in an A-MPDU.
+  double m_ampduLen;          //!< Number of MPDUs in an A-MPDU.
+  uint32_t m_ampduPacketCount;//!< Number of A-MPDUs transmitted.
 
-  McsGroupData m_groupsTable;      //!< Table of groups with stats.
-  bool m_isHt;                  //!< If the station is HT capable.
+  McsGroupData m_groupsTable;  //!< Table of groups with stats.
+  bool m_isHt;                 //!< If the station is HT capable.
 
-  std::ofstream m_statsFile;
+  std::ofstream m_statsFile;   //!< File where statistics table is written.
 };
 
 void
@@ -1100,9 +1097,8 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
       HtRateInfo sampleRateInfo = station->m_groupsTable[sampleGroupId].m_ratesTable[sampleRateId];
 
       /**
-       * Sampling might add some overhead (RTS, no aggregation)
-       * to the frame. Hence, don't use sampling for the currently
-       * used rates.
+       * Sampling might add some overhead to the frame.
+       * Hence, don't use sampling for the currently used rates.
        *
        * Also do not sample if the probability is already higher than 95%
        * to avoid wasting airtime.
@@ -1113,7 +1109,7 @@ MinstrelHtWifiManager::FindRate (MinstrelHtWifiRemoteStation *station)
           && sampleIdx != station->m_maxProbRate && sampleRateInfo.ewmaProb <= 95)
         {
 
-          /*
+          /**
            * Make sure that lower rates get sampled only occasionally,
            * if the link is working perfectly.
            */
@@ -1287,7 +1283,7 @@ MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
         }
     }
 
-  /* try to sample all available rates during each interval */
+  //Try to sample all available rates during each interval.
   station->m_sampleCount *= 8;
 
   //Recalculate retries for the rates selected.
@@ -1307,7 +1303,8 @@ MinstrelHtWifiManager::CalculateThroughput (MinstrelHtWifiRemoteStation *station
 {
   /**
   * Calculating throughput.
-  * Do not account throughput if sucess prob is below 10% (as done in minstrel_hc linux implementation).
+  * Do not account throughput if sucess prob is below 10%
+  * (as done in minstrel_ht linux implementation).
   */
   if (ewmaProb < 10)
     {

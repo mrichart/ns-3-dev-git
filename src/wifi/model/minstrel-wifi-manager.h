@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Duy Nguyen <duy@soe.ucsc.edu>
+ *         Matías Richart <mrichart@fing.edu.uy>
  */
 
 #ifndef MINSTREL_WIFI_MANAGER_H

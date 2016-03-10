@@ -98,7 +98,7 @@ struct HtRateInfo
    */
   double ewmaProb;
 
-  double ewmsdProb;                //!< Exponential weighted moving standard deviation of probability.
+  double ewmsdProb;             //!< Exponential weighted moving standard deviation of probability.
 
   uint32_t prevNumRateAttempt;  //!< Number of transmission attempts with previous rate.
   uint32_t prevNumRateSuccess;  //!< Number of successful frames transmitted with previous rate.
@@ -131,7 +131,7 @@ struct GroupInfo
   uint32_t m_maxTpRate2;          //!< The second max throughput rate of this group.
   uint32_t m_maxProbRate;         //!< The highest success probability rate of this group.
 
-  HtMinstrelRate m_ratesTable; //!< Information about rates of this group.
+  HtMinstrelRate m_ratesTable;    //!< Information about rates of this group.
 };
 
 /**
@@ -257,14 +257,19 @@ private:
   /// Initialize Minstrel Table.
   void RateInit (MinstrelHtWifiRemoteStation *station);
 
+  /// Return the average throughput of the MCS defined by groupId and rateId.
   double CalculateThroughput (MinstrelHtWifiRemoteStation *station, uint32_t groupId, uint32_t rateId, double ewmaProb);
 
+  /// Set index rate as maxTpRate or maxTp2Rate if is better than current values.
   void SetBestStationThRates (MinstrelHtWifiRemoteStation *station, uint32_t index);
 
+  /// Set index rate as maxProbRate if it is better than current value.
   void SetBestProbabilityRate(MinstrelHtWifiRemoteStation *station, uint32_t index);
 
+  /// Calculate the number of retransmissions to set for the index rate.
   void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t index);
 
+  /// Calculate the number of retransmissions to set for the (groupId, rateId) rate.
   void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t groupId, uint32_t rateId);
 
   /**
@@ -285,9 +290,7 @@ private:
    */
   Time CalculateTimeUnicastPacket (Time dataTransmissionTime, uint32_t shortRetries, uint32_t longRetries);
 
-  /*
-   * Perform EWMSD (Exponentially Weighted Moving Standard Deviation) calculation
-   */
+  /// Perform EWMSD (Exponentially Weighted Moving Standard Deviation) calculation.
   double CalculateEwmsd(double oldEwmsd, double currentProb, double ewmaProb, uint32_t weight);
 
   /// Initialize Sample Table.
@@ -349,9 +352,9 @@ private:
   bool m_printStats;           //!< If statistics table should be printed.
 
 
-  MinstrelMcsGroups m_minstrelGroups; //!< Global array for groups information.
+  MinstrelMcsGroups m_minstrelGroups;                 //!< Global array for groups information.
 
-  Ptr<MinstrelWifiManager> m_legacyManager;
+  Ptr<MinstrelWifiManager> m_legacyManager;           //!< Pointer to an instance of MinstrelWifiManager. Used when 802.11n/ac not supported.
 
 
   Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.

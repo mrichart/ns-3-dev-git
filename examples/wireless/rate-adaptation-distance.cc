@@ -156,7 +156,7 @@ int main (int argc, char *argv[])
   int ap1_y = 0;
   int sta1_x = 5;
   int sta1_y = 0;
-  int steps = 200;
+  int steps = 100;
   int stepsSize = 1;
   int stepsTime = 1;
 

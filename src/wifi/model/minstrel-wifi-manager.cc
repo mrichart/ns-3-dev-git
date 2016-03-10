@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Duy Nguyen <duy@soe.ucsc.edu>
+ *         Matías Richart <mrichart@fing.edu.uy>
  *
  * Some Comments:
  *
@@ -955,7 +956,7 @@ MinstrelWifiManager::InitSampleTable (MinstrelWifiRemoteStation *station)
 
   station->m_col = station->m_index = 0;
 
-  //for off-seting to make rates fall between 0 and numrates
+  //for off-setting to make rates fall between 0 and nModes
   uint32_t numSampleRates = station->m_nModes;
 
   uint32_t newIndex;
@@ -970,7 +971,7 @@ MinstrelWifiManager::InitSampleTable (MinstrelWifiRemoteStation *station)
           int uv = m_uniformRandomVariable->GetInteger (0, numSampleRates);
           newIndex = (i + uv) % numSampleRates;
 
-          //this loop is used for filling in other uninitilized places
+          //this loop is used for filling in other uninitialized places
           while (station->m_sampleTable[newIndex][col] != 0)
             {
               newIndex = (newIndex + 1) % station->m_nModes;
