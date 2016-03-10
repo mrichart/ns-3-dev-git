@@ -596,7 +596,6 @@ public:
    * \param nFailedMpdus number of unsuccessfully transmitted MPDUs.
    */
   void ReportAmpduTxStatus (Mac48Address address, uint8_t tid, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
-  void ReportAmpduTxStatus (Mac48Address address, uint8_t tid, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
 
   /**
    * \param address remote address

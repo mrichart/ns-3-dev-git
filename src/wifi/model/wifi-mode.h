@@ -186,6 +186,7 @@ public:
    * and lookup in Table 9-5 of IEEE 802.11-2012.
    */
   uint64_t GetNonHtReferenceRate (uint8_t nss) const;
+
   /**
    * Create an invalid WifiMode. Calling any method on the
    * instance created will trigger an assert. This is useful
