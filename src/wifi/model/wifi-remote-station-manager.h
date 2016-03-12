@@ -594,8 +594,10 @@ public:
    * \param nSuccessfulMpdus number of successfully transmitted MPDUs.
    * A value of 0 means that the Block ACK was missed.
    * \param nFailedMpdus number of unsuccessfully transmitted MPDUs.
+   * \param rxSnr received SNR of the block ack frame itself
+   * \param dataSnr data SNR reported by remote station
    */
-  void ReportAmpduTxStatus (Mac48Address address, uint8_t tid, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
+  void ReportAmpduTxStatus (Mac48Address address, uint8_t tid, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus, double rxSnr, double dataSnr);
 
   /**
    * \param address remote address
@@ -1105,8 +1107,10 @@ private:
    * \param nSuccessfulMpdus number of successfully transmitted MPDUs.
    *        A value of 0 means that the Block ACK was missed.
    * \param nFailedMpdus number of unsuccessfully transmitted MPDUs.
+   * \param rxSnr received SNR of the block ack frame itself
+   * \param dataSnr data SNR reported by remote station
    */
-  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
+  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus, double rxSnr, double dataSnr);
 
   /**
    * Return the state of the station associated with the given address.

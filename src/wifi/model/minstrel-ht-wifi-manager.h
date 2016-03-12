@@ -19,9 +19,9 @@
  *Author: Duy Nguyen <duy@soe.ucsc.edu>
  *        Ghada Badawy <gbadawy@gmail.com>
  *        Matias Richart <mrichart@fing.edu.uy>
+ *
+ * MinstrelHt is a rate adaptation algorithm for high-throughput (HT) 802.11
  */
-
-
 
 #ifndef MINSTREL_HT_WIFI_MANAGER_H
 #define MINSTREL_HT_WIFI_MANAGER_H
@@ -35,13 +35,11 @@
 #include <map>
 #include <deque>
 
-
 namespace ns3 {
 
-
 /**
- * Data structure to save transmission times calculations per rate.
- * A vector fo Time, WifiMode pairs.
+ * Data structure to save transmission time calculations per rate.
+ * A vector of Time, WifiMode pairs.
  */
 typedef std::vector<std::pair<Time, WifiMode> > TxTime;
 
@@ -49,7 +47,7 @@ typedef std::vector<std::pair<Time, WifiMode> > TxTime;
  * Data structure to contain the information that defines a group.
  * It also contains the transmission times for all the MCS in the group.
  * A group is a collection of MCS defined by the number of spatial streams,
- * if it uses or not Short Guard Interval and the channel width used.
+ * if it uses or not Short Guard Interval, and the channel width used.
  */
 struct McsGroup
 {
@@ -58,14 +56,15 @@ struct McsGroup
   uint32_t chWidth;
   bool isVht;
 
-  //To accurately account TX times we separate the TX time of the first MPDU in an A-MPDU from the rest of the MPDUs.
+  // To accurately account for TX times, we separate the TX time of the first 
+  // MPDU in an A-MPDU from the rest of the MPDUs.
   TxTime ratesTxTimeTable;
   TxTime ratesFirstMpduTxTimeTable;
 };
 
 /**
  * Data structure for a table of group definitions.
- * A vector of a McsGroup.
+ * A vector of McsGroups.
  */
 typedef std::vector<struct McsGroup> MinstrelMcsGroups;
 
@@ -150,13 +149,13 @@ typedef std::vector<std::vector<uint32_t> > HtSampleRate;
  * Constants for maximum values.
  */
 
-uint8_t MAX_SUPPORTED_STREAMS = 2;  //!< Maximal number of streams supported by the phy layer.
-uint8_t MAX_HT_STREAM_GROUPS = 4;   //!< Maximal number of groups per stream in HT (2 possible channel widths and 2 possible SGI configurations).
-uint8_t MAX_VHT_STREAM_GROUPS = 8;  //!< Maximal number of groups per stream in VHT (4 possible channel widths and 2 possible SGI configurations).
-uint8_t MAX_HT_GROUP_RATES = 8;     //!< Number of rates (or MCS) per HT group.
-uint8_t MAX_VHT_GROUP_RATES = 10;   //!< Number of rates (or MCS) per VHT group.
-uint8_t MAX_HT_WIDTH = 40;          //!< Maximal channel width.
-uint8_t MAX_VHT_WIDTH = 160;        //!< Maximal channel width.
+static const uint8_t MAX_SUPPORTED_STREAMS = 2;  //!< Maximal number of streams supported by the phy layer.
+static const uint8_t MAX_HT_STREAM_GROUPS = 4;   //!< Maximal number of groups per stream in HT (2 possible channel widths and 2 possible SGI configurations).
+static const uint8_t MAX_VHT_STREAM_GROUPS = 8;  //!< Maximal number of groups per stream in VHT (4 possible channel widths and 2 possible SGI configurations).
+static const uint8_t MAX_HT_GROUP_RATES = 8;     //!< Number of rates (or MCS) per HT group.
+static const uint8_t MAX_VHT_GROUP_RATES = 10;   //!< Number of rates (or MCS) per VHT group.
+static const uint8_t MAX_HT_WIDTH = 40;          //!< Maximal channel width.
+static const uint8_t MAX_VHT_WIDTH = 160;        //!< Maximal channel width.
 
 /**
  * \author Ghada Badawy
@@ -210,7 +209,7 @@ private:
   virtual void DoReportFinalDataFailed (WifiRemoteStation *station);
   virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station);
   virtual WifiTxVector DoGetRtsTxVector (WifiRemoteStation *station);
-  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus);
+  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus, double rxSnr, double dataSnr);
   virtual bool IsLowLatency (void) const;
   virtual bool DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally);
   virtual void DoDisposeStation (WifiRemoteStation *station);
@@ -264,7 +263,7 @@ private:
   void SetBestStationThRates (MinstrelHtWifiRemoteStation *station, uint32_t index);
 
   /// Set index rate as maxProbRate if it is better than current value.
-  void SetBestProbabilityRate(MinstrelHtWifiRemoteStation *station, uint32_t index);
+  void SetBestProbabilityRate (MinstrelHtWifiRemoteStation *station, uint32_t index);
 
   /// Calculate the number of retransmissions to set for the index rate.
   void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t index);
@@ -291,7 +290,7 @@ private:
   Time CalculateTimeUnicastPacket (Time dataTransmissionTime, uint32_t shortRetries, uint32_t longRetries);
 
   /// Perform EWMSD (Exponentially Weighted Moving Standard Deviation) calculation.
-  double CalculateEwmsd(double oldEwmsd, double currentProb, double ewmaProb, uint32_t weight);
+  double CalculateEwmsd (double oldEwmsd, double currentProb, double ewmaProb, uint32_t weight);
 
   /// Initialize Sample Table.
   void InitSampleTable (MinstrelHtWifiRemoteStation *station);
@@ -310,7 +309,7 @@ private:
 
   uint32_t CountRetries (MinstrelHtWifiRemoteStation * station);
 
-  void UpdateRate(MinstrelHtWifiRemoteStation *station);
+  void UpdateRate (MinstrelHtWifiRemoteStation *station);
 
   /**
    * For managing rates from different groups, a global index for
