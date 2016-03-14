@@ -1010,7 +1010,7 @@ MinstrelHtWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 
       NS_ASSERT (rateFound);
 
-      return WifiTxVector (GetSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station),
+      return WifiTxVector (rtsRate, GetDefaultTxPowerLevel (), GetShortRetryCount (station),
                            false, 1, 0, GetChannelWidth (station), GetAggregation (station), false);
     }
 }
