@@ -1521,64 +1521,62 @@ MinstrelHtWifiManager::RateInit (MinstrelHtWifiRemoteStation *station)
       if (m_minstrelGroups[groupId].isSupported)
         {
           station->m_groupsTable[groupId].m_supported = false;
-          if (m_minstrelGroups[groupId].isVht || (!m_minstrelGroups[groupId].isVht && !m_useVhtOnly))         ///If it is an HT MCS, check if VHT only is disabled
+          if (!(!GetVhtSupported (station) && m_minstrelGroups[groupId].isVht)                  ///Is VHT supported by the receiver?
+              && (m_minstrelGroups[groupId].isVht || !GetVhtSupported (station) || !m_useVhtOnly) ///If it is an HT MCS, check if VHT only is disabled
+              && !(!GetShortGuardInterval (station) && m_minstrelGroups[groupId].sgi)           ///Is SGI supported by the receiver?
+              && (GetChannelWidth (station) >= m_minstrelGroups[groupId].chWidth)               ///Is channel width supported by the receiver?
+              && (GetNumberOfSupportedRxAntennas (station) >= m_minstrelGroups[groupId].streams)) ///Are streams supported by the receiver?
             {
-              if (!(!GetVhtSupported (station) && m_minstrelGroups[groupId].isVht)                  ///Is VHT supported by the receiver?
-                  && !(!GetShortGuardInterval (station) && m_minstrelGroups[groupId].sgi)           ///Is SGI supported by the receiver?
-                  && (GetChannelWidth (station) >= m_minstrelGroups[groupId].chWidth)               ///Is channel width supported by the receiver?
-                  && (GetNumberOfSupportedRxAntennas (station) >= m_minstrelGroups[groupId].streams)) ///Are streams supported by the receiver?
+              NS_LOG_DEBUG ("Group " << groupId << ": (" << (uint32_t)m_minstrelGroups[groupId].streams <<
+                            "," << (uint32_t)m_minstrelGroups[groupId].sgi << "," << m_minstrelGroups[groupId].chWidth << ")");
+
+              station->m_groupsTable[groupId].m_supported = true;                                ///Group supported.
+              station->m_groupsTable[groupId].m_col = 0;
+              station->m_groupsTable[groupId].m_index = 0;
+
+              station->m_groupsTable[groupId].m_ratesTable = HtMinstrelRate (m_numRates);        ///Create the rate list for the group.
+              for (uint32_t i = 0; i < m_numRates; i++)
                 {
-                  NS_LOG_DEBUG ("Group " << groupId << ": (" << (uint32_t)m_minstrelGroups[groupId].streams <<
-                                "," << (uint32_t)m_minstrelGroups[groupId].sgi << "," << m_minstrelGroups[groupId].chWidth << ")");
+                  station->m_groupsTable[groupId].m_ratesTable[i].supported = false;
+                }
 
-                  station->m_groupsTable[groupId].m_supported = true;                                ///Group supported.
-                  station->m_groupsTable[groupId].m_col = 0;
-                  station->m_groupsTable[groupId].m_index = 0;
+              // Initialize all modes supported by the remote station that belong to the current group.
+              for (uint32_t i = 0; i < station->m_nModes; i++)
+                {
+                  WifiMode mode = GetMcsSupported (station, i);
 
-                  station->m_groupsTable[groupId].m_ratesTable = HtMinstrelRate (m_numRates);        ///Create the rate list for the group.
-                  for (uint32_t i = 0; i < m_numRates; i++)
+                  ///Use the McsValue as the index in the rate table.
+                  ///This way, MCSs not supported are not initialized.
+                  uint32_t rateId = mode.GetMcsValue();
+                  if (mode.GetModulationClass() == WIFI_MOD_CLASS_HT)
                     {
-                      station->m_groupsTable[groupId].m_ratesTable[i].supported = false;
+                      rateId %= MAX_HT_GROUP_RATES;
                     }
 
-                  // Initialize all modes supported by the remote station that belong to the current group.
-                  for (uint32_t i = 0; i < station->m_nModes; i++)
+                  if ((m_minstrelGroups[groupId].isVht && mode.GetModulationClass() == WIFI_MOD_CLASS_VHT &&                    ///If it is a VHT MCS only add to a VHT group.
+                      IsValidMcs (GetPhy (), m_minstrelGroups[groupId].streams, m_minstrelGroups[groupId].chWidth, mode)) ||    ///Check validity of the VHT MCS
+                      (!m_minstrelGroups[groupId].isVht &&  mode.GetModulationClass() == WIFI_MOD_CLASS_HT &&                   ///If it is a HT MCS only add to a HT group.
+                       mode.GetMcsValue() < (m_minstrelGroups[groupId].streams * 8) &&                                          ///Check if the HT MCS corresponds to groups number of streams.
+                       mode.GetMcsValue() >= ((m_minstrelGroups[groupId].streams - 1) * 8)))
                     {
-                      WifiMode mode = GetMcsSupported (station, i);
+                      NS_LOG_DEBUG ("Mode " << i << ": " << mode << " isVht: " << m_minstrelGroups[groupId].isVht);
 
-                      ///Use the McsValue as the index in the rate table.
-                      ///This way, MCSs not supported are not initialized.
-                      uint32_t rateId = mode.GetMcsValue();
-                      if (mode.GetModulationClass() == WIFI_MOD_CLASS_HT)
-                        {
-                          rateId %= MAX_HT_GROUP_RATES;
-                        }
-
-                      if ((m_minstrelGroups[groupId].isVht && mode.GetModulationClass() == WIFI_MOD_CLASS_VHT &&                    ///If it is a VHT MCS only add to a VHT group.
-                          IsValidMcs (GetPhy (), m_minstrelGroups[groupId].streams, m_minstrelGroups[groupId].chWidth, mode)) ||    ///Check validity of the VHT MCS
-                          (!m_minstrelGroups[groupId].isVht &&  mode.GetModulationClass() == WIFI_MOD_CLASS_HT &&                   ///If it is a HT MCS only add to a HT group.
-                           mode.GetMcsValue() < (m_minstrelGroups[groupId].streams * 8) &&                                          ///Check if the HT MCS corresponds to groups number of streams.
-                           mode.GetMcsValue() >= ((m_minstrelGroups[groupId].streams - 1) * 8)))
-                        {
-                          NS_LOG_DEBUG ("Mode " << i << ": " << mode << " isVht: " << m_minstrelGroups[groupId].isVht);
-
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].supported = true;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].mcsIndex = i;         ///Mapping between rateId and operationalMcsSet
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].numRateAttempt = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].numRateSuccess = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].prob = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].ewmaProb = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].prevNumRateAttempt = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].prevNumRateSuccess = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].numSamplesSkipped = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].successHist = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].attemptHist = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].throughput = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].perfectTxTime = GetFirstMpduTxTime (groupId, GetMcsSupported (station, i));
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].retryCount = 0;
-                          station->m_groupsTable[groupId].m_ratesTable[rateId].adjustedRetryCount = 0;
-                          CalculateRetransmits (station, groupId, rateId);
-                        }
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].supported = true;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].mcsIndex = i;         ///Mapping between rateId and operationalMcsSet
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].numRateAttempt = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].numRateSuccess = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].prob = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].ewmaProb = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].prevNumRateAttempt = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].prevNumRateSuccess = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].numSamplesSkipped = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].successHist = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].attemptHist = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].throughput = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].perfectTxTime = GetFirstMpduTxTime (groupId, GetMcsSupported (station, i));
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].retryCount = 0;
+                      station->m_groupsTable[groupId].m_ratesTable[rateId].adjustedRetryCount = 0;
+                      CalculateRetransmits (station, groupId, rateId);
                     }
                 }
             }
