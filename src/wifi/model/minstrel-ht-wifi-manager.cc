@@ -628,6 +628,7 @@ MinstrelHtWifiManager::DoReportDataOk (WifiRemoteStation *st,
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
+      CheckDowngradeRate (station);
       if (Simulator::Now () >=  station->m_nextStatsUpdate)
         {
           UpdateStats (station);
@@ -676,6 +677,7 @@ MinstrelHtWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
+      CheckDowngradeRate (station);
       if (Simulator::Now () >=  station->m_nextStatsUpdate)
         {
           UpdateStats (station);
@@ -730,6 +732,7 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus (WifiRemoteStation *st, uint32_t nS
       station->m_sampleDeferred = false;
 
       UpdateRetry (station);
+      CheckDowngradeRate (station);
       if (Simulator::Now () >=  station->m_nextStatsUpdate)
         {
           UpdateStats (station);
@@ -1501,6 +1504,60 @@ MinstrelHtWifiManager::SetBestStationThRates (MinstrelHtWifiRemoteStation *stati
   else if (th > maxTp2Th || (th == maxTp2Th && prob > maxTp2Prob))
     {
       group->m_maxTpRate2 = index;
+    }
+}
+
+void
+MinstrelHtWifiManager::CheckDowngradeRate(MinstrelHtWifiRemoteStation *station)
+{
+  /*
+   * From Linux:
+   * check for sudden death of spatial multiplexing,
+   * downgrade to a lower number of streams if necessary.
+   */
+  uint32_t rateId = GetRateId(station->m_maxTpRate);
+  uint32_t groupId = GetGroupId(station->m_maxTpRate);
+  HtRateInfo rate = station->m_groupsTable[groupId].m_ratesTable[rateId];
+  if (rate.numRateAttempt > 30 && (rate.numRateSuccess / rate.numRateAttempt) < 20)
+    {
+      DowngradeRate(station, station->m_maxTpRate, true);
+      CalculateRetransmits(station, station->m_maxTpRate);
+    }
+
+  rateId = GetRateId(station->m_maxTpRate2);
+  groupId = GetGroupId(station->m_maxTpRate2);
+  rate = station->m_groupsTable[groupId].m_ratesTable[rateId];
+  if (rate.numRateAttempt > 30 && (rate.numRateSuccess / rate.numRateAttempt) < 20)
+    {
+      DowngradeRate(station, station->m_maxTpRate2, false);
+      CalculateRetransmits(station, station->m_maxTpRate2);
+    }
+}
+
+void
+MinstrelHtWifiManager::DowngradeRate(MinstrelHtWifiRemoteStation *station, uint32_t index, bool first)
+{
+  int groupId, origGroupId;
+
+  origGroupId = groupId = GetGroupId(index);
+  while (groupId > 0)
+    {
+      groupId--;
+      if (station->m_groupsTable[groupId].m_supported)
+        {
+          if (m_minstrelGroups[groupId].streams <= m_minstrelGroups[origGroupId].streams)
+            {
+              if (first)
+                {
+                  station->m_groupsTable[origGroupId].m_maxTpRate = station->m_groupsTable[groupId].m_maxTpRate;
+                }
+              else
+                {
+                  station->m_groupsTable[origGroupId].m_maxTpRate2 = station->m_groupsTable[groupId].m_maxTpRate2;
+                }
+              break;
+            }
+        }
     }
 }
 

@@ -269,6 +269,10 @@ private:
   /// Set index rate as maxProbRate if it is better than current value.
   void SetBestProbabilityRate (MinstrelHtWifiRemoteStation *station, uint32_t index);
 
+  void CheckDowngradeRate(MinstrelHtWifiRemoteStation *station);
+
+  void DowngradeRate(MinstrelHtWifiRemoteStation *station, uint32_t index, bool first);
+
   /// Calculate the number of retransmissions to set for the index rate.
   void CalculateRetransmits (MinstrelHtWifiRemoteStation *station, uint32_t index);
 
