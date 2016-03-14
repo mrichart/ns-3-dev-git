@@ -391,19 +391,19 @@ uint32_t
 MinstrelWifiManager::CountRetries (MinstrelWifiRemoteStation *station)
 {
   if (!station->m_isSampling)
-      {
+    {
       return station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
              station->m_minstrelTable[station->m_maxTpRate2].adjustedRetryCount +
              station->m_minstrelTable[station->m_maxProbRate].adjustedRetryCount +
              station->m_minstrelTable[0].adjustedRetryCount;
-      }
-    else
-      {
+    }
+  else
+    {
       return station->m_minstrelTable[station->m_sampleRate].adjustedRetryCount +
              station->m_minstrelTable[station->m_maxTpRate].adjustedRetryCount +
              station->m_minstrelTable[station->m_maxProbRate].adjustedRetryCount +
              station->m_minstrelTable[0].adjustedRetryCount;
-      }
+    }
 }
 
 uint32_t
@@ -420,7 +420,9 @@ MinstrelWifiManager::FindRate (MinstrelWifiRemoteStation *station)
   uint32_t idx;
 
   int delta = (station->m_totalPacketsCount * m_lookAroundRate / 100) - (station->m_samplePacketsCount + station->m_numSamplesDeferred / 2);
+
   NS_LOG_DEBUG ("Decide sampling. Delta: " << delta << " lookAroundRatio: " <<  m_lookAroundRate);
+
   /* delta < 0: no sampling required */
   if (delta >= 0)
     {
