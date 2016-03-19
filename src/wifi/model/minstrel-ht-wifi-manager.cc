@@ -25,8 +25,8 @@
  * 1) By default, Minstrel applies the multi-rate retry (the core of Minstrel
  *    algorithm). Otherwise, please use ConstantRateWifiManager instead.
  *
- * 2) Sampling is done differently from legacy Minstrel. Minstrel-HT tries 
- * to sample all rates in all groups at least once and to avoid many 
+ * 2) Sampling is done differently from legacy Minstrel. Minstrel-HT tries
+ * to sample all rates in all groups at least once and to avoid many
  * consecutive samplings.
  *
  * 3) Sample rate is tried only once, at first place of the MRR chain.
@@ -249,7 +249,7 @@ MinstrelHtWifiManager::DoInitialize ()
                       m_minstrelGroups[groupId].isSupported = true;
 
                       // Calculate tx time for all rates of the group
-                      WifiModeList htMcsList = GetHtDeviceMcsList();
+                      WifiModeList htMcsList = GetHtDeviceMcsList ();
                       for (uint8_t i = 0; i < MAX_HT_GROUP_RATES; i++)
                         {
                           uint32_t deviceIndex = i + (m_minstrelGroups[groupId].streams - 1) * 8;
@@ -288,7 +288,7 @@ MinstrelHtWifiManager::DoInitialize ()
                           m_minstrelGroups[groupId].isSupported = true;
 
                           // Calculate tx time for all rates of the group
-                          WifiModeList vhtMcsList = GetVhtDeviceMcsList();
+                          WifiModeList vhtMcsList = GetVhtDeviceMcsList ();
                           for (uint8_t i = 0; i < MAX_VHT_GROUP_RATES; i++)
                             {
                               WifiMode mode = vhtMcsList[i];
@@ -1263,9 +1263,9 @@ MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
     }
 
   /* Initialize global rate indexes */
-  station->m_maxTpRate = GetLowestIndex(station);
-  station->m_maxTpRate2 = GetLowestIndex(station);
-  station->m_maxProbRate = GetLowestIndex(station);
+  station->m_maxTpRate = GetLowestIndex (station);
+  station->m_maxTpRate2 = GetLowestIndex (station);
+  station->m_maxProbRate = GetLowestIndex (station);
 
   /// Update throughput and EWMA for each rate inside each group.
   for (uint32_t j = 0; j < m_numGroups; j++)
@@ -1275,9 +1275,9 @@ MinstrelHtWifiManager::UpdateStats (MinstrelHtWifiRemoteStation *station)
           station->m_sampleCount++;
 
           /* (re)Initialize group rate indexes */
-          station->m_groupsTable[j].m_maxTpRate = GetLowestIndex(station, j);
-          station->m_groupsTable[j].m_maxTpRate2 = GetLowestIndex(station, j);
-          station->m_groupsTable[j].m_maxProbRate = GetLowestIndex(station, j);
+          station->m_groupsTable[j].m_maxTpRate = GetLowestIndex (station, j);
+          station->m_groupsTable[j].m_maxTpRate2 = GetLowestIndex (station, j);
+          station->m_groupsTable[j].m_maxProbRate = GetLowestIndex (station, j);
 
           for (uint32_t i = 0; i < m_numRates; i++)
             {
@@ -1604,17 +1604,17 @@ MinstrelHtWifiManager::RateInit (MinstrelHtWifiRemoteStation *station)
 
                   ///Use the McsValue as the index in the rate table.
                   ///This way, MCSs not supported are not initialized.
-                  uint32_t rateId = mode.GetMcsValue();
-                  if (mode.GetModulationClass() == WIFI_MOD_CLASS_HT)
+                  uint32_t rateId = mode.GetMcsValue ();
+                  if (mode.GetModulationClass () == WIFI_MOD_CLASS_HT)
                     {
                       rateId %= MAX_HT_GROUP_RATES;
                     }
 
-                  if ((m_minstrelGroups[groupId].isVht && mode.GetModulationClass() == WIFI_MOD_CLASS_VHT &&                    ///If it is a VHT MCS only add to a VHT group.
-                      IsValidMcs (GetPhy (), m_minstrelGroups[groupId].streams, m_minstrelGroups[groupId].chWidth, mode)) ||    ///Check validity of the VHT MCS
-                      (!m_minstrelGroups[groupId].isVht &&  mode.GetModulationClass() == WIFI_MOD_CLASS_HT &&                   ///If it is a HT MCS only add to a HT group.
-                       mode.GetMcsValue() < (m_minstrelGroups[groupId].streams * 8) &&                                          ///Check if the HT MCS corresponds to groups number of streams.
-                       mode.GetMcsValue() >= ((m_minstrelGroups[groupId].streams - 1) * 8)))
+                  if ((m_minstrelGroups[groupId].isVht && mode.GetModulationClass () == WIFI_MOD_CLASS_VHT                       ///If it is a VHT MCS only add to a VHT group.
+                       && IsValidMcs (GetPhy (), m_minstrelGroups[groupId].streams, m_minstrelGroups[groupId].chWidth, mode))   ///Check validity of the VHT MCS
+                      || (!m_minstrelGroups[groupId].isVht &&  mode.GetModulationClass () == WIFI_MOD_CLASS_HT                  ///If it is a HT MCS only add to a HT group.
+                          && mode.GetMcsValue () < (m_minstrelGroups[groupId].streams * 8)                                      ///Check if the HT MCS corresponds to groups number of streams.
+                          && mode.GetMcsValue () >= ((m_minstrelGroups[groupId].streams - 1) * 8)))
                     {
                       NS_LOG_DEBUG ("Mode " << i << ": " << mode << " isVht: " << m_minstrelGroups[groupId].isVht);
 
@@ -1915,8 +1915,8 @@ MinstrelHtWifiManager::GetLowestIndex (MinstrelHtWifiRemoteStation *station)
     {
       rateId++;
     }
-  NS_ASSERT(station->m_groupsTable[groupId].m_supported && station->m_groupsTable[groupId].m_ratesTable[rateId].supported);
-  return GetIndex(groupId, rateId);
+  NS_ASSERT (station->m_groupsTable[groupId].m_supported && station->m_groupsTable[groupId].m_ratesTable[rateId].supported);
+  return GetIndex (groupId, rateId);
 }
 
 uint32_t
@@ -1929,8 +1929,8 @@ MinstrelHtWifiManager::GetLowestIndex (MinstrelHtWifiRemoteStation *station, uin
     {
       rateId++;
     }
-  NS_ASSERT(station->m_groupsTable[groupId].m_supported && station->m_groupsTable[groupId].m_ratesTable[rateId].supported);
-  return GetIndex(groupId, rateId);
+  NS_ASSERT (station->m_groupsTable[groupId].m_supported && station->m_groupsTable[groupId].m_ratesTable[rateId].supported);
+  return GetIndex (groupId, rateId);
 }
 
 
@@ -1938,13 +1938,13 @@ WifiModeList
 MinstrelHtWifiManager::GetVhtDeviceMcsList (void) const
 {
   WifiModeList vhtMcsList;
-  Ptr<WifiPhy> phy = GetPhy();
-  for (uint32_t i = 0; i < phy->GetNMcs(); i++)
+  Ptr<WifiPhy> phy = GetPhy ();
+  for (uint32_t i = 0; i < phy->GetNMcs (); i++)
     {
-      WifiMode mode = phy->GetMcs(i);
-      if (mode.GetModulationClass() == WIFI_MOD_CLASS_VHT)
+      WifiMode mode = phy->GetMcs (i);
+      if (mode.GetModulationClass () == WIFI_MOD_CLASS_VHT)
         {
-          vhtMcsList.push_back(mode);
+          vhtMcsList.push_back (mode);
         }
     }
   return vhtMcsList;
@@ -1954,13 +1954,13 @@ WifiModeList
 MinstrelHtWifiManager::GetHtDeviceMcsList (void) const
 {
   WifiModeList htMcsList;
-  Ptr<WifiPhy> phy = GetPhy();
-  for (uint32_t i = 0; i < phy->GetNMcs(); i++)
+  Ptr<WifiPhy> phy = GetPhy ();
+  for (uint32_t i = 0; i < phy->GetNMcs (); i++)
     {
-      WifiMode mode = phy->GetMcs(i);
-      if (mode.GetModulationClass() == WIFI_MOD_CLASS_HT)
+      WifiMode mode = phy->GetMcs (i);
+      if (mode.GetModulationClass () == WIFI_MOD_CLASS_HT)
         {
-          htMcsList.push_back(mode);
+          htMcsList.push_back (mode);
         }
     }
   return htMcsList;
