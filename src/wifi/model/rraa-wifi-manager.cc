@@ -352,19 +352,20 @@ void
 RraaWifiManager::RunBasicAlgorithm (RraaWifiRemoteStation *station)
 {
   ThresholdsItem thresholds = GetThresholds (station, station->m_rate);
-  double ploss = (double) station->m_failed / (double) thresholds.ewnd;
+  double bploss = (double) station->m_failed / (double) thresholds.ewnd;
+  double wploss = (double) (station->m_counter + station->m_failed) / (double) thresholds.ewnd;
   NS_LOG_DEBUG("RunBasicAlgorithm " << station << " " << station->m_rate << " " << station->m_failed << " " << thresholds.ewnd << " " << station->m_counter);
-  if (station->m_counter == 0
-      || ploss > thresholds.pmtl)
+  if (bploss > thresholds.pmtl)
     {
-      if (station->m_rate > GetMinRate (station)
-          && ploss > thresholds.pmtl)
+      if (station->m_rate > GetMinRate (station))
         {
           station->m_rate--;
           NS_LOG_DEBUG("Rate decreased");
         }
-      else if (station->m_rate < GetMaxRate (station)
-               && ploss < thresholds.pori)
+    }
+  else if (wploss < thresholds.pori)
+    {
+      if (station->m_rate < GetMaxRate (station))
         {
           station->m_rate++;
           NS_LOG_DEBUG("Rate increased");
