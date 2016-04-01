@@ -213,10 +213,12 @@ RraaWifiManager::ResetCountersBasic (RraaWifiRemoteStation *station)
     {
       station->m_rate = GetMaxRate (station);
       station->m_initialized = true;
+      NS_LOG_DEBUG("Rate initialized " << station << " " << station->m_rate);
     }
   station->m_failed = 0;
   station->m_counter = GetThresholds (station, station->m_rate).ewnd;
   station->m_lastReset = Simulator::Now ();
+  NS_LOG_DEBUG("ResetCountersBasic " << station);
 }
 
 uint32_t
@@ -244,6 +246,7 @@ RraaWifiManager::DoReportDataFailed (WifiRemoteStation *st)
   CheckTimeout (station);
   station->m_counter--;
   station->m_failed++;
+  NS_LOG_DEBUG("DoReportDataFailed " << station << " " << station->m_rate);
   RunBasicAlgorithm (station);
 }
 
@@ -268,6 +271,7 @@ RraaWifiManager::DoReportDataOk (WifiRemoteStation *st,
   station->m_lastFrameFail = false;
   CheckTimeout (station);
   station->m_counter--;
+  NS_LOG_DEBUG("DoReportDataOk " << station << " " << station->m_rate);
   RunBasicAlgorithm (station);
 }
 
@@ -295,6 +299,7 @@ RraaWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
     {
       ResetCountersBasic (station);
     }
+  NS_LOG_DEBUG("DoGetDataTxVector " << station);
   return WifiTxVector (GetSupported (station, station->m_rate), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
@@ -348,6 +353,7 @@ RraaWifiManager::RunBasicAlgorithm (RraaWifiRemoteStation *station)
 {
   ThresholdsItem thresholds = GetThresholds (station, station->m_rate);
   double ploss = (double) station->m_failed / (double) thresholds.ewnd;
+  NS_LOG_DEBUG("RunBasicAlgorithm " << station << " " << station->m_rate << " " << station->m_failed << " " << thresholds.ewnd << " " << station->m_counter);
   if (station->m_counter == 0
       || ploss > thresholds.pmtl)
     {
@@ -355,11 +361,13 @@ RraaWifiManager::RunBasicAlgorithm (RraaWifiRemoteStation *station)
           && ploss > thresholds.pmtl)
         {
           station->m_rate--;
+          NS_LOG_DEBUG("Rate decreased");
         }
       else if (station->m_rate < GetMaxRate (station)
                && ploss < thresholds.pori)
         {
           station->m_rate++;
+          NS_LOG_DEBUG("Rate increased");
         }
       ResetCountersBasic (station);
     }
