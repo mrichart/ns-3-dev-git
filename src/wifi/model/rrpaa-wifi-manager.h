@@ -22,6 +22,7 @@
 #define RRPAA_WIFI_MANAGER_H
 
 #include "ns3/nstime.h"
+#include "ns3/random-variable-stream.h"
 #include "wifi-remote-station-manager.h"
 
 namespace ns3 {
@@ -52,15 +53,20 @@ struct RrpaaWifiRemoteStation;
  */
 struct Thresholds
 {
-  double ori;
-  double mtl;
-  uint32_t ewnd;
+  double m_ori;
+  double m_mtl;
+  uint32_t m_ewnd;
 };
 
 /**
  * List of thresholds for each mode.
  */
-typedef std::vector<std::pair<Thresholds,WifiMode> > RrpaaThresholds;
+typedef std::vector<std::pair<Thresholds,WifiMode> > RrpaaThresholdsTable;
+
+/**
+ * List of probabilities.
+ */
+typedef std::vector<std::vector<double> > RrpaaProbabilitiesTable;
 
 class RrpaaWifiManager : public WifiRemoteStationManager
 {
@@ -72,6 +78,17 @@ public:
   static TypeId GetTypeId (void);
   RrpaaWifiManager ();
   virtual ~RrpaaWifiManager ();
+
+  /**
+   * Assign a fixed random variable stream number to the random variables
+   * used by this model.  Return the number of streams (possibly zero) that
+   * have been assigned.
+   *
+   * \param stream first stream index to use
+   *
+   * \return the number of stream indices assigned by this model
+   */
+  int64_t AssignStreams (int64_t stream);
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
   virtual void SetupMac (Ptr<WifiMac> mac);
@@ -106,7 +123,7 @@ private:
                                double ackSnr, WifiMode ackMode, double dataSnr);
   virtual void DoReportFinalRtsFailed (WifiRemoteStation *station);
   virtual void DoReportFinalDataFailed (WifiRemoteStation *station);
-  virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station, uint32_t size);
+  virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station);
   virtual WifiTxVector DoGetRtsTxVector (WifiRemoteStation *station);
   virtual bool DoNeedRts (WifiRemoteStation *st,
                           Ptr<const Packet> packet, bool normally);
@@ -132,11 +149,12 @@ private:
    */
   void RunBasicAlgorithm (RrpaaWifiRemoteStation *station);
   /**
-   * Activate the use of RTS for the given station if the conditions are met.
+   * Run an enhanced algorithm which activates the use of RTS
+   * for the given station if the conditions are met.
    *
    * \param station
    */
-  void ARts (RrpaaWifiRemoteStation *station);
+  void RunAdaptiveRtsAlgorithm (RrpaaWifiRemoteStation *station);
   /**
    * Reset the counters of the given station.
    *
@@ -225,6 +243,9 @@ private:
    * The trace source fired when the transmission rate change
    */
   TracedCallback<uint32_t, Mac48Address> m_rateChange;
+
+  //Provides uniform random variables.
+  Ptr<UniformRandomVariable> m_uniformRandomVariable;
 };
 
 } //namespace ns3

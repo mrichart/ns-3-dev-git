@@ -28,10 +28,8 @@
 #include "ns3/double.h"
 #include "ns3/uinteger.h"
 #include "ns3/simulator.h"
-#include "ns3/random-variable-stream.h"
-#include "ns3/rng-seed-manager.h"
 #include <cmath>
-#define Min(a,b) ((a < b) ? a : b)
+
 NS_LOG_COMPONENT_DEFINE ("RrpaaWifiManager");
 
 namespace ns3 {
@@ -46,10 +44,10 @@ struct RrpaaWifiRemoteStation : public WifiRemoteStation
 {
   uint32_t m_counter;            //!< Counter for transmission attempts.
   uint32_t m_nFailed;            //!< Number of failed transmission attempts.
-  uint32_t m_rtsWnd;             //!< Window size for the ARts mechanism.
-  uint32_t m_rtsCounter;         //!< Counter for rts transmission attempts.
+  uint32_t m_adaptiveRtsWnd;     //!< Window size for the Adaptive RTS mechanism.
+  uint32_t m_rtsCounter;         //!< Counter for RTS transmission attempts.
   Time m_lastReset;              //!< Time of the last reset.
-  bool m_rtsOn;                  //!< Check if ARts mechanism is on.
+  bool m_adaptiveRtsOn;          //!< Check if Adaptive RTS mechanism is on.
   bool m_lastFrameFail;          //!< Flag if the last frame sent has failed.
   bool m_initialized;            //!< For initializing variables.
 
@@ -58,9 +56,9 @@ struct RrpaaWifiRemoteStation : public WifiRemoteStation
   uint32_t m_rate;               //!< Current rate.
   uint8_t m_power;               //!< Current power.
 
-  RrpaaThresholds m_thresholds;  //!< Rrpaa thresholds for this station.
+  RrpaaThresholdsTable m_thresholds;  //!< Rrpaa thresholds for this station.
 
-  double** m_pdTable;            //!< Probability table for power and rate changes.
+  RrpaaProbabilitiesTable m_pdTable;            //!< Probability table for power and rate changes.
 };
 
 NS_OBJECT_ENSURE_REGISTERED (RrpaaWifiManager);
@@ -79,44 +77,44 @@ RrpaaWifiManager::GetTypeId (void)
                    MakeBooleanChecker ())
     .AddAttribute ("Timeout",
                    "Timeout for the RRAA-BASIC loss estimation block (s).",
-                   TimeValue (Seconds (0.5)),
+                   TimeValue (MilliSeconds (500)),
                    MakeTimeAccessor (&RrpaaWifiManager::m_timeout),
                    MakeTimeChecker ())
     .AddAttribute ("FrameLength",
-                   "The data frame length used for calculating mode TxTime.",
+                   "The data frame length (in bytes) used for calculating mode TxTime.",
                    UintegerValue (1420),
                    MakeUintegerAccessor (&RrpaaWifiManager::m_frameLength),
                    MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("AckFrameLength",
-                   "The ACK frame length used for calculating mode TxTime.",
-                   DoubleValue (14),
-                   MakeDoubleAccessor (&RrpaaWifiManager::m_ackLength),
-                   MakeDoubleChecker <uint32_t> ())
+                   "The ACK frame length (in bytes) used for calculating mode TxTime.",
+                   UintegerValue (14),
+                   MakeUintegerAccessor (&RrpaaWifiManager::m_ackLength),
+                   MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("Alpha",
                    "Constant for calculating the MTL threshold.",
                    DoubleValue (1.25),
                    MakeDoubleAccessor (&RrpaaWifiManager::m_alpha),
-                   MakeDoubleChecker<double> ())
+                   MakeDoubleChecker<double> (1))
     .AddAttribute ("Beta",
                    "Constant for calculating the ORI threshold.",
                    DoubleValue (2),
                    MakeDoubleAccessor (&RrpaaWifiManager::m_beta),
-                   MakeDoubleChecker<double> ())
+                   MakeDoubleChecker<double> (1))
     .AddAttribute ("Tau",
                    "Constant for calculating the EWND size.",
                    DoubleValue (0.015),
                    MakeDoubleAccessor (&RrpaaWifiManager::m_tau),
-                   MakeDoubleChecker<double> ())
+                   MakeDoubleChecker<double> (0))
     .AddAttribute ("Gamma",
                    "Constant for Probabilistic Decision Table decrements.",
                    DoubleValue (2),
                    MakeDoubleAccessor (&RrpaaWifiManager::m_gamma),
-                   MakeDoubleChecker<double> ())
+                   MakeDoubleChecker<double> (1))
     .AddAttribute ("Delta",
                    "Constant for Probabilistic Decision Table increments.",
                    DoubleValue (1.0905),
                    MakeDoubleAccessor (&RrpaaWifiManager::m_delta),
-                   MakeDoubleChecker<double> ())
+                   MakeDoubleChecker<double> (1))
     .AddTraceSource ("RateChange",
                      "The transmission rate has change.",
                      MakeTraceSourceAccessor (&RrpaaWifiManager::m_rateChange),
@@ -133,11 +131,20 @@ RrpaaWifiManager::GetTypeId (void)
 RrpaaWifiManager::RrpaaWifiManager ()
 {
   NS_LOG_FUNCTION (this);
+  m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
 }
 
 RrpaaWifiManager::~RrpaaWifiManager ()
 {
   NS_LOG_FUNCTION (this);
+}
+
+int64_t
+RrpaaWifiManager::AssignStreams (int64_t stream)
+{
+  NS_LOG_FUNCTION (this << stream);
+  m_uniformRandomVariable->SetStream (stream);
+  return 1;
 }
 
 void
@@ -154,8 +161,10 @@ RrpaaWifiManager::SetupPhy (Ptr<WifiPhy> phy)
       WifiTxVector txVector;
       txVector.SetMode (mode);
       /* Calculate the TX Time of the data and the corresponding ACK*/
-      AddCalcTxTime (mode, phy->CalculateTxDuration (m_frameLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency (), 0, 0) +
-                     phy->CalculateTxDuration (m_ackLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency (), 0, 0));
+      Time dataTxTime = phy->CalculateTxDuration (m_frameLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ());
+      Time ackTxTime = phy->CalculateTxDuration (m_ackLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ());
+      NS_LOG_DEBUG ("Calculating TX times: Mode= " << mode << " DataTxTime= " << dataTxTime << " AckTxTime= " << ackTxTime);
+      AddCalcTxTime (mode, dataTxTime + ackTxTime);
     }
   WifiRemoteStationManager::SetupPhy (phy);
 }
@@ -195,7 +204,7 @@ Thresholds
 RrpaaWifiManager::GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const
 {
   NS_LOG_FUNCTION (this << station << mode);
-  for (RrpaaThresholds::const_iterator i = station->m_thresholds.begin (); i != station->m_thresholds.end (); i++)
+  for (RrpaaThresholdsTable::const_iterator i = station->m_thresholds.begin (); i != station->m_thresholds.end (); i++)
     {
       if (mode == i->second)
         {
@@ -210,9 +219,9 @@ RrpaaWifiManager::DoCreateStation (void) const
 {
   NS_LOG_FUNCTION (this);
   RrpaaWifiRemoteStation *station = new RrpaaWifiRemoteStation ();
-  station->m_rtsWnd = 0;
+  station->m_adaptiveRtsWnd = 0;
   station->m_rtsCounter = 0;
-  station->m_rtsOn = false;
+  station->m_adaptiveRtsOn = false;
   station->m_lastFrameFail = false;
   station->m_initialized = false;
   return station;
@@ -234,10 +243,9 @@ RrpaaWifiManager::CheckInit (RrpaaWifiRemoteStation *station)
       m_rateChange (station->m_rate, station->m_state->m_address);
       m_powerChange (station->m_power, station->m_state->m_address);
 
-      station->m_pdTable = new double*[station->m_nRate];
+      station->m_pdTable = RrpaaProbabilitiesTable (station->m_nRate, std::vector<double> (m_nPower));
       for (uint32_t i = 0; i < station->m_nRate; i++)
         {
-          station->m_pdTable[i] = new double[m_nPower];
           for (uint8_t j = 0; j < m_nPower; j++)
             {
               station->m_pdTable[i][j] = 1;
@@ -246,7 +254,7 @@ RrpaaWifiManager::CheckInit (RrpaaWifiRemoteStation *station)
 
       station->m_initialized = true;
 
-      station->m_thresholds = RrpaaThresholds (station->m_nRate);
+      station->m_thresholds = RrpaaThresholdsTable (station->m_nRate);
       InitThresholds (station);
       ResetCountersBasic (station);
     }
@@ -283,12 +291,12 @@ RrpaaWifiManager::InitThresholds (RrpaaWifiRemoteStation *station)
           mtl = nextMtl;
         }
       Thresholds th;
-      th.ewnd = ceil (m_tau / totalTxTime.GetSeconds ());
-      th.ori = ori;
-      th.mtl = mtl;
+      th.m_ewnd = ceil (m_tau / totalTxTime.GetSeconds ());
+      th.m_ori = ori;
+      th.m_mtl = mtl;
       station->m_thresholds.push_back (std::make_pair (th, mode));
       mtl = nextMtl;
-      NS_LOG_DEBUG (mode << " " << th.ewnd << " " << th.mtl << " " << th.ori);
+      NS_LOG_DEBUG (mode << " " << th.m_ewnd << " " << th.m_mtl << " " << th.m_ori);
     }
 }
 
@@ -297,7 +305,7 @@ RrpaaWifiManager::ResetCountersBasic (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
   station->m_nFailed = 0;
-  station->m_counter = GetThresholds (station, station->m_rate).ewnd;
+  station->m_counter = GetThresholds (station, station->m_rate).m_ewnd;
   station->m_lastReset = Simulator::Now ();
 }
 
@@ -359,21 +367,32 @@ RrpaaWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 }
 
 WifiTxVector
-RrpaaWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
-                                     uint32_t size)
+RrpaaWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
 {
-  NS_LOG_FUNCTION (this << st << size);
+  NS_LOG_FUNCTION (this << st);
   RrpaaWifiRemoteStation *station = (RrpaaWifiRemoteStation *) st;
+  uint32_t channelWidth = GetChannelWidth (station);
+  if (channelWidth > 20 && channelWidth != 22)
+    {
+      //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
+      channelWidth = 20;
+    }
   CheckInit (station);
-  return WifiTxVector (GetSupported (station, station->m_rate), station->m_power, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetAggregation (station), GetStbc (station));
+  return WifiTxVector (GetSupported (station, station->m_rate), station->m_power, GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
 }
 WifiTxVector
 RrpaaWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   RrpaaWifiRemoteStation *station = (RrpaaWifiRemoteStation *) st;
+  uint32_t channelWidth = GetChannelWidth (station);
+  if (channelWidth > 20 && channelWidth != 22)
+    {
+      //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
+      channelWidth = 20;
+    }
   CheckInit (station);
-  return WifiTxVector (GetSupported (st, 0), GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetAggregation (station), GetStbc (station));
+  return WifiTxVector (GetSupported (st, 0), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
 bool
@@ -387,8 +406,8 @@ RrpaaWifiManager::DoNeedRts (WifiRemoteStation *st,
     {
       return normally;
     }
-  ARts (station);
-  return station->m_rtsOn;
+  RunAdaptiveRtsAlgorithm (station);
+  return station->m_adaptiveRtsOn;
 }
 
 void
@@ -406,15 +425,16 @@ void
 RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
-  RngSeedManager::SetSeed (static_cast<uint32_t> (time (0)));
   Thresholds thresholds = GetThresholds (station, station->m_rate);
-  double bploss = (double) station->m_nFailed / (double) thresholds.ewnd;
-  double wploss = (double) (station->m_counter + station->m_nFailed) / (double) thresholds.ewnd;
-  Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
-  if (bploss >= thresholds.mtl)
+  double bploss = (double) station->m_nFailed / (double) thresholds.m_ewnd;
+  double wploss = (double) (station->m_counter + station->m_nFailed) / (double) thresholds.m_ewnd;
+  NS_LOG_DEBUG ("Best loss prob= " << bploss);
+  NS_LOG_DEBUG ("Worst loss prob= " << wploss);
+  if (bploss >= thresholds.m_mtl)
     {
       if (station->m_power < m_maxPower)
         {
+          NS_LOG_DEBUG ("bploss >= MTL and power < maxPower => Increase Power");
           station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
           station->m_power++;
           m_powerChange (station->m_power, station->m_state->m_address);
@@ -422,16 +442,24 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
         }
       else if (station->m_rate != 0)
         {
+          NS_LOG_DEBUG ("bploss >= MTL and power = maxPower => Decrease Rate");
           station->m_pdTable[station->m_rate][station->m_power] /= m_gamma;
           station->m_rate--;
           m_rateChange (station->m_rate, station->m_state->m_address);
           ResetCountersBasic (station);
         }
+      else
+        {
+          NS_LOG_DEBUG ("bploss >= MTL but already at maxPower and minRate");
+        }
     }
-  else if (wploss <= thresholds.ori)
+  else if (wploss <= thresholds.m_ori)
     {
       if (station->m_rate < station->m_nRate - 1)
         {
+          NS_LOG_DEBUG ("wploss <= ORI and rate < maxRate => Probabilistic Rate Increase");
+
+          // Recalculate probabilities of lower rates.
           for (uint32_t i = 0; i <= station->m_rate; i++)
             {
               station->m_pdTable[i][station->m_power] *= m_delta;
@@ -440,15 +468,19 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
                   station->m_pdTable[i][station->m_power] = 1;
                 }
             }
-          double rand = uv->GetValue (0,1);
+          double rand = m_uniformRandomVariable->GetValue (0,1);
           if (rand < station->m_pdTable[station->m_rate + 1][station->m_power])
             {
+              NS_LOG_DEBUG ("Increase Rate");
               station->m_rate++;
               m_rateChange (station->m_rate, station->m_state->m_address);
             }
         }
       else if (station->m_power > m_minPower)
         {
+          NS_LOG_DEBUG ("wploss <= ORI and rate = maxRate => Probabilistic Power Decrease");
+
+          // Recalculate probabilities of higher powers.
           for (uint32_t i = m_maxPower; i > station->m_power; i--)
             {
               station->m_pdTable[station->m_rate][i] *= m_delta;
@@ -457,19 +489,23 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
                   station->m_pdTable[station->m_rate][i] = 1;
                 }
             }
-          double rand = uv->GetValue (0,1);
+          double rand = m_uniformRandomVariable->GetValue (0,1);
           if (rand < station->m_pdTable[station->m_rate][station->m_power - 1])
             {
+              NS_LOG_DEBUG ("Decrease Power");
               station->m_power--;
               m_powerChange (station->m_power, station->m_state->m_address);
             }
         }
       ResetCountersBasic (station);
     }
-  else if (bploss > thresholds.ori && wploss < thresholds.mtl)
+  else if (bploss > thresholds.m_ori && wploss < thresholds.m_mtl)
     {
       if (station->m_power > m_minPower)
         {
+          NS_LOG_DEBUG ("loss between ORI and MTL and power > minPower => Probabilistic Power Decrease");
+
+          // Recalculate probabilities of higher powers.
           for (uint32_t i = m_maxPower; i >= station->m_power; i--)
             {
               station->m_pdTable[station->m_rate][i] *= m_delta;
@@ -478,9 +514,10 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
                   station->m_pdTable[station->m_rate][i] = 1;
                 }
             }
-          double rand = uv->GetValue (0,1);
+          double rand = m_uniformRandomVariable->GetValue (0,1);
           if (rand < station->m_pdTable[station->m_rate][station->m_power - 1])
             {
+              NS_LOG_DEBUG ("Decrease Power");
               station->m_power--;
               m_powerChange (station->m_power, station->m_state->m_address);
             }
@@ -494,29 +531,29 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
 }
 
 void
-RrpaaWifiManager::ARts (RrpaaWifiRemoteStation *station)
+RrpaaWifiManager::RunAdaptiveRtsAlgorithm (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
-  if (!station->m_rtsOn
+  if (!station->m_adaptiveRtsOn
       && station->m_lastFrameFail)
     {
-      station->m_rtsWnd += 2;
-      station->m_rtsCounter = station->m_rtsWnd;
+      station->m_adaptiveRtsWnd += 2;
+      station->m_rtsCounter = station->m_adaptiveRtsWnd;
     }
-  else if ((station->m_rtsOn && station->m_lastFrameFail)
-           || (!station->m_rtsOn && !station->m_lastFrameFail))
+  else if ((station->m_adaptiveRtsOn && station->m_lastFrameFail)
+           || (!station->m_adaptiveRtsOn && !station->m_lastFrameFail))
     {
-      station->m_rtsWnd = station->m_rtsWnd / 2;
-      station->m_rtsCounter = station->m_rtsWnd;
+      station->m_adaptiveRtsWnd = station->m_adaptiveRtsWnd / 2;
+      station->m_rtsCounter = station->m_adaptiveRtsWnd;
     }
   if (station->m_rtsCounter > 0)
     {
-      station->m_rtsOn = true;
+      station->m_adaptiveRtsOn = true;
       station->m_rtsCounter--;
     }
   else
     {
-      station->m_rtsOn = false;
+      station->m_adaptiveRtsOn = false;
     }
 }
 

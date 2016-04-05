@@ -619,10 +619,18 @@ PowerRateAdaptationTest::TestRrpaa ()
 
   /**
    * This will be the thresholds table.
-   * We also calculate the needed success and failures to generate
-   * a rate or power change.
+   * The parameters of the table are:
+   * - Estimation Window Size (EWND)
+   * - Maximum Tolerable Loss Probability Threshold (MTL)
+   * - Opportunistic Rate Increase (and Power Decrease) Probability Threshold (ORI)
    *
-   * Mode	     EWND  MTL       ORI        RI-PD  RD-PI  PDsuc
+   * We also calculate the needed success and failures to generate
+   * a rate or power change:
+   * Rate Increase or Power Decrease limits (RI-PD)
+   * Rate Decrease or Power Increase limits (RD-PI)
+   * Power Decrease limits (PD)
+   *
+   * Mode	           EWND  MTL       ORI        RI-PD  RD-PI  PD
    *                                            succ   fails  succ fails
    * OfdmRate6Mbps   8     1         0.19861    7      8      2
    * OfdmRate9Mbps   11    0.397219  0.14556    10     5      7    2
