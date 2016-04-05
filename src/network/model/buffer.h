@@ -496,7 +496,6 @@ private:
 
   /**
    * \param start size to reserve
-   * \returns true if the buffer needed resizing, false otherwise.
    *
    * Add bytes at the start of the Buffer. The
    * content of these bytes is undefined but debugging
@@ -504,10 +503,9 @@ private:
    * Any call to this method invalidates any Iterator
    * pointing to this Buffer.
    */
-  bool AddAtStart (uint32_t start);
+  void AddAtStart (uint32_t start);
   /**
    * \param end size to reserve
-   * \returns true if the buffer needed resizing, false otherwise.
    *
    * Add bytes at the end of the Buffer. The
    * content of these bytes is undefined but debugging
@@ -515,7 +513,7 @@ private:
    * Any call to this method invalidates any Iterator
    * pointing to this Buffer.
    */
-  bool AddAtEnd (uint32_t end);
+  void AddAtEnd (uint32_t end);
 
   /**
    * \param o the buffer to append to the end of this buffer.
@@ -563,14 +561,6 @@ private:
   inline Buffer::Iterator End (void) const;
 
   /**
-   * \brief Create a full copy of the buffer, including
-   * all the internal structures.
-   *
-   * \returns a copy of the buffer
-   */
-  Buffer CreateFullCopy (void) const;
-
-  /**
    * \brief Return the number of bytes required for serialization.
    * \return the number of bytes.
    */
@@ -597,17 +587,6 @@ private:
    * data is placed into this buffer.
    */
   uint32_t Deserialize (const uint8_t* buffer, uint32_t size);
-
-  /**
-   * \brief Returns the current buffer start offset
-   * \return the offset
-   */
-  int32_t GetCurrentStartOffset (void) const;
-  /**
-   * \brief Returns the current buffer end offset
-   * \return the offset
-   */
-  int32_t GetCurrentEndOffset (void) const;
 
   /** 
    * Copy the specified amount of data from the buffer to the given output stream.
@@ -699,6 +678,14 @@ private:
      */
     uint8_t m_data[1];
   };
+
+  /**
+   * \brief Create a full copy of the buffer, including
+   * all the internal structures.
+   *
+   * \returns a copy of the buffer
+   */
+  Buffer CreateFullCopy (void) const;
 
   /**
    * \brief Transform a "Virtual byte buffer" into a "Real byte buffer"
@@ -1005,7 +992,7 @@ uint8_t
 Buffer::Iterator::PeekU8 (void)
 {
   NS_ASSERT_MSG (m_current >= m_dataStart &&
-                 m_current <= m_dataEnd,
+                 m_current < m_dataEnd,
                  GetReadErrorMessage ());
 
   if (m_current < m_zeroStart)

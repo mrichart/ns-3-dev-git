@@ -21,6 +21,7 @@
 #include "wifi-mac.h"
 #include "dcf.h"
 #include "ns3/uinteger.h"
+#include "ns3/boolean.h"
 #include "ns3/trace-source-accessor.h"
 
 namespace ns3 {
@@ -314,6 +315,9 @@ WifiMac::ConfigureStandard (enum WifiPhyStandard standard)
     case WIFI_PHY_STANDARD_80211n_5GHZ:
       Configure80211n_5Ghz ();
       break;
+    case WIFI_PHY_STANDARD_80211ac:
+      Configure80211ac ();
+      break;
     default:
       NS_ASSERT (false);
       break;
@@ -347,7 +351,10 @@ void
 WifiMac::Configure80211g (void)
 {
   SetSifs (MicroSeconds (10));
-  //Note: no support for Short Slot Time yet
+  // Slot time defaults to the "long slot time" of 20 us in the standard
+  // according to mixed 802.11b/g deployments.  Short slot time is enabled
+  // if the user sets the ShortSlotTimeSupported flag to true and when the BSS
+  // consists of only ERP STAs capable of supporting this option.
   SetSlot (MicroSeconds (20));
   SetEifsNoDifs (MicroSeconds (10 + 304));
   SetPifs (MicroSeconds (10 + 20));
@@ -383,7 +390,7 @@ WifiMac::Configure80211n_2_4Ghz (void)
   Configure80211g ();
   SetRifs (MicroSeconds (2));
   SetBasicBlockAckTimeout (GetSifs () + GetSlot () + GetDefaultBasicBlockAckDelay () + GetDefaultMaxPropagationDelay () * 2);
-  SetCompressedBlockAckTimeout (GetSifs () + GetSlot () + GetDefaultCompressedBlockAckDelay () + GetDefaultMaxPropagationDelay () * 2);
+  SetCompressedBlockAckTimeout (GetSifs () + GetSlot () + MicroSeconds (448) + GetDefaultMaxPropagationDelay () * 2);
 }
 void
 WifiMac::Configure80211n_5Ghz (void)
@@ -392,6 +399,12 @@ WifiMac::Configure80211n_5Ghz (void)
   SetRifs (MicroSeconds (2));
   SetBasicBlockAckTimeout (GetSifs () + GetSlot () + GetDefaultBasicBlockAckDelay () + GetDefaultMaxPropagationDelay () * 2);
   SetCompressedBlockAckTimeout (GetSifs () + GetSlot () + GetDefaultCompressedBlockAckDelay () + GetDefaultMaxPropagationDelay () * 2);
+}
+
+void
+WifiMac::Configure80211ac (void)
+{
+  Configure80211n_5Ghz ();
 }
 
 void

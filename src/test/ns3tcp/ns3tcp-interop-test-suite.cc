@@ -61,7 +61,7 @@ const uint32_t PCAP_SNAPLEN   = 64;         // Don't bother to save much data
 // The topology is just two nodes communicating over a point-to-point network.
 // The point-to-point network is chosen because it is simple and allows us to
 // easily generate pcap traces we can use to separately verify that the ns-3
-// implementation is responding correctly.  Once the opration is verified, we
+// implementation is responding correctly.  Once the operation is verified, we
 // capture a set of response vectors that are then checked in the test to
 // ensure that the ns-3 TCP continues to respond correctly over time.
 //
@@ -110,10 +110,9 @@ Ns3TcpInteroperabilityTestCase::DoSetup (void)
 {
   //
   // We expect there to be a file called tcp-interop-response-vectors.pcap in
-  // response-vectors/ of this directory
+  // the data directory
   //
-  m_pcapFilename = static_cast<std::string> (NS_TEST_SOURCEDIR) + 
-    static_cast<std::string> ("/response-vectors/ns3tcp-interop-response-vectors.pcap");
+  m_pcapFilename = CreateDataDirFilename ("ns3tcp-interop-response-vectors.pcap");
 
   if (m_writeVectors)
     {
@@ -282,7 +281,7 @@ Ns3TcpInteroperabilityTestCase::DoRun (void)
   // program.  So we provide the ability to generate a pcap trace of the 
   // test execution for your perusal.
   //
-  // Once the validation test is determined to be running exactly as exptected,
+  // Once the validation test is determined to be running exactly as expected,
   // we allow you to generate a file that contains the response vectors that 
   // will be checked during the actual execution of the test.
   //
@@ -306,6 +305,9 @@ public:
 Ns3TcpInteroperabilityTestSuite::Ns3TcpInteroperabilityTestSuite ()
   : TestSuite ("ns3-tcp-interoperability", SYSTEM)
 {
+  // We can't use NS_TEST_SOURCEDIR variable here because we use subdirectories
+  SetDataDir ("src/test/ns3tcp/response-vectors");
+  
   AddTestCase (new Ns3TcpInteroperabilityTestCase, TestCase::QUICK);
 }
 

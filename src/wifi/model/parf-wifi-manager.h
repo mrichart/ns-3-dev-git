@@ -50,21 +50,6 @@ public:
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
-  /**
-   * TracedCallback signature for power change events.
-   *
-   * \param [in] power The new power.
-   * \param [in] address The remote station MAC address.
-   */
-  typedef void (*PowerChangeTracedCallback)(const uint8_t power, const Mac48Address remoteAddress);
-  /**
-   * TracedCallback signature for rate change events.
-   *
-   * \param [in] rate The new rate.
-   * \param [in] address The remote station MAC address.
-   */
-  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
-
 
 private:
   //overriden from base class
@@ -79,7 +64,7 @@ private:
                                double ackSnr, WifiMode ackMode, double dataSnr);
   virtual void DoReportFinalRtsFailed (WifiRemoteStation *station);
   virtual void DoReportFinalDataFailed (WifiRemoteStation *station);
-  virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station, uint32_t size);
+  virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station);
   virtual WifiTxVector DoGetRtsTxVector (WifiRemoteStation *station);
   virtual bool IsLowLatency (void) const;
 

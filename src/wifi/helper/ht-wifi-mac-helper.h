@@ -21,10 +21,15 @@
 #ifndef HT_WIFI_MAC_HELPER_H
 #define HT_WIFI_MAC_HELPER_H
 
+#include "ns3/string.h"
 #include "wifi-helper.h"
 #include "ns3/qos-utils.h"
 #include "qos-wifi-mac-helper.h"
 #include <map>
+
+/**
+ * (Deprecated) ns3::HtWifiMacHelper declaration.
+ */
 
 namespace ns3 {
 
@@ -38,7 +43,7 @@ class HtWifiMacHelper : public QosWifiMacHelper
 {
 public:
   /**
-   * Create a QosWifiMacHelper that is used to make life easier when working
+   * Create a HtWifiMacHelper that is used to make life easier when working
    * with Wifi devices using a QOS MAC layer.
    */
   HtWifiMacHelper ();
@@ -53,6 +58,10 @@ public:
    */
   static HtWifiMacHelper Default (void);
 
+  /**
+   * Converts a HT MCS value into a DataRate value
+   */
+  static StringValue DataRateForMcs (int mcs);
 };
 
 } //namespace ns3

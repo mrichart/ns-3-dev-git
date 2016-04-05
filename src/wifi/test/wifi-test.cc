@@ -18,29 +18,27 @@
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Quincy Tse <quincy.tse@nicta.com.au> (Case for Bug 991)
+ *          Sébastien Deronne <sebastien.deronne@gmail.com> (Case for bug 730)
  */
 
+#include "ns3/yans-wifi-helper.h"
+#include "ns3/mobility-helper.h"
 #include "ns3/wifi-net-device.h"
-#include "ns3/yans-wifi-channel.h"
 #include "ns3/adhoc-wifi-mac.h"
-#include "ns3/yans-wifi-phy.h"
-#include "ns3/arf-wifi-manager.h"
 #include "ns3/propagation-delay-model.h"
 #include "ns3/propagation-loss-model.h"
-#include "ns3/error-rate-model.h"
 #include "ns3/yans-error-rate-model.h"
 #include "ns3/constant-position-mobility-model.h"
-#include "ns3/node.h"
-#include "ns3/simulator.h"
 #include "ns3/test.h"
-#include "ns3/object-factory.h"
-#include "ns3/dca-txop.h"
-#include "ns3/mac-rx-middle.h"
 #include "ns3/pointer.h"
 #include "ns3/rng-seed-manager.h"
-#include "ns3/edca-txop-n.h"
 #include "ns3/config.h"
 #include "ns3/boolean.h"
+#include "ns3/string.h"
+#include "ns3/packet-socket-address.h"
+#include "ns3/packet-socket-server.h"
+#include "ns3/packet-socket-client.h"
+#include "ns3/packet-socket-helper.h"
 
 using namespace ns3;
 
@@ -483,6 +481,144 @@ Bug555TestCase::DoRun (void)
 
 
 //-----------------------------------------------------------------------------
+/**
+ * Make sure that when changing the fragmentation threshold during the simulation,
+ * the TCP transmission does not unexpectedly stop.
+ *
+ * The scenario considers a TCP transmission between a 802.11b station and a 802.11b
+ * access point. After the simulation has begun, the fragmentation threshold is set at
+ * a value lower than the packet size. It then checks whether the TCP transmission
+ * continues after the fragmentation threshold modification.
+ *
+ * See \bugid{730}
+ */
+
+class Bug730TestCase : public TestCase
+{
+public:
+  Bug730TestCase ();
+  virtual ~Bug730TestCase ();
+
+  virtual void DoRun (void);
+
+
+private:
+  uint32_t m_received;
+
+  void Receive (std::string context, Ptr<const Packet> p, const Address &adr);
+
+};
+
+Bug730TestCase::Bug730TestCase ()
+  : TestCase ("Test case for Bug 730"),
+    m_received (0)
+{
+}
+
+Bug730TestCase::~Bug730TestCase ()
+{
+}
+
+void
+Bug730TestCase::Receive (std::string context, Ptr<const Packet> p, const Address &adr)
+{
+  if ((p->GetSize () == 1460) && (Simulator::Now () > Seconds (20)))
+    {
+      m_received++;
+    }
+}
+
+
+void
+Bug730TestCase::DoRun (void)
+{
+  m_received = 0;
+
+  Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("2304"));
+
+  NodeContainer wifiStaNode;
+  wifiStaNode.Create (1);
+
+  NodeContainer wifiApNode;
+  wifiApNode.Create (1);
+
+  YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
+  YansWifiPhyHelper phy = YansWifiPhyHelper::Default ();
+  phy.SetChannel (channel.Create ());
+
+  WifiHelper wifi;
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                "DataMode", StringValue ("DsssRate1Mbps"),
+                                "ControlMode", StringValue ("DsssRate1Mbps"));
+
+  WifiMacHelper mac;
+  Ssid ssid = Ssid ("ns-3-ssid");
+  mac.SetType ("ns3::StaWifiMac",
+               "Ssid", SsidValue (ssid),
+               "ActiveProbing", BooleanValue (false));
+
+  NetDeviceContainer staDevices;
+  staDevices = wifi.Install (phy, mac, wifiStaNode);
+
+  mac.SetType ("ns3::ApWifiMac",
+               "Ssid", SsidValue (ssid),
+               "BeaconGeneration", BooleanValue (true));
+
+  NetDeviceContainer apDevices;
+  apDevices = wifi.Install (phy, mac, wifiApNode);
+
+  MobilityHelper mobility;
+  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+
+  positionAlloc->Add (Vector (0.0, 0.0, 0.0));
+  positionAlloc->Add (Vector (1.0, 0.0, 0.0));
+  mobility.SetPositionAllocator (positionAlloc);
+
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.Install (wifiApNode);
+  mobility.Install (wifiStaNode);
+
+  Ptr<WifiNetDevice> ap_device = DynamicCast<WifiNetDevice> (apDevices.Get (0));
+  Ptr<WifiNetDevice> sta_device = DynamicCast<WifiNetDevice> (staDevices.Get (0));
+
+  PacketSocketAddress socket;
+  socket.SetSingleDevice (sta_device->GetIfIndex ());
+  socket.SetPhysicalAddress (ap_device->GetAddress ());
+  socket.SetProtocol (1);
+
+  // give packet socket powers to nodes.
+  PacketSocketHelper packetSocket;
+  packetSocket.Install (wifiStaNode);
+  packetSocket.Install (wifiApNode);
+
+  Ptr<PacketSocketClient> client = CreateObject<PacketSocketClient> ();
+  client->SetAttribute ("PacketSize", UintegerValue (1460));
+  client->SetRemote (socket);
+  wifiStaNode.Get(0)->AddApplication (client);
+  client->SetStartTime (Seconds (1));
+  client->SetStopTime (Seconds (51.0));
+
+  Ptr<PacketSocketServer> server = CreateObject<PacketSocketServer> ();
+  server->SetLocal (socket);
+  wifiApNode.Get(0)->AddApplication (server);
+  server->SetStartTime (Seconds (0.0));
+  server->SetStopTime (Seconds (52.0));
+
+  Config::Connect ("/NodeList/*/ApplicationList/0/$ns3::PacketSocketServer/Rx", MakeCallback (&Bug730TestCase::Receive, this));
+
+  Simulator::Schedule (Seconds (10.0), Config::Set, "/NodeList/0/DeviceList/0/RemoteStationManager/FragmentationThreshold", StringValue ("800"));
+
+  Simulator::Stop (Seconds (55));
+  Simulator::Run ();
+
+  Simulator::Destroy ();
+
+  bool result = (m_received > 0);
+  NS_TEST_ASSERT_MSG_EQ (result, true, "packet reception unexpectedly stopped after adapting fragmentation threshold!");
+}
+
+//-----------------------------------------------------------------------------
 class WifiTestSuite : public TestSuite
 {
 public:
@@ -496,6 +632,7 @@ WifiTestSuite::WifiTestSuite ()
   AddTestCase (new QosUtilsIsOldPacketTest, TestCase::QUICK);
   AddTestCase (new InterferenceHelperSequenceTest, TestCase::QUICK); //Bug 991
   AddTestCase (new Bug555TestCase, TestCase::QUICK); //Bug 555
+  AddTestCase (new Bug730TestCase, TestCase::QUICK); //Bug 730
 }
 
 static WifiTestSuite g_wifiTestSuite;

@@ -73,11 +73,11 @@ ParfWifiManager::GetTypeId (void)
     .AddTraceSource ("PowerChange",
                      "The transmission power has change",
                      MakeTraceSourceAccessor (&ParfWifiManager::m_powerChange),
-                     "ns3::ParfWifiManager::PowerChangeTracedCallback")
+                     "ns3::WifiRemoteStationManager::PowerChangeTracedCallback")
     .AddTraceSource ("RateChange",
                      "The transmission rate has change",
                      MakeTraceSourceAccessor (&ParfWifiManager::m_rateChange),
-                     "ns3::ParfWifiManager::RateChangeTracedCallback")
+                     "ns3::WifiRemoteStationManager::RateChangeTracedCallback")
   ;
   return tid;
 }
@@ -290,12 +290,18 @@ ParfWifiManager::DoReportFinalDataFailed (WifiRemoteStation *station)
 }
 
 WifiTxVector
-ParfWifiManager::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
+ParfWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
 {
-  NS_LOG_FUNCTION (this << st << size);
+  NS_LOG_FUNCTION (this << st);
   ParfWifiRemoteStation *station = (ParfWifiRemoteStation *) st;
+  uint32_t channelWidth = GetChannelWidth (station);
+  if (channelWidth > 20 && channelWidth != 22)
+    {
+      //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
+      channelWidth = 20;
+    }
   CheckInit (station);
-  return WifiTxVector (GetSupported (station, station->m_currentRate), station->m_currentPower, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station), GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetAggregation (station), GetStbc (station));
+  return WifiTxVector (GetSupported (station, station->m_currentRate), station->m_currentPower, GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
 WifiTxVector
@@ -305,7 +311,22 @@ ParfWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
   /// \todo we could/should implement the Arf algorithm for
   /// RTS only by picking a single rate within the BasicRateSet.
   ParfWifiRemoteStation *station = (ParfWifiRemoteStation *) st;
-  return WifiTxVector (GetSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station), GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetAggregation (station), GetStbc (station));
+  uint32_t channelWidth = GetChannelWidth (station);
+  if (channelWidth > 20 && channelWidth != 22)
+    {
+      //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
+      channelWidth = 20;
+    }
+  WifiTxVector rtsTxVector;
+  if (GetUseNonErpProtection () == false)
+    {
+      rtsTxVector = WifiTxVector (GetSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+    }
+  else
+    {
+      rtsTxVector = WifiTxVector (GetNonErpSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+    }
+  return rtsTxVector;
 }
 
 bool

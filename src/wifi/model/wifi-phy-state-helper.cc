@@ -48,7 +48,7 @@ WifiPhyStateHelper::GetTypeId (void)
     .AddTraceSource ("RxError",
                      "A packet has been received unsuccessfully.",
                      MakeTraceSourceAccessor (&WifiPhyStateHelper::m_rxErrorTrace),
-                     "ns3::WifiPhyStateHelper::RxErrorTracedCallback")
+                     "ns3::WifiPhyStateHelper::RxEndErrorTracedCallback")
     .AddTraceSource ("Tx", "Packet transmission is starting.",
                      MakeTraceSourceAccessor (&WifiPhyStateHelper::m_txTrace),
                      "ns3::WifiPhyStateHelper::TxTracedCallback")
@@ -442,14 +442,14 @@ WifiPhyStateHelper::SwitchFromRxEndOk (Ptr<Packet> packet, double snr, WifiTxVec
 }
 
 void
-WifiPhyStateHelper::SwitchFromRxEndError (Ptr<const Packet> packet, double snr)
+WifiPhyStateHelper::SwitchFromRxEndError (Ptr<Packet> packet, double snr, bool isEndOfFrame)
 {
   m_rxErrorTrace (packet, snr);
   NotifyRxEndError ();
   DoSwitchFromRx ();
   if (!m_rxErrorCallback.IsNull ())
     {
-      m_rxErrorCallback (packet, snr);
+      m_rxErrorCallback (packet, snr, isEndOfFrame);
     }
 }
 

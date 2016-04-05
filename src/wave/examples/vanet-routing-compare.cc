@@ -1326,7 +1326,7 @@ VanetRoutingExperiment::VanetRoutingExperiment ()
     // 1=802.11p
     m_80211mode (1),
     m_traceFile (""),
-    m_logFile ("low_ct-unterstrass-1day.filt.5.adj.log"),
+    m_logFile ("low99-ct-unterstrass-1day.filt.7.adj.log"),
     m_mobility (1),
     m_nNodes (156),
     m_TotalSimTime (300.01),
@@ -1529,11 +1529,11 @@ static ns3::GlobalValue g_phyMode ("VRCphyMode",
                                    ns3::MakeStringChecker ());
 static ns3::GlobalValue g_traceFile ("VRCtraceFile",
                                      "Mobility trace filename",
-                                     ns3::StringValue ("./src/wave/examples/low_ct-unterstrass-1day.filt.5.adj.mob"),
+                                     ns3::StringValue ("./src/wave/examples/low99-ct-unterstrass-1day.filt.7.adj.mob"),
                                      ns3::MakeStringChecker ());
 static ns3::GlobalValue g_logFile ("VRClogFile",
                                    "Log filename",
-                                   ns3::StringValue ("low_ct-unterstrass-1day.filt.5.adj.log"),
+                                   ns3::StringValue ("low99-ct-unterstrass-1day.filt.7.adj.log"),
                                    ns3::MakeStringChecker ());
 static ns3::GlobalValue g_rate ("VRCrate",
                                 "Data rate",
@@ -2280,8 +2280,8 @@ VanetRoutingExperiment::SetupAdhocDevices ()
   wavePhy.Set ("TxPowerStart",DoubleValue (m_txp));
   wavePhy.Set ("TxPowerEnd", DoubleValue (m_txp));
 
-  // Add a non-QoS upper mac, and disable rate control
-  NqosWifiMacHelper wifiMac = NqosWifiMacHelper::Default ();
+  // Add an upper mac and disable rate control
+  WifiMacHelper wifiMac;
   wifiMac.SetType ("ns3::AdhocWifiMac");
   QosWaveMacHelper waveMac = QosWaveMacHelper::Default ();
 

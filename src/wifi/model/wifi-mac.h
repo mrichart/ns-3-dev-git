@@ -65,10 +65,9 @@ public:
    * \param pifs the pifs duration.
    */
   virtual void SetPifs (Time pifs) = 0;
-/**
+  /**
    * \param rifs the rifs duration.
    */
-
   virtual void SetRifs (Time rifs) = 0;
   /**
    * \param ctsTimeout the duration of a CTS timeout.
@@ -84,6 +83,23 @@ public:
    * Unused for now.
    */
   void SetMaxPropagationDelay (Time delay);
+  /**
+   * \param ssid the current ssid of this MAC layer.
+   */
+  virtual void SetSsid (Ssid ssid) = 0;
+  /**
+   * \param enable true if short slot time is to be supported,
+   *               false otherwise
+   */
+  virtual void SetShortSlotTimeSupported (bool enable) = 0;
+  /**
+   * \brief Sets the interface in promiscuous mode.
+   *
+   * Enables promiscuous mode on the interface. Note that any further
+   * filtering on the incoming frame path may affect the overall
+   * behavior.
+   */
+  virtual void SetPromisc (void) = 0;
 
   /**
    * \return the current RIFS duration.
@@ -138,21 +154,13 @@ public:
    */
   virtual void SetAddress (Mac48Address address) = 0;
   /**
-   * \param ssid the current ssid of this MAC layer.
-   */
-  virtual void SetSsid (Ssid ssid) = 0;
-  /**
    * \return the bssid of the network this device belongs to.
    */
   virtual Mac48Address GetBssid (void) const = 0;
   /**
-   * \brief Sets the interface in promiscuous mode.
-   *
-   * Enables promiscuous mode on the interface. Note that any further
-   * filtering on the incoming frame path may affect the overall
-   * behavior.
+   * \return whether the device supports short slot time capability.
    */
-  virtual void SetPromisc (void) = 0;
+  virtual bool GetShortSlotTimeSupported (void) const = 0;
 
   /**
    * \param packet the packet to send.
@@ -290,6 +298,7 @@ public:
    * \sa WifiMac::Configure80211_5Mhz
    * \sa WifiMac::Configure80211n_2_4Ghz
    * \sa WifiMac::Configure80211n_5Ghz
+   * \sa WifiMac::Configure80211ac
    */
   void ConfigureStandard (enum WifiPhyStandard standard);
 
@@ -421,15 +430,20 @@ private:
   void Configure80211_5Mhz ();
   /**
    * This method sets 802.11n 2.4 GHz standards-compliant defaults for following attributes:
-   * Sifs, Slot, EifsNoDifs, Pifs, CtsTimeout, and AckTimeout.
+   * Sifs, Rifs, Slot, EifsNoDifs, Pifs, CtsTimeout, and AckTimeout.
    * There is no support for short slot time.
    */
   void Configure80211n_2_4Ghz (void);
   /**
    * This method sets 802.11n 5 GHz standards-compliant defaults for following attributes:
-   * Sifs, Slot, EifsNoDifs, Pifs, CtsTimeout, and AckTimeout.
+   * Sifs, Rifs, Slot, EifsNoDifs, Pifs, CtsTimeout, and AckTimeout.
    */
   void Configure80211n_5Ghz (void);
+  /**
+  * This method sets 802.11ac standards-compliant defaults for following attributes:
+  * Sifs, Slot, EifsNoDifs, Pifs, CtsTimeout, and AckTimeout.
+  */
+  void Configure80211ac (void);
 
   /**
    * The trace source fired when packets come into the "top" of the device

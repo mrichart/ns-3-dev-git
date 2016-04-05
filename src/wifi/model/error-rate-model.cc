@@ -34,7 +34,7 @@ TypeId ErrorRateModel::GetTypeId (void)
 }
 
 double
-ErrorRateModel::CalculateSnr (WifiMode txMode, double ber) const
+ErrorRateModel::CalculateSnr (WifiTxVector txVector, double ber) const
 {
   //This is a very simple binary search.
   double low, high, precision;
@@ -45,7 +45,7 @@ ErrorRateModel::CalculateSnr (WifiMode txMode, double ber) const
     {
       NS_ASSERT (high >= low);
       double middle = low + (high - low) / 2;
-      if ((1 - GetChunkSuccessRate (txMode, middle, 1)) > ber)
+      if ((1 - GetChunkSuccessRate (txVector.GetMode (), txVector, middle, 1)) > ber)
         {
           low = middle;
         }
