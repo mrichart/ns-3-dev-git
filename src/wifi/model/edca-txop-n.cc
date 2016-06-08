@@ -1433,6 +1433,7 @@ EdcaTxopN::SendBlockAckRequest (const struct Bar &bar)
       //Delayed block ack
       params.EnableAck ();
     }
+  m_stationManager->PrepareForQueue (m_currentHdr.GetAddr1 (), &m_currentHdr, m_currentPacket);
   m_low->StartTransmission (m_currentPacket, &m_currentHdr, params, m_transmissionListener);
 }
 
@@ -1527,6 +1528,7 @@ EdcaTxopN::SendAddBaRequest (Mac48Address dest, uint8_t tid, uint16_t startSeq,
   params.DisableNextData ();
   params.DisableOverrideDurationId ();
 
+  m_stationManager->PrepareForQueue (m_currentHdr.GetAddr1 (), &m_currentHdr, m_currentPacket);
   m_low->StartTransmission (m_currentPacket, &m_currentHdr, params,
                             m_transmissionListener);
 }

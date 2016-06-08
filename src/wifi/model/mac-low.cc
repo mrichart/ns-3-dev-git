@@ -787,6 +787,7 @@ MacLow::StartTransmission (Ptr<const Packet> packet,
               //VHT single MPDUs are followed by normal ACKs
               m_txParams.EnableAck ();
             }
+          m_stationManager->PrepareForQueue (m_currentHdr.GetAddr1 (), &m_currentHdr, m_currentPacket);
         }
     }
     
