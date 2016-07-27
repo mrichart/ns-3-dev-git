@@ -93,23 +93,6 @@ public:
   virtual void SetupPhy (Ptr<WifiPhy> phy);
   virtual void SetupMac (Ptr<WifiMac> mac);
 
-  /**
-   * TracedCallback signature for power change events.
-   *
-   * \param [in] power The new power.
-   * \param [in] address The remote station MAC address.
-   */
-  typedef void (*PowerChangeTracedCallback)(const uint8_t power, const Mac48Address remoteAddress);
-
-  /**
-   * TracedCallback signature for rate change events.
-   *
-   * \param [in] rate The new rate.
-   * \param [in] address The remote station MAC address.
-   */
-  typedef void (*RateChangeTracedCallback)(const uint32_t rate, const Mac48Address remoteAddress);
-
-
 private:
   //overriden from base class
   virtual WifiRemoteStation * DoCreateStation (void) const;
@@ -238,11 +221,11 @@ private:
   /**
    * The trace source fired when the transmission power change
    */
-  TracedCallback<uint8_t, Mac48Address> m_powerChange;
+  TracedCallback<uint8_t, uint8_t, Mac48Address> m_powerChange;
   /**
    * The trace source fired when the transmission rate change
    */
-  TracedCallback<uint32_t, Mac48Address> m_rateChange;
+  TracedCallback<uint32_t, uint32_t, Mac48Address> m_rateChange;
 
   //Provides uniform random variables.
   Ptr<UniformRandomVariable> m_uniformRandomVariable;

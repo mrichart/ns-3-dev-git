@@ -115,8 +115,8 @@ public:
 
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
-  void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
-  void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
+  void PowerCallback (std::string path, uint8_t oldPower,  uint8_t newPower, Mac48Address dest);
+  void RateCallback (std::string path, uint32_t oldRate, uint32_t newRate, Mac48Address dest);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
   Vector GetPosition (Ptr<Node> node);
@@ -206,7 +206,7 @@ NodeStatistics::PhyCallback (std::string path, Ptr<const Packet> packet)
 }
 
 void
-NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address dest)
+NodeStatistics::PowerCallback (std::string path, uint8_t oldPower,  uint8_t newPower, Mac48Address dest)
 {
   double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
   double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
@@ -214,7 +214,7 @@ NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address des
   double dbm;
   if (nTxPower > 1)
     {
-      dbm = txPowerBaseDbm + power * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
+      dbm = txPowerBaseDbm + newPower * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
     }
   else
     {
@@ -225,9 +225,9 @@ NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address des
 }
 
 void
-NodeStatistics::RateCallback (std::string path, uint32_t rate, Mac48Address dest)
+NodeStatistics::RateCallback (std::string path, uint32_t oldRate, uint32_t newRate, Mac48Address dest)
 {
-  actualMode[dest] = myPhy->GetMode (rate);
+  actualMode[dest] = myPhy->GetMode (newRate);
 }
 
 void
@@ -285,14 +285,14 @@ NodeStatistics::GetPowerDatafile ()
   return m_output_power;
 }
 
-void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
+void PowerCallback (std::string path, uint8_t oldPower,  uint8_t newPower, Mac48Address dest)
 {
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << (int)power);
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Old power=" << (int)oldPower << " New power=" << (int)newPower);
 }
 
-void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
+void RateCallback (std::string path, uint32_t oldRate, uint32_t newRate, Mac48Address dest)
 {
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Old rate=" << oldRate << " New rate=" <<  newRate);
 }
 
 int main (int argc, char *argv[])
