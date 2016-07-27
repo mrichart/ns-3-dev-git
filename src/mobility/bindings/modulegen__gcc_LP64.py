@@ -234,6 +234,8 @@ def register_types(module):
     module.add_class('ParetoRandomVariable', import_from_module='ns.core', parent=root_module['ns3::RandomVariableStream'])
     ## net-device.h (module 'network'): ns3::QueueItem [class]
     module.add_class('QueueItem', import_from_module='ns.network', parent=root_module['ns3::SimpleRefCount< ns3::QueueItem, ns3::empty, ns3::DefaultDeleter<ns3::QueueItem> >'])
+    ## net-device.h (module 'network'): ns3::QueueItem::Uint8Values [enumeration]
+    module.add_enum('Uint8Values', ['IP_DSFIELD'], outer_class=root_module['ns3::QueueItem'], import_from_module='ns.network')
     ## random-direction-2d-mobility-model.h (module 'mobility'): ns3::RandomDirection2dMobilityModel [class]
     module.add_class('RandomDirection2dMobilityModel', parent=root_module['ns3::MobilityModel'])
     ## random-walk-2d-mobility-model.h (module 'mobility'): ns3::RandomWalk2dMobilityModel [class]
@@ -1956,6 +1958,11 @@ def register_Ns3Object_methods(root_module, cls):
     cls.add_method('Initialize', 
                    'void', 
                    [])
+    ## object.h (module 'core'): bool ns3::Object::IsInitialized() const [member function]
+    cls.add_method('IsInitialized', 
+                   'bool', 
+                   [], 
+                   is_const=True)
     ## object.h (module 'core'): ns3::Object::Object(ns3::Object const & o) [copy constructor]
     cls.add_constructor([param('ns3::Object const &', 'o')], 
                         visibility='protected')
@@ -3714,11 +3721,6 @@ def register_Ns3NetDeviceQueue_methods(root_module, cls):
     cls.add_constructor([param('ns3::NetDeviceQueue const &', 'arg0')])
     ## net-device.h (module 'network'): ns3::NetDeviceQueue::NetDeviceQueue() [constructor]
     cls.add_constructor([])
-    ## net-device.h (module 'network'): bool ns3::NetDeviceQueue::HasWakeCallbackSet() const [member function]
-    cls.add_method('HasWakeCallbackSet', 
-                   'bool', 
-                   [], 
-                   is_const=True, is_virtual=True)
     ## net-device.h (module 'network'): bool ns3::NetDeviceQueue::IsStopped() const [member function]
     cls.add_method('IsStopped', 
                    'bool', 
@@ -3751,35 +3753,30 @@ def register_Ns3NetDeviceQueueInterface_methods(root_module, cls):
     cls.add_constructor([param('ns3::NetDeviceQueueInterface const &', 'arg0')])
     ## net-device.h (module 'network'): ns3::NetDeviceQueueInterface::NetDeviceQueueInterface() [constructor]
     cls.add_constructor([])
-    ## net-device.h (module 'network'): uint8_t ns3::NetDeviceQueueInterface::GetSelectedQueue(ns3::Ptr<ns3::QueueItem> item) const [member function]
-    cls.add_method('GetSelectedQueue', 
+    ## net-device.h (module 'network'): void ns3::NetDeviceQueueInterface::CreateTxQueues() [member function]
+    cls.add_method('CreateTxQueues', 
+                   'void', 
+                   [])
+    ## net-device.h (module 'network'): uint8_t ns3::NetDeviceQueueInterface::GetNTxQueues() const [member function]
+    cls.add_method('GetNTxQueues', 
                    'uint8_t', 
-                   [param('ns3::Ptr< ns3::QueueItem >', 'item')], 
+                   [], 
+                   is_const=True)
+    ## net-device.h (module 'network'): ns3::Callback<unsigned char, ns3::Ptr<ns3::QueueItem>, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> ns3::NetDeviceQueueInterface::GetSelectQueueCallback() const [member function]
+    cls.add_method('GetSelectQueueCallback', 
+                   'ns3::Callback< unsigned char, ns3::Ptr< ns3::QueueItem >, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >', 
+                   [], 
                    is_const=True)
     ## net-device.h (module 'network'): ns3::Ptr<ns3::NetDeviceQueue> ns3::NetDeviceQueueInterface::GetTxQueue(uint8_t i) const [member function]
     cls.add_method('GetTxQueue', 
                    'ns3::Ptr< ns3::NetDeviceQueue >', 
                    [param('uint8_t', 'i')], 
                    is_const=True)
-    ## net-device.h (module 'network'): uint8_t ns3::NetDeviceQueueInterface::GetTxQueuesN() const [member function]
-    cls.add_method('GetTxQueuesN', 
-                   'uint8_t', 
-                   [], 
-                   is_const=True)
     ## net-device.h (module 'network'): static ns3::TypeId ns3::NetDeviceQueueInterface::GetTypeId() [member function]
     cls.add_method('GetTypeId', 
                    'ns3::TypeId', 
                    [], 
                    is_static=True)
-    ## net-device.h (module 'network'): bool ns3::NetDeviceQueueInterface::IsQueueDiscInstalled() const [member function]
-    cls.add_method('IsQueueDiscInstalled', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## net-device.h (module 'network'): void ns3::NetDeviceQueueInterface::SetQueueDiscInstalled(bool installed) [member function]
-    cls.add_method('SetQueueDiscInstalled', 
-                   'void', 
-                   [param('bool', 'installed')])
     ## net-device.h (module 'network'): void ns3::NetDeviceQueueInterface::SetSelectQueueCallback(ns3::Callback<unsigned char, ns3::Ptr<ns3::QueueItem>, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> cb) [member function]
     cls.add_method('SetSelectQueueCallback', 
                    'void', 
@@ -4037,6 +4034,11 @@ def register_Ns3QueueItem_methods(root_module, cls):
     cls.add_method('GetPacketSize', 
                    'uint32_t', 
                    [], 
+                   is_const=True, is_virtual=True)
+    ## net-device.h (module 'network'): bool ns3::QueueItem::GetUint8Value(ns3::QueueItem::Uint8Values field, uint8_t & value) const [member function]
+    cls.add_method('GetUint8Value', 
+                   'bool', 
+                   [param('ns3::QueueItem::Uint8Values', 'field'), param('uint8_t &', 'value')], 
                    is_const=True, is_virtual=True)
     ## net-device.h (module 'network'): void ns3::QueueItem::Print(std::ostream & os) const [member function]
     cls.add_method('Print', 

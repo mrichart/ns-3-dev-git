@@ -53,6 +53,12 @@ QueueItem::GetPacketSize (void) const
   return m_packet->GetSize ();
 }
 
+bool
+QueueItem::GetUint8Value (QueueItem::Uint8Values field, uint8_t& value) const
+{
+  return false;
+}
+
 void
 QueueItem::Print (std::ostream& os) const
 {
@@ -112,12 +118,6 @@ NetDeviceQueue::SetWakeCallback (WakeCallback cb)
   m_wakeCallback = cb;
 }
 
-bool
-NetDeviceQueue::HasWakeCallbackSet (void) const
-{
-  return (!m_wakeCallback.IsNull ());
-}
-
 
 NS_OBJECT_ENSURE_REGISTERED (NetDeviceQueueInterface);
 
@@ -131,11 +131,9 @@ TypeId NetDeviceQueueInterface::GetTypeId (void)
 }
 
 NetDeviceQueueInterface::NetDeviceQueueInterface ()
-  : m_queueDiscInstalled (false)
+  : m_numTxQueues (1)
 {
   NS_LOG_FUNCTION (this);
-  Ptr<NetDeviceQueue> devQueue = Create<NetDeviceQueue> ();
-  m_txQueuesVector.push_back (devQueue);
 }
 
 NetDeviceQueueInterface::~NetDeviceQueueInterface ()
@@ -151,7 +149,7 @@ NetDeviceQueueInterface::GetTxQueue (uint8_t i) const
 }
 
 uint8_t
-NetDeviceQueueInterface::GetTxQueuesN (void) const
+NetDeviceQueueInterface::GetNTxQueues (void) const
 {
   return m_txQueuesVector.size ();
 }
@@ -167,21 +165,27 @@ NetDeviceQueueInterface::DoDispose (void)
 void
 NetDeviceQueueInterface::SetTxQueuesN (uint8_t numTxQueues)
 {
+  NS_LOG_FUNCTION (this << numTxQueues);
   NS_ASSERT (numTxQueues > 0);
 
-  // check whether a queue disc has been installed on the device by
-  // verifying whether a wake callback has been set on a transmission queue
-  NS_ABORT_MSG_IF (GetTxQueue (0)->HasWakeCallbackSet (), "Cannot change the number of"
-                   " transmission queues after setting up the wake callback.");
+  NS_ABORT_MSG_IF (m_txQueuesVector.size (), "Cannot change the number of"
+                   " device transmission queues once they have been created.");
 
-  uint8_t prevNumTxQueues = m_txQueuesVector.size ();
-  m_txQueuesVector.resize (numTxQueues);
+  m_numTxQueues = numTxQueues;
+}
 
-  // Allocate new NetDeviceQueues if the number of queues increased
-  for (uint8_t i = prevNumTxQueues; i < numTxQueues; i++)
+void
+NetDeviceQueueInterface::CreateTxQueues (void)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_ABORT_MSG_IF (m_txQueuesVector.size (), "The device transmission queues"
+                   " have been already created.");
+
+  for (uint8_t i = 0; i < m_numTxQueues; i++)
     {
       Ptr<NetDeviceQueue> devQueue = Create<NetDeviceQueue> ();
-      m_txQueuesVector[i] = devQueue;
+      m_txQueuesVector.push_back (devQueue);
     }
 }
 
@@ -191,29 +195,11 @@ NetDeviceQueueInterface::SetSelectQueueCallback (SelectQueueCallback cb)
   m_selectQueueCallback = cb;
 }
 
-uint8_t
-NetDeviceQueueInterface::GetSelectedQueue (Ptr<QueueItem> item) const
+NetDeviceQueueInterface::SelectQueueCallback
+NetDeviceQueueInterface::GetSelectQueueCallback (void) const
 {
-  if (!m_selectQueueCallback.IsNull ())
-  {
-    return m_selectQueueCallback (item);
-  }
-  return 0;
+  return m_selectQueueCallback;
 }
-
-bool
-NetDeviceQueueInterface::IsQueueDiscInstalled (void) const
-{
-  return m_queueDiscInstalled;
-}
-
-void
-NetDeviceQueueInterface::SetQueueDiscInstalled (bool installed)
-{
-  NS_LOG_FUNCTION (this << installed);
-  m_queueDiscInstalled = installed;
-}
-
 
 NS_OBJECT_ENSURE_REGISTERED (NetDevice);
 

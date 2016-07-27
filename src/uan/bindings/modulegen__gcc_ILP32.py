@@ -104,6 +104,8 @@ def register_types(module):
     module.add_class('SimpleRefCount', automatic_type_narrowing=True, import_from_module='ns.core', template_parameters=['ns3::Object', 'ns3::ObjectBase', 'ns3::ObjectDeleter'], parent=root_module['ns3::ObjectBase'], memory_policy=cppclass.ReferenceCountingMethodsPolicy(incref_method='Ref', decref_method='Unref', peekref_method='GetReferenceCount'))
     ## simulator.h (module 'core'): ns3::Simulator [class]
     module.add_class('Simulator', destructor_visibility='private', import_from_module='ns.core')
+    ## simulator.h (module 'core'): ns3::Simulator [enumeration]
+    module.add_enum('', ['NO_CONTEXT'], outer_class=root_module['ns3::Simulator'], import_from_module='ns.core')
     ## tag.h (module 'network'): ns3::Tag [class]
     module.add_class('Tag', import_from_module='ns.network', parent=root_module['ns3::ObjectBase'])
     ## tag-buffer.h (module 'network'): ns3::TagBuffer [class]
@@ -231,7 +233,7 @@ def register_types(module):
     ## uan-phy.h (module 'uan'): ns3::UanPhy [class]
     module.add_class('UanPhy', parent=root_module['ns3::Object'])
     ## uan-phy.h (module 'uan'): ns3::UanPhy::State [enumeration]
-    module.add_enum('State', ['IDLE', 'CCABUSY', 'RX', 'TX', 'SLEEP'], outer_class=root_module['ns3::UanPhy'])
+    module.add_enum('State', ['IDLE', 'CCABUSY', 'RX', 'TX', 'SLEEP', 'DISABLED'], outer_class=root_module['ns3::UanPhy'])
     ## uan-phy.h (module 'uan'): ns3::UanPhyCalcSinr [class]
     module.add_class('UanPhyCalcSinr', parent=root_module['ns3::Object'])
     ## uan-phy-gen.h (module 'uan'): ns3::UanPhyCalcSinrDefault [class]
@@ -372,6 +374,8 @@ def register_types(module):
     module.add_class('PointerValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
     ## net-device.h (module 'network'): ns3::QueueItem [class]
     module.add_class('QueueItem', import_from_module='ns.network', parent=root_module['ns3::SimpleRefCount< ns3::QueueItem, ns3::empty, ns3::DefaultDeleter<ns3::QueueItem> >'])
+    ## net-device.h (module 'network'): ns3::QueueItem::Uint8Values [enumeration]
+    module.add_enum('Uint8Values', ['IP_DSFIELD'], outer_class=root_module['ns3::QueueItem'], import_from_module='ns.network')
     ## nstime.h (module 'core'): ns3::TimeValue [class]
     module.add_class('TimeValue', import_from_module='ns.core', parent=root_module['ns3::AttributeValue'])
     ## type-id.h (module 'core'): ns3::TypeIdChecker [class]
@@ -485,12 +489,12 @@ def register_types_ns3_Hash_Function(module):
 def register_types_ns3_TracedValueCallback(module):
     root_module = module.get_root()
     
-    typehandlers.add_type_alias(u'void ( * ) ( int8_t, int8_t ) *', u'ns3::TracedValueCallback::Int8')
-    typehandlers.add_type_alias(u'void ( * ) ( int8_t, int8_t ) **', u'ns3::TracedValueCallback::Int8*')
-    typehandlers.add_type_alias(u'void ( * ) ( int8_t, int8_t ) *&', u'ns3::TracedValueCallback::Int8&')
     typehandlers.add_type_alias(u'void ( * ) ( uint8_t, uint8_t ) *', u'ns3::TracedValueCallback::Uint8')
     typehandlers.add_type_alias(u'void ( * ) ( uint8_t, uint8_t ) **', u'ns3::TracedValueCallback::Uint8*')
     typehandlers.add_type_alias(u'void ( * ) ( uint8_t, uint8_t ) *&', u'ns3::TracedValueCallback::Uint8&')
+    typehandlers.add_type_alias(u'void ( * ) ( int8_t, int8_t ) *', u'ns3::TracedValueCallback::Int8')
+    typehandlers.add_type_alias(u'void ( * ) ( int8_t, int8_t ) **', u'ns3::TracedValueCallback::Int8*')
+    typehandlers.add_type_alias(u'void ( * ) ( int8_t, int8_t ) *&', u'ns3::TracedValueCallback::Int8&')
     typehandlers.add_type_alias(u'void ( * ) ( double, double ) *', u'ns3::TracedValueCallback::Double')
     typehandlers.add_type_alias(u'void ( * ) ( double, double ) **', u'ns3::TracedValueCallback::Double*')
     typehandlers.add_type_alias(u'void ( * ) ( double, double ) *&', u'ns3::TracedValueCallback::Double&')
@@ -3341,6 +3345,11 @@ def register_Ns3Object_methods(root_module, cls):
     cls.add_method('Initialize', 
                    'void', 
                    [])
+    ## object.h (module 'core'): bool ns3::Object::IsInitialized() const [member function]
+    cls.add_method('IsInitialized', 
+                   'bool', 
+                   [], 
+                   is_const=True)
     ## object.h (module 'core'): ns3::Object::Object(ns3::Object const & o) [copy constructor]
     cls.add_constructor([param('ns3::Object const &', 'o')], 
                         visibility='protected')
@@ -4713,6 +4722,11 @@ def register_Ns3UanPhy_methods(root_module, cls):
                    'void', 
                    [], 
                    is_pure_virtual=True, is_virtual=True)
+    ## uan-phy.h (module 'uan'): void ns3::UanPhy::EnergyRechargeHandler() [member function]
+    cls.add_method('EnergyRechargeHandler', 
+                   'void', 
+                   [], 
+                   is_pure_virtual=True, is_virtual=True)
     ## uan-phy.h (module 'uan'): double ns3::UanPhy::GetCcaThresholdDb() [member function]
     cls.add_method('GetCcaThresholdDb', 
                    'double', 
@@ -5014,6 +5028,11 @@ def register_Ns3UanPhyDual_methods(root_module, cls):
                    is_virtual=True)
     ## uan-phy-dual.h (module 'uan'): void ns3::UanPhyDual::EnergyDepletionHandler() [member function]
     cls.add_method('EnergyDepletionHandler', 
+                   'void', 
+                   [], 
+                   is_virtual=True)
+    ## uan-phy-dual.h (module 'uan'): void ns3::UanPhyDual::EnergyRechargeHandler() [member function]
+    cls.add_method('EnergyRechargeHandler', 
                    'void', 
                    [], 
                    is_virtual=True)
@@ -5353,6 +5372,11 @@ def register_Ns3UanPhyGen_methods(root_module, cls):
                    is_virtual=True)
     ## uan-phy-gen.h (module 'uan'): void ns3::UanPhyGen::EnergyDepletionHandler() [member function]
     cls.add_method('EnergyDepletionHandler', 
+                   'void', 
+                   [], 
+                   is_virtual=True)
+    ## uan-phy-gen.h (module 'uan'): void ns3::UanPhyGen::EnergyRechargeHandler() [member function]
+    cls.add_method('EnergyRechargeHandler', 
                    'void', 
                    [], 
                    is_virtual=True)
@@ -7279,11 +7303,6 @@ def register_Ns3NetDeviceQueue_methods(root_module, cls):
     cls.add_constructor([param('ns3::NetDeviceQueue const &', 'arg0')])
     ## net-device.h (module 'network'): ns3::NetDeviceQueue::NetDeviceQueue() [constructor]
     cls.add_constructor([])
-    ## net-device.h (module 'network'): bool ns3::NetDeviceQueue::HasWakeCallbackSet() const [member function]
-    cls.add_method('HasWakeCallbackSet', 
-                   'bool', 
-                   [], 
-                   is_const=True, is_virtual=True)
     ## net-device.h (module 'network'): bool ns3::NetDeviceQueue::IsStopped() const [member function]
     cls.add_method('IsStopped', 
                    'bool', 
@@ -7316,35 +7335,30 @@ def register_Ns3NetDeviceQueueInterface_methods(root_module, cls):
     cls.add_constructor([param('ns3::NetDeviceQueueInterface const &', 'arg0')])
     ## net-device.h (module 'network'): ns3::NetDeviceQueueInterface::NetDeviceQueueInterface() [constructor]
     cls.add_constructor([])
-    ## net-device.h (module 'network'): uint8_t ns3::NetDeviceQueueInterface::GetSelectedQueue(ns3::Ptr<ns3::QueueItem> item) const [member function]
-    cls.add_method('GetSelectedQueue', 
+    ## net-device.h (module 'network'): void ns3::NetDeviceQueueInterface::CreateTxQueues() [member function]
+    cls.add_method('CreateTxQueues', 
+                   'void', 
+                   [])
+    ## net-device.h (module 'network'): uint8_t ns3::NetDeviceQueueInterface::GetNTxQueues() const [member function]
+    cls.add_method('GetNTxQueues', 
                    'uint8_t', 
-                   [param('ns3::Ptr< ns3::QueueItem >', 'item')], 
+                   [], 
+                   is_const=True)
+    ## net-device.h (module 'network'): ns3::Callback<unsigned char, ns3::Ptr<ns3::QueueItem>, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> ns3::NetDeviceQueueInterface::GetSelectQueueCallback() const [member function]
+    cls.add_method('GetSelectQueueCallback', 
+                   'ns3::Callback< unsigned char, ns3::Ptr< ns3::QueueItem >, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >', 
+                   [], 
                    is_const=True)
     ## net-device.h (module 'network'): ns3::Ptr<ns3::NetDeviceQueue> ns3::NetDeviceQueueInterface::GetTxQueue(uint8_t i) const [member function]
     cls.add_method('GetTxQueue', 
                    'ns3::Ptr< ns3::NetDeviceQueue >', 
                    [param('uint8_t', 'i')], 
                    is_const=True)
-    ## net-device.h (module 'network'): uint8_t ns3::NetDeviceQueueInterface::GetTxQueuesN() const [member function]
-    cls.add_method('GetTxQueuesN', 
-                   'uint8_t', 
-                   [], 
-                   is_const=True)
     ## net-device.h (module 'network'): static ns3::TypeId ns3::NetDeviceQueueInterface::GetTypeId() [member function]
     cls.add_method('GetTypeId', 
                    'ns3::TypeId', 
                    [], 
                    is_static=True)
-    ## net-device.h (module 'network'): bool ns3::NetDeviceQueueInterface::IsQueueDiscInstalled() const [member function]
-    cls.add_method('IsQueueDiscInstalled', 
-                   'bool', 
-                   [], 
-                   is_const=True)
-    ## net-device.h (module 'network'): void ns3::NetDeviceQueueInterface::SetQueueDiscInstalled(bool installed) [member function]
-    cls.add_method('SetQueueDiscInstalled', 
-                   'void', 
-                   [param('bool', 'installed')])
     ## net-device.h (module 'network'): void ns3::NetDeviceQueueInterface::SetSelectQueueCallback(ns3::Callback<unsigned char, ns3::Ptr<ns3::QueueItem>, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> cb) [member function]
     cls.add_method('SetSelectQueueCallback', 
                    'void', 
@@ -7863,6 +7877,11 @@ def register_Ns3QueueItem_methods(root_module, cls):
     cls.add_method('GetPacketSize', 
                    'uint32_t', 
                    [], 
+                   is_const=True, is_virtual=True)
+    ## net-device.h (module 'network'): bool ns3::QueueItem::GetUint8Value(ns3::QueueItem::Uint8Values field, uint8_t & value) const [member function]
+    cls.add_method('GetUint8Value', 
+                   'bool', 
+                   [param('ns3::QueueItem::Uint8Values', 'field'), param('uint8_t &', 'value')], 
                    is_const=True, is_virtual=True)
     ## net-device.h (module 'network'): void ns3::QueueItem::Print(std::ostream & os) const [member function]
     cls.add_method('Print', 
@@ -8391,6 +8410,10 @@ def register_Ns3AcousticModemEnergyModel_methods(root_module, cls):
                    is_virtual=True)
     ## acoustic-modem-energy-model.h (module 'uan'): void ns3::AcousticModemEnergyModel::SetEnergyDepletionCallback(ns3::Callback<void, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> callback) [member function]
     cls.add_method('SetEnergyDepletionCallback', 
+                   'void', 
+                   [param('ns3::Callback< void, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >', 'callback')])
+    ## acoustic-modem-energy-model.h (module 'uan'): void ns3::AcousticModemEnergyModel::SetEnergyRechargeCallback(ns3::Callback<void, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty> callback) [member function]
+    cls.add_method('SetEnergyRechargeCallback', 
                    'void', 
                    [param('ns3::Callback< void, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty, ns3::empty >', 'callback')])
     ## acoustic-modem-energy-model.h (module 'uan'): void ns3::AcousticModemEnergyModel::SetEnergySource(ns3::Ptr<ns3::EnergySource> source) [member function]

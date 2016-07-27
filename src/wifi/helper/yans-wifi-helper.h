@@ -253,7 +253,53 @@ public:
    *
    * @returns The data link type of the pcap file (and packets) to be used
    */
-  uint32_t GetPcapDataLinkType (void) const;
+  PcapHelper::DataLinkType GetPcapDataLinkType (void) const;
+
+
+protected:
+  /**
+   * \param file the pcap file wrapper
+   * \param packet the packet
+   * \param channelFreqMhz the channel frequency
+   * \param channelNumber the channel number
+   * \param rate the PHY bitrate
+   * \param preamble the preamble type
+   * \param txVector the TXVECTOR
+   * \param aMpdu the A-MPDU information
+   *
+   * Handle tx pcap.
+   */
+static void PcapSniffTxEvent (Ptr<PcapFileWrapper> file,
+                              Ptr<const Packet> packet,
+                              uint16_t channelFreqMhz,
+                              uint16_t channelNumber,
+                              uint32_t rate,
+                              WifiPreamble preamble,
+                              WifiTxVector txVector,
+                              struct mpduInfo aMpdu);
+  /**
+   * \param file the pcap file wrapper
+   * \param packet the packet
+   * \param channelFreqMhz the channel frequency
+   * \param channelNumber the channel number
+   * \param rate the PHY bitrate
+   * \param preamble the preamble type
+   * \param txVector the TXVECTOR
+   * \param aMpdu the A-MPDU information
+   * \param signalNoise the rx signal and noise information
+   *
+   * Handle rx pcap.
+   */
+static void PcapSniffRxEvent (Ptr<PcapFileWrapper> file,
+                              Ptr<const Packet> packet,
+                              uint16_t channelFreqMhz,
+                              uint16_t channelNumber,
+                              uint32_t rate,
+                              WifiPreamble preamble,
+                              WifiTxVector txVector,
+                              struct mpduInfo aMpdu,
+                              struct signalNoiseDbm signalNoise);
+
 
 private:
   /**
@@ -300,7 +346,7 @@ private:
   ObjectFactory m_phy;
   ObjectFactory m_errorRateModel;
   Ptr<YansWifiChannel> m_channel;
-  uint32_t m_pcapDlt;
+  PcapHelper::DataLinkType m_pcapDlt;
 };
 
 } //namespace ns3

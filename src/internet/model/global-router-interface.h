@@ -40,6 +40,8 @@ class GlobalRouter;
 class Ipv4GlobalRouting;
 
 /**
+ * \ingroup globalrouting
+ *
  * @brief A single link record for a link state advertisement.
  *
  * The GlobalRoutingLinkRecord is modeled after the OSPF link record field of
@@ -847,6 +849,9 @@ private:
 
   // Declared mutable so that const member functions can clear it
   // (supporting the logical constness of the search methods of this class) 
+  /**
+   * Container of bridges visited.
+   */
   mutable std::vector<Ptr<BridgeNetDevice> > m_bridgesVisited;
   /**
    * Clear the list of bridges visited on the link 
