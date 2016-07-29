@@ -121,11 +121,11 @@ RrpaaWifiManager::GetTypeId (void)
     .AddTraceSource ("RateChange",
                      "The transmission rate has change.",
                      MakeTraceSourceAccessor (&RrpaaWifiManager::m_rateChange),
-                     "ns3::RrpaaWifiManager::RateChangeTracedCallback")
+                     "ns3::WifiRemoteStationManager::RateChangeTracedCallback")
     .AddTraceSource ("PowerChange",
                      "The transmission power has change.",
                      MakeTraceSourceAccessor (&RrpaaWifiManager::m_powerChange),
-                     "ns3::RrpaaWifiManager::PowerChangeTracedCallback")
+                     "ns3::WifiRemoteStationManager::PowerChangeTracedCallback")
   ;
   return tid;
 }
@@ -453,7 +453,6 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
           NS_LOG_DEBUG ("bploss >= MTL and power < maxPower => Increase Power");
           station->m_pdTable[station->m_rateIndex][station->m_powerLevel] /= m_gamma;
           NS_LOG_DEBUG("pdTable[" << station->m_rateIndex << "][" << station->m_powerLevel << "] = " << station->m_pdTable[station->m_rateIndex][station->m_powerLevel]);
-          station->m_prevPowerLevel = station->m_powerLevel;
           station->m_powerLevel++;
           ResetCountersBasic (station);
         }
@@ -462,7 +461,6 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
           NS_LOG_DEBUG ("bploss >= MTL and power = maxPower => Decrease Rate");
           station->m_pdTable[station->m_rateIndex][station->m_powerLevel] /= m_gamma;
           NS_LOG_DEBUG("pdTable[" << station->m_rateIndex << "][" << station->m_powerLevel << "] = " << station->m_pdTable[station->m_rateIndex][station->m_powerLevel]);
-          station->m_prevRateIndex = station->m_rateIndex;
           station->m_rateIndex--;
           ResetCountersBasic (station);
         }
@@ -492,7 +490,6 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
             {
               NS_LOG_DEBUG ("Increase Rate");
               station->m_rateIndex++;
-              station->m_prevRateIndex = station->m_rateIndex;
             }
         }
       else if (station->m_powerLevel > m_minPower)
@@ -513,7 +510,6 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
           if (rand < station->m_pdTable[station->m_rateIndex][station->m_powerLevel - 1])
             {
               NS_LOG_DEBUG ("Decrease Power");
-              station->m_prevPowerLevel = station->m_powerLevel;
               station->m_powerLevel--;
             }
         }
@@ -539,7 +535,6 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
           if (rand < station->m_pdTable[station->m_rateIndex][station->m_powerLevel - 1])
             {
               NS_LOG_DEBUG ("Decrease Power");
-              station->m_prevPowerLevel = station->m_powerLevel;
               station->m_powerLevel--;
             }
           ResetCountersBasic (station);

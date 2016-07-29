@@ -96,13 +96,13 @@ private:
   uint32_t m_maxPower;
 
   /**
-   * The trace source fired when the transmission power changes....
+   * The trace source fired when the transmission power changes.
    */
-  TracedCallback<uint8_t, Mac48Address> m_powerChange;
+  TracedCallback<uint8_t, uint8_t, Mac48Address> m_powerChange;
   /**
    * The trace source fired when the transmission rate changes.
    */
-  TracedCallback<uint32_t, Mac48Address> m_rateChange;
+  TracedCallback<uint32_t, uint32_t, Mac48Address> m_rateChange;
 
 };
 

@@ -737,18 +737,20 @@ public:
   /**
    * TracedCallback signature for power change events.
    *
-   * \param [in] power The new power.
+   * \param [in] oldPower The previous power level.
+   * \param [in] newPower The new power level.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (*PowerChangeTracedCallback)(uint8_t power, Mac48Address remoteAddress);
+  typedef void (*PowerChangeTracedCallback)(uint8_t oldPower, uint8_t newPower, Mac48Address remoteAddress);
 
   /**
    * TracedCallback signature for rate change events.
    *
-   * \param [in] rate The new rate.
+   * \param [in] oldRate The previous rate index.
+   * \param [in] newRate The new rate index.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (*RateChangeTracedCallback)(uint32_t rate, Mac48Address remoteAddress);
+  typedef void (*RateChangeTracedCallback)(uint32_t oldRate, uint32_t newRate, Mac48Address remoteAddress);
 
 
 
