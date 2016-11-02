@@ -294,6 +294,7 @@ EdcaTxopN::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
   m_queue = 0;
+  //m_tidQueue = 0; //TODO eliminar cada queue?
   m_low = 0;
   m_stationManager = 0;
   delete m_transmissionListener;
@@ -500,7 +501,7 @@ EdcaTxopN::NotifyAccessGranted (void)
   m_isAccessRequestedForRts = false;
   if (m_currentPacket == 0)
     {
-      if (m_queue->IsEmpty () && !m_baManager->HasPackets ())
+      if (m_queue->IsEmpty () && m_tidQueue.empty() && !m_baManager->HasPackets ())
         {
           NS_LOG_DEBUG ("queue is empty");
           return;
@@ -514,6 +515,11 @@ EdcaTxopN::NotifyAccessGranted (void)
       m_currentPacket = m_baManager->GetNextPacket (m_currentHdr);
       if (m_currentPacket == 0)
         {
+          if (m_queue->IsEmpty())
+            {
+              m_queue = m_tidQueue.front();
+              m_tidQueue.pop();
+            }
           if (m_queue->PeekFirstAvailable (&m_currentHdr, m_currentPacketTimestamp, m_qosBlockedDestinations) == 0)
             {
               NS_LOG_DEBUG ("no available packets in the queue");
@@ -907,6 +913,15 @@ EdcaTxopN::Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr)
 }
 
 void
+EdcaTxopN::Queue (Ptr<WifiMacQueue> queue)
+{
+  NS_LOG_FUNCTION (this << queue);
+  //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
+  m_tidQueue.push (queue);
+  StartAccessIfNeeded ();
+}
+
+void
 EdcaTxopN::GotAck (double snr, WifiMode txMode)
 {
   NS_LOG_FUNCTION (this << snr << txMode);
@@ -1148,7 +1163,7 @@ EdcaTxopN::StartAccessIfNeeded (void)
 {
   NS_LOG_FUNCTION (this);
   if (m_currentPacket == 0
-      && (!m_queue->IsEmpty () || m_baManager->HasPackets ())
+      && (!m_queue->IsEmpty () || !m_tidQueue.empty() || m_baManager->HasPackets ())
       && !m_dcf->IsAccessRequested ())
     {
       Ptr<const Packet> packet;

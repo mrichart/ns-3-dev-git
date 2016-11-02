@@ -36,6 +36,7 @@ class MacLow;
 class MacRxMiddle;
 class MacTxMiddle;
 class DcfManager;
+class WifiMacQueue;
 
 /**
  * \brief base class for all MAC-level wifi objects.
@@ -295,6 +296,17 @@ protected:
   channel access function */
   EdcaQueues m_edca;
 
+  /** This type defines a mapping between an TID index,
+  and a pointer to the corresponding Wifi Mac Queue */
+  typedef std::map<uint8_t, Ptr<WifiMacQueue> > TidQueues;
+
+  /** This type defines a mapping between a destination device address,
+  and a pointer to the corresponding TID queue */
+  typedef std::map<Mac48Address, TidQueues> StaQueues;
+
+  /** This is a map from STA and TID to the corresponding queue */
+  StaQueues m_staQueues;
+
   /**
    * Accessor for the DCF object
    *
@@ -527,7 +539,14 @@ protected:
    * \return true if DSSS is supported, false otherwise
    */
   bool GetDsssSupported () const;
-
+  /**
+   * TODO
+   */
+  void SetupStaTidQueues (Mac48Address address);
+  /**
+   * TODO
+   */
+  void DisposeStaTidQueues (Mac48Address address);
 
 private:
   RegularWifiMac (const RegularWifiMac &);

@@ -35,6 +35,7 @@
 #include "block-ack-manager.h"
 #include <map>
 #include <list>
+#include <queue>
 
 class AmpduAggregationTest;
 
@@ -394,6 +395,14 @@ public:
    */
   void Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr);
 
+  /**
+   * \param queue the STA-TID queue to enqueue.
+   *
+   * Store the queue in the internal queue until it
+   * can be attend safely.
+   */
+  void Queue (Ptr<WifiMacQueue> queue);
+
   void SetMsduAggregator (Ptr<MsduAggregator> aggr);
   void SetMpduAggregator (Ptr<MpduAggregator> aggr);
 
@@ -561,6 +570,7 @@ private:
   Dcf *m_dcf;
   DcfManager *m_manager;
   Ptr<WifiMacQueue> m_queue;
+  std::queue<Ptr<WifiMacQueue>> m_tidQueue;
   TxOk m_txOkCallback;
   TxFailed m_txFailedCallback;
   Ptr<MacLow> m_low;

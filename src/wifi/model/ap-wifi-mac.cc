@@ -35,6 +35,7 @@
 #include "mac-low.h"
 #include "amsdu-subframe-header.h"
 #include "msdu-aggregator.h"
+#include "wifi-mac-queue.h"
 
 namespace ns3 {
 
@@ -307,7 +308,21 @@ ApWifiMac::ForwardDown (Ptr<const Packet> packet, Mac48Address from,
     {
       //Sanity check that the TID is valid
       NS_ASSERT (tid < 8);
-      m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+
+      if (to.IsBroadcast())
+        {
+          m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+        }
+      else
+        {
+          //Obtain the STA-TID queue for the packet and enqueue the packet.
+          Ptr<WifiMacQueue> queue = m_staQueues[to][tid];
+          queue->Enqueue (packet, hdr);
+          NS_LOG_DEBUG ("Packet enqueued into queue of STA " << to << "; TID " << (int)tid);
+
+          //Enqueue the STA-TID queue in the corresponding Channel Access category.
+          m_edca[QosUtilsMapTidToAc (tid)]->Queue (queue);
+        }
     }
   else
     {
@@ -674,6 +689,8 @@ ApWifiMac::TxOk (const WifiMacHeader &hdr)
     {
       NS_LOG_DEBUG ("associated with sta=" << hdr.GetAddr1 ());
       m_stationManager->RecordGotAssocTxOk (hdr.GetAddr1 ());
+      //Create the queues for the new associated STA.
+      SetupStaTidQueues(hdr.GetAddr1());
     }
 }
 
@@ -931,6 +948,8 @@ ApWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
           else if (hdr->IsDisassociation ())
             {
               m_stationManager->RecordDisassociated (from);
+              //Erase the queues of the STA TODO, que pasa si esta en la colade edca?
+              DisposeStaTidQueues(from);
               for (std::list<Mac48Address>::iterator i = m_staList.begin (); i != m_staList.end (); i++)
               {
                 if ((*i) == from)

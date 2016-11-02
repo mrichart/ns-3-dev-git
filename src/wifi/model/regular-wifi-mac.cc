@@ -32,6 +32,7 @@
 #include "wifi-phy.h"
 #include "msdu-standard-aggregator.h"
 #include "mpdu-standard-aggregator.h"
+#include "wifi-mac-queue.h"
 
 namespace ns3 {
 
@@ -116,6 +117,8 @@ RegularWifiMac::DoDispose ()
     {
       i->second = 0;
     }
+
+  //TODO STAQueues
 }
 
 void
@@ -362,6 +365,43 @@ RegularWifiMac::SetupEdcaQueue (enum AcIndex ac)
   edca->CompleteConfig ();
 
   m_edca.insert (std::make_pair (ac, edca));
+}
+
+void
+RegularWifiMac::SetupStaTidQueues (Mac48Address address)
+{
+  NS_LOG_FUNCTION (this << address);
+
+  //Our caller shouldn't be attempting to setup a queue that is
+  //already configured.
+  NS_ASSERT (m_staQueues.find (address) == m_staQueues.end ());
+
+  TidQueues staQueue;
+  for (uint8_t i = 0; i < 8; i++)
+    {
+      Ptr<WifiMacQueue> tidQueue = CreateObject<WifiMacQueue> ();
+      staQueue.insert(std::make_pair(i, tidQueue));
+    }
+
+  m_staQueues.insert(std::make_pair(address, staQueue));
+}
+
+void
+RegularWifiMac::DisposeStaTidQueues (Mac48Address address)
+{
+  NS_LOG_FUNCTION (this << address);
+
+  StaQueues::iterator i = m_staQueues.find (address);
+  //Our caller shouldn't be attempting to dispose a queue that
+  //does not exists
+  NS_ASSERT (i != m_staQueues.end ());
+
+  TidQueues staQueue = i->second;
+  for (uint8_t tid = 0; tid < 8; tid++)
+    {
+      staQueue[tid]->Dispose();
+    }
+  m_staQueues.erase(i);
 }
 
 void
