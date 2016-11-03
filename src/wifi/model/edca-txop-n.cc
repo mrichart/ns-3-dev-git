@@ -917,7 +917,7 @@ EdcaTxopN::Queue (Ptr<WifiMacQueue> queue)
 {
   NS_LOG_FUNCTION (this << queue);
   //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
-  m_tidQueue.push (queue);
+  m_tidQueue.push (queue); //TODO hay que ver si la cola ya existe solo agregarla si no existe.
   StartAccessIfNeeded ();
 }
 

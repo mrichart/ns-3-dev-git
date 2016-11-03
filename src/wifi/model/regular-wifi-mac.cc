@@ -72,6 +72,8 @@ RegularWifiMac::RegularWifiMac () :
   SetupEdcaQueue (AC_VI);
   SetupEdcaQueue (AC_BE);
   SetupEdcaQueue (AC_BK);
+
+  m_multicastQueue = CreateObject<WifiMacQueue> ();
 }
 
 RegularWifiMac::~RegularWifiMac ()
@@ -118,6 +120,7 @@ RegularWifiMac::DoDispose ()
       i->second = 0;
     }
 
+  m_multicastQueue->Dispose();
   //TODO STAQueues
 }
 

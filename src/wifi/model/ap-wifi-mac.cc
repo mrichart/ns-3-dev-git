@@ -309,9 +309,10 @@ ApWifiMac::ForwardDown (Ptr<const Packet> packet, Mac48Address from,
       //Sanity check that the TID is valid
       NS_ASSERT (tid < 8);
 
-      if (to.IsBroadcast())
+      if (to.IsGroup())
         {
-          m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+          m_multicastQueue->Enqueue(packet, hdr);
+          m_edca[QosUtilsMapTidToAc (tid)]->Queue (m_multicastQueue);
         }
       else
         {

@@ -307,6 +307,10 @@ protected:
   /** This is a map from STA and TID to the corresponding queue */
   StaQueues m_staQueues;
 
+  /** This type defines a mapping between an TID index,
+  and a pointer to the corresponding Wifi Mac Queue */
+  Ptr<WifiMacQueue> m_multicastQueue;
+
   /**
    * Accessor for the DCF object
    *
