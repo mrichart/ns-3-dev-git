@@ -99,3 +99,6 @@ def build(bld):
 
     obj = bld.create_ns3_program('wifi-spectrum-saturation-example', ['internet', 'mobility', 'wifi', 'applications', 'spectrum'])
     obj.source = 'wifi-spectrum-saturation-example.cc'
+
+    obj = bld.create_ns3_program('slicing', ['core', 'mobility', 'wifi', 'applications', 'flow-monitor'])
+    obj.source = 'slicing.cc'
