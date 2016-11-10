@@ -340,9 +340,9 @@ WifiRemoteStationManager::GetTypeId (void)
                                     WifiRemoteStationManager::CTS_TO_SELF, "Cts-To-Self"))
     .AddAttribute ("AirtimeDeficit",
                    "Deficit for the airtime fairness scheduler.",
-                   IntegerValue (300),
-                   MakeIntegerAccessor (&WifiRemoteStationManager::m_defaultAirtimeDeficit),
-                   MakeIntegerChecker<int> ())
+                   TimeValue (MilliSeconds(300)),
+                   MakeTimeAccessor (&WifiRemoteStationManager::m_defaultAirtimeDeficit),
+                   MakeTimeChecker ())
     .AddTraceSource ("MacTxRtsFailed",
                      "The transmission of a RTS by the MAC layer has failed",
                      MakeTraceSourceAccessor (&WifiRemoteStationManager::m_macTxRtsFailed),
@@ -1902,7 +1902,7 @@ WifiRemoteStationManager::GetNumberOfTransmitAntennas (void)
   return m_wifiPhy->GetNumberOfTransmitAntennas ();
 }
 
-int
+Time
 WifiRemoteStationManager::GetAirtimeDeficit(Mac48Address address)
 {
   NS_LOG_FUNCTION (this << address);
@@ -1915,11 +1915,26 @@ WifiRemoteStationManager::GetAirtimeDeficit(Mac48Address address)
         }
     }
   NS_ASSERT (false);
-  return 0;
+  return Seconds (0.0);
 }
 
 void
-WifiRemoteStationManager::UpdateAirtimeDeficit (Mac48Address address, int deficit)
+WifiRemoteStationManager::DecreaseAirtimeDeficit (Mac48Address address, Time decrement)
+{
+  NS_LOG_FUNCTION (this << address);
+  for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
+    {
+      if ((*i)->m_address == address)
+        {
+          NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, updating deficit.");
+          (*i)->m_airtimeDeficit -= decrement;
+        }
+    }
+  NS_ASSERT (false);
+}
+
+void
+WifiRemoteStationManager::UpdateAirtimeDeficit (Mac48Address address, Time deficit)
 {
   NS_LOG_FUNCTION (this << address);
   for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
