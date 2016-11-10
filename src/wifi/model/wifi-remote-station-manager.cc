@@ -1934,7 +1934,7 @@ WifiRemoteStationManager::DecreaseAirtimeDeficit (Mac48Address address, Time dec
 }
 
 void
-WifiRemoteStationManager::UpdateAirtimeDeficit (Mac48Address address, Time deficit)
+WifiRemoteStationManager::IncreaseAirtimeDeficit (Mac48Address address, Time increment)
 {
   NS_LOG_FUNCTION (this << address);
   for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
@@ -1942,7 +1942,7 @@ WifiRemoteStationManager::UpdateAirtimeDeficit (Mac48Address address, Time defic
       if ((*i)->m_address == address)
         {
           NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, updating deficit.");
-          (*i)->m_airtimeDeficit = deficit;
+          (*i)->m_airtimeDeficit += increment;
         }
     }
   NS_ASSERT (false);

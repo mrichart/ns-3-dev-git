@@ -751,9 +751,9 @@ public:
    * Update the current airtime deficit for the station with the given address.
    *
    * \param address the address of the station
-   * \param deficit the new value for the airtime deficit
+   * \param increment the amount to increase the airtime deficit
    */
-  void UpdateAirtimeDeficit (Mac48Address address, Time deficit);
+  void IncreaseAirtimeDeficit (Mac48Address address, Time increment);
 
   /**
    * TracedCallback signature for power change events.
