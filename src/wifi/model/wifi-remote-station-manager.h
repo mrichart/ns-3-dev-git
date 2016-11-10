@@ -1178,6 +1178,21 @@ private:
   uint32_t GetNFragments (const WifiMacHeader *header, Ptr<const Packet> packet);
 
   /**
+   * Return the current airtime deficit for the station with the given address.
+   *
+   * \param address the address of the station
+   */
+  int GetAirtimeDeficit (Mac48Address address);
+
+  /**
+   * Update the current airtime deficit for the station with the given address.
+   *
+   * \param address the address of the station
+   * \param deficit the new value for the airtime deficit
+   */
+  void UpdateAirtimeDeficit (Mac48Address address, int deficit);
+
+  /**
    * A vector of WifiRemoteStations
    */
   typedef std::vector <WifiRemoteStation *> Stations;
@@ -1234,6 +1249,8 @@ private:
   bool m_shortPreambleEnabled; //!< flag if short PLCP preamble is enabled
   bool m_shortSlotTimeEnabled; //!< flag if short slot time is enabled
   ProtectionMode m_protectionMode; //!< Protection mode for ERP stations when non-ERP stations are detected
+
+  int m_defaultAirtimeDeficit;    //!< The deficit to use by the airtime fairness scheduler for each station.
 
   /**
    * The trace source fired when the transmission of a single RTS has failed
@@ -1296,6 +1313,8 @@ struct WifiRemoteStationState
   bool m_shortSlotTime;       //!< Flag if short ERP slot time is supported by the remote station
   bool m_htSupported;         //!< Flag if HT is supported by the station
   bool m_vhtSupported;        //!< Flag if VHT is supported by the station
+
+  int m_airtimeDeficit;      //!< Airtime available for this station to transmit.
 };
 
 /**

@@ -28,6 +28,7 @@
 #include "ns3/double.h"
 #include "ns3/uinteger.h"
 #include "ns3/enum.h"
+#include "ns3/integer.h"
 #include "ns3/wifi-phy.h"
 #include "ns3/wifi-mac.h"
 #include "ns3/trace-source-accessor.h"
@@ -337,6 +338,11 @@ WifiRemoteStationManager::GetTypeId (void)
                                      &WifiRemoteStationManager::GetProtectionMode),
                    MakeEnumChecker (WifiRemoteStationManager::RTS_CTS, "Rts-Cts",
                                     WifiRemoteStationManager::CTS_TO_SELF, "Cts-To-Self"))
+    .AddAttribute ("AirtimeDeficit",
+                   "Deficit for the airtime fairness scheduler.",
+                   IntegerValue (300),
+                   MakeIntegerAccessor (&WifiRemoteStationManager::m_defaultAirtimeDeficit),
+                   MakeIntegerChecker<int> ())
     .AddTraceSource ("MacTxRtsFailed",
                      "The transmission of a RTS by the MAC layer has failed",
                      MakeTraceSourceAccessor (&WifiRemoteStationManager::m_macTxRtsFailed),
@@ -1469,6 +1475,7 @@ WifiRemoteStationManager::LookupState (Mac48Address address) const
   state->m_stbc = false;
   state->m_htSupported = false;
   state->m_vhtSupported = false;
+  state->m_airtimeDeficit = m_defaultAirtimeDeficit;
   const_cast<WifiRemoteStationManager *> (this)->m_states.push_back (state);
   NS_LOG_DEBUG ("WifiRemoteStationManager::LookupState returning new state");
   return state;
@@ -1893,6 +1900,37 @@ uint32_t
 WifiRemoteStationManager::GetNumberOfTransmitAntennas (void)
 {
   return m_wifiPhy->GetNumberOfTransmitAntennas ();
+}
+
+int
+WifiRemoteStationManager::GetAirtimeDeficit(Mac48Address address)
+{
+  NS_LOG_FUNCTION (this << address);
+  for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
+    {
+      if ((*i)->m_address == address)
+        {
+          NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, returning deficit.");
+          return (*i)->m_airtimeDeficit;
+        }
+    }
+  NS_ASSERT (false);
+  return 0;
+}
+
+void
+WifiRemoteStationManager::UpdateAirtimeDeficit (Mac48Address address, int deficit)
+{
+  NS_LOG_FUNCTION (this << address);
+  for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
+    {
+      if ((*i)->m_address == address)
+        {
+          NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, updating deficit.");
+          (*i)->m_airtimeDeficit = deficit;
+        }
+    }
+  NS_ASSERT (false);
 }
 
 WifiRemoteStationInfo::WifiRemoteStationInfo ()
