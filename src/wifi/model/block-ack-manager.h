@@ -151,7 +151,9 @@ public:
    * This methods returns a packet (if exists) indicated as not received in
    * corresponding block ack bitmap.
    */
-  Ptr<const Packet> GetNextPacket (WifiMacHeader &hdr);
+  Ptr<const Packet> GetNextPacket (Ptr<WifiMacQueue> queue, WifiMacHeader &hdr);
+
+  Ptr<const Packet> GetNextPacketByTidAndAddress (Ptr<WifiMacQueue> queue, WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *tstamp);
   /**
    * \param hdr 802.11 header of returned packet (if exists).
    *
@@ -160,7 +162,7 @@ public:
    * This methods returns a packet (if exists) indicated as not received in
    * corresponding block ack bitmap. This method doesn't remove the packet from this queue.
    */
-  Ptr<const Packet> PeekNextPacket (WifiMacHeader &hdr);
+  Ptr<const Packet> PeekNextPacket (Ptr<WifiMacQueue> queue, WifiMacHeader &hdr);
   bool HasBar (struct Bar &bar);
   /**
    * Returns true if there are packets that need of retransmission or at least a
@@ -182,7 +184,7 @@ public:
    * with ack policy set to Block Ack, were correctly received by the recipient.
    * An acknowledged MPDU is removed from the buffer, retransmitted otherwise.
    */
-  void NotifyGotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address recipient, double rxSnr, WifiMode txMode, double dataSnr);
+  void NotifyGotBlockAck (Ptr<WifiMacQueue> queue, const CtrlBAckResponseHeader *blockAck, Mac48Address recipient, double rxSnr, WifiMode txMode, double dataSnr);
   /**
    * \param recipient Address of peer station involved in block ack mechanism.
    * \param tid Traffic ID.
@@ -231,7 +233,7 @@ public:
    * with ack policy subfield in Qos Control field set to Block Ack is transmitted.
    * The <i>nextSeqNumber</i> parameter is used to block transmission of packets that are out of bitmap.
    */
-  void NotifyMpduTransmission (Mac48Address recipient, uint8_t tid, uint16_t nextSeqNumber, WifiMacHeader::QosAckPolicy policy);
+  void NotifyMpduTransmission (Ptr<WifiMacQueue> queue, Mac48Address recipient, uint8_t tid, uint16_t nextSeqNumber, WifiMacHeader::QosAckPolicy policy);
   /**
    * \param recipient Address of peer station involved in block ack mechanism.
    * \param tid Traffic ID of transmitted packet.
@@ -247,10 +249,6 @@ public:
    */
   void SetBlockAckThreshold (uint8_t nPackets);
 
-  /**
-   * \param queue The WifiMacQueue object.
-   */
-  void SetQueue (Ptr<WifiMacQueue> queue);
   void SetTxMiddle (MacTxMiddle* txMiddle);
 
   /**
@@ -308,7 +306,7 @@ public:
    * However, number of packets exchanged in the current block ack, will not exceed
    * the value of BufferSize in the corresponding OriginatorBlockAckAgreement object.
    */
-  bool SwitchToBlockAckIfNeeded (Mac48Address recipient, uint8_t tid, uint16_t startingSeq);
+  bool SwitchToBlockAckIfNeeded (Ptr<WifiMacQueue> queue, Mac48Address recipient, uint8_t tid, uint16_t startingSeq);
   /**
    * \param recipient
    * \param tid
@@ -333,7 +331,7 @@ public:
    * by <i>type</i> equals to <i>addr</i>, and tid equals to <i>tid</i>.
    * This method doesn't remove the packet from this queue.
    */
-  Ptr<const Packet> PeekNextPacketByTidAndAddress (WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *timestamp);
+  Ptr<const Packet> PeekNextPacketByTidAndAddress (Ptr<WifiMacQueue> queue, WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *timestamp);
   /**
    * This function returns true if the lifetime of the packets a BAR refers to didn't expire yet else it returns false.
    * If it return false then the BAR will be discarded (i.e. will not be re-transmitted)
@@ -374,7 +372,7 @@ private:
    * at next channel access a block ack request (for established agreement
    * <i>recipient</i>,<i>tid</i>) is needed.
    */
-  Ptr<Packet> ScheduleBlockAckReqIfNeeded (Mac48Address recipient, uint8_t tid);
+  Ptr<Packet> ScheduleBlockAckReqIfNeeded (Ptr<WifiMacQueue> queue, Mac48Address recipient, uint8_t tid);
 
   /**
    * This method removes packets whose lifetime was exceeded.
@@ -454,7 +452,6 @@ private:
   Time m_maxDelay;
   MacTxMiddle* m_txMiddle;
   Mac48Address m_address;
-  Ptr<WifiMacQueue> m_queue;
   Callback<void, Mac48Address, uint8_t, bool> m_blockAckInactivityTimeout;
   Callback<void, Mac48Address, uint8_t> m_blockPackets;
   Callback<void, Mac48Address, uint8_t> m_unblockPackets;
