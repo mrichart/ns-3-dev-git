@@ -38,6 +38,7 @@
 #include "ht-capabilities.h"
 #include "ht-operations.h"
 #include "vht-capabilities.h"
+#include "wifi-mac-queue.h"
 
 /*
  * The state machine for this STA is:
@@ -414,7 +415,22 @@ StaWifiMac::Enqueue (Ptr<const Packet> packet, Mac48Address to)
     {
       //Sanity check that the TID is valid
       NS_ASSERT (tid < 8);
-      m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
+
+      if (to.IsGroup())
+        {
+          m_multicastQueue->Enqueue(packet, hdr);
+          m_edca[QosUtilsMapTidToAc (tid)]->Queue (m_multicastQueue, tid, to);
+        }
+      else
+        {
+          //Obtain the STA-TID queue for the packet and enqueue the packet.
+          Ptr<WifiMacQueue> queue = m_staQueues[to][tid];
+          queue->Enqueue (packet, hdr);
+          NS_LOG_DEBUG ("Packet enqueued into queue of STA " << to << "; TID " << (int)tid);
+
+          //Enqueue the STA-TID queue in the corresponding Channel Access category.
+          m_edca[QosUtilsMapTidToAc (tid)]->Queue (queue, tid, to);
+        }
     }
   else
     {
@@ -665,6 +681,9 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
             {
               SetState (ASSOCIATED);
               NS_LOG_DEBUG ("assoc completed");
+              //Create the queues for AP.
+              SetupStaTidQueues(hdr->GetAddr2());
+
               CapabilityInformation capabilities = assocResp.GetCapabilities ();
               SupportedRates rates = assocResp.GetSupportedRates ();
               bool isShortPreambleEnabled = capabilities.IsShortPreamble ();
