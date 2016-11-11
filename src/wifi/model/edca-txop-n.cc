@@ -515,8 +515,6 @@ EdcaTxopN::ScheduleTransmission(void)
       m_currentPacket = m_baManager->GetNextPacketByTidAndAddress(m_queueInfo->queue, m_currentHdr, m_queueInfo->sta, m_queueInfo->tid, &m_currentPacketTimestamp);
       if (m_currentPacket == 0)
         {
-          m_queue = m_queueInfo->queue;
-          m_tidQueue.pop_front();
           if (m_queue->PeekFirstAvailable (&m_currentHdr, m_currentPacketTimestamp, m_qosBlockedDestinations) == 0)
             {
               NS_LOG_DEBUG ("no available packets in the queue");
