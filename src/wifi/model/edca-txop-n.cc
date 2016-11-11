@@ -510,6 +510,8 @@ EdcaTxopN::ScheduleTransmission(void)
   else
     {
       m_queueInfo = m_tidQueue.front(); //TODO logic for scheduling
+      m_tidQueue.pop_front();
+      m_queue = m_queueInfo->queue;
       m_currentPacket = m_baManager->GetNextPacketByTidAndAddress(m_queueInfo->queue, m_currentHdr, m_queueInfo->sta, m_queueInfo->tid, &m_currentPacketTimestamp);
       if (m_currentPacket == 0)
         {
