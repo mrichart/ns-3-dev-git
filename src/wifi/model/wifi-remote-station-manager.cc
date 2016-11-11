@@ -340,7 +340,7 @@ WifiRemoteStationManager::GetTypeId (void)
                                     WifiRemoteStationManager::CTS_TO_SELF, "Cts-To-Self"))
     .AddAttribute ("AirtimeDeficit",
                    "Deficit for the airtime fairness scheduler.",
-                   TimeValue (MilliSeconds(300)),
+                   TimeValue (MicroSeconds(300)),
                    MakeTimeAccessor (&WifiRemoteStationManager::m_defaultAirtimeDeficit),
                    MakeTimeChecker ())
     .AddTraceSource ("MacTxRtsFailed",
@@ -1922,12 +1922,14 @@ void
 WifiRemoteStationManager::DecreaseAirtimeDeficit (Mac48Address address, Time decrement)
 {
   NS_LOG_FUNCTION (this << address);
-  for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
+  StationStates::const_iterator i;
+  for (i = m_states.begin (); i != m_states.end (); i++)
     {
       if ((*i)->m_address == address)
         {
           NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, updating deficit.");
           (*i)->m_airtimeDeficit -= decrement;
+          return;
         }
     }
   NS_ASSERT (false);
@@ -1937,12 +1939,14 @@ void
 WifiRemoteStationManager::IncreaseAirtimeDeficit (Mac48Address address, Time increment)
 {
   NS_LOG_FUNCTION (this << address);
-  for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
+  StationStates::const_iterator i;
+  for (i = m_states.begin (); i != m_states.end (); i++)
     {
       if ((*i)->m_address == address)
         {
           NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, updating deficit.");
           (*i)->m_airtimeDeficit += increment;
+          return;
         }
     }
   NS_ASSERT (false);
