@@ -561,11 +561,6 @@ private:
    */
   bool HasTxop (void);
 
-  /*
-   * Assign to m_queue the TID queue to pull packets.
-   */
-  bool ScheduleTransmission(void);
-
   AcIndex m_ac;
   class Dcf;
   class TransmissionListener;
@@ -577,14 +572,33 @@ private:
   Ptr<WifiMacQueue> m_queue;
   Ptr<WifiMacQueue> m_fastQueue;
 
+  enum TxQueueStatus
+    {
+      INACTIVE,
+      NEW,
+      OLD
+    };
+
   struct TxQueueInfo
   {
     uint8_t tid;
     Mac48Address sta;
+    TxQueueStatus status;
+    bool airtimeActive;
     Ptr<WifiMacQueue> queue;
   };
   TxQueueInfo *m_queueInfo;
-  std::list<TxQueueInfo *> m_tidQueue;
+  std::list<TxQueueInfo *> m_tidQueueNew;
+  std::list<TxQueueInfo *> m_tidQueueOld;
+
+  /*
+   * Assign to m_queue the TID queue to pull packets.
+   */
+  bool ScheduleTransmission (void);
+
+  void UpdateTxQueue (void);
+  bool TidHasBuffered (TxQueueInfo *queueInfo);
+
   TxOk m_txOkCallback;
   TxFailed m_txFailedCallback;
   Ptr<MacLow> m_low;

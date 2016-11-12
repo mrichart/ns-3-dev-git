@@ -472,7 +472,7 @@ bool
 EdcaTxopN::NeedsAccess (void) const
 {
   NS_LOG_FUNCTION (this);
-  return !m_tidQueue.empty() || m_currentPacket != 0 || m_baManager->HasPackets ();
+  return !m_tidQueueNew.empty() || !m_tidQueueOld.empty() || m_currentPacket != 0 || m_baManager->HasPackets ();
 }
 
 uint16_t EdcaTxopN::GetNextSequenceNumberfor (WifiMacHeader *hdr)
@@ -500,7 +500,16 @@ EdcaTxopN::RemoveRetransmitPacket (uint8_t tid, Mac48Address recipient, uint16_t
 bool
 EdcaTxopN::ScheduleTransmission(void)
 {
-  /* check if packets need retransmission are stored in BlockAckManager */
+  if (m_fastQueue->IsEmpty() && m_tidQueueNew.empty() && m_tidQueueOld.empty() && !m_baManager->HasPackets ())
+    {
+      NS_LOG_DEBUG ("queue is empty");
+      return false;
+    }
+  if (m_baManager->HasBar (m_currentBar))
+    {
+      SendBlockAckRequest (m_currentBar);
+      return false;
+    }
   if (!m_fastQueue->IsEmpty())
     {
       m_currentPacket = m_fastQueue->DequeueFirstAvailable(&m_currentHdr, m_currentPacketTimestamp, m_qosBlockedDestinations);
@@ -509,9 +518,71 @@ EdcaTxopN::ScheduleTransmission(void)
     }
   else
     {
-      m_queueInfo = m_tidQueue.front(); //TODO logic for scheduling
-      m_tidQueue.pop_front();
-      m_queue = m_queueInfo->queue;
+      TxQueueInfo *queueInfo;
+      bool found = false;
+
+      while (!found && !m_tidQueueNew.empty ())
+        {
+          queueInfo = m_tidQueueNew.front ();
+
+          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta) <= Seconds (0.0))
+            {
+              m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, MicroSeconds(300));
+              queueInfo->status = TxQueueStatus::OLD;
+              m_tidQueueOld.push_back (queueInfo);
+              m_tidQueueNew.pop_front ();
+            }
+          else
+            {
+              NS_LOG_DEBUG ("Found a new queue with positive deficit");
+              m_queueInfo = queueInfo;
+              m_queue = queueInfo->queue;
+              found = true;
+            }
+        }
+
+      while (!found && !m_tidQueueOld.empty ())
+        {
+          queueInfo = m_tidQueueOld.front ();
+
+          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta) <= Seconds (0.0))
+            {
+              m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, MicroSeconds(300));
+              queueInfo->status = TxQueueStatus::OLD;
+              m_tidQueueOld.push_back (queueInfo);
+              m_tidQueueOld.pop_front ();
+            }
+          else
+            {
+              NS_LOG_DEBUG ("Found an old queue with positive deficit");
+              m_queueInfo = queueInfo;
+              m_queue = queueInfo->queue;
+              found = true;
+            }
+        }
+
+      if (!found)
+        {
+          NS_LOG_DEBUG ("No queue found to dequeue a packet");
+          return false;
+        }
+
+      if (!TidHasBuffered (m_queueInfo))
+        {
+          if (m_queueInfo->status == TxQueueStatus::NEW && !m_tidQueueOld.empty())
+            {
+              m_queueInfo->status = TxQueueStatus::OLD;
+              m_tidQueueOld.push_back (queueInfo);
+              m_tidQueueNew.pop_front ();
+            }
+          else
+            {
+              m_queueInfo->status = TxQueueStatus::INACTIVE;
+              m_tidQueueNew.pop_front ();
+            }
+        }
+
+      /* check if packets need retransmission are stored in BlockAckManager */
       m_currentPacket = m_baManager->GetNextPacketByTidAndAddress(m_queueInfo->queue, m_currentHdr, m_queueInfo->sta, m_queueInfo->tid, &m_currentPacketTimestamp);
       if (m_currentPacket == 0)
         {
@@ -549,21 +620,36 @@ EdcaTxopN::ScheduleTransmission(void)
 }
 
 void
+EdcaTxopN::UpdateTxQueue(void)
+{
+  if (m_queueInfo != 0 && (!m_queueInfo->airtimeActive || (m_queueInfo->status == TxQueueStatus::NEW && !m_tidQueueOld.empty())))
+    {
+      m_queueInfo->status = TxQueueStatus::OLD;
+      m_tidQueueOld.push_back (m_queueInfo);
+      if (m_queueInfo->status == TxQueueStatus::NEW)
+        m_tidQueueNew.pop_front ();
+      else
+        m_tidQueueOld.pop_front ();
+    }
+  m_queue = 0;
+  m_queueInfo = 0;
+}
+
+bool
+EdcaTxopN::TidHasBuffered (TxQueueInfo *queueInfo)
+{
+  WifiMacHeader hdr;
+  Time tstamp;
+  return !((m_baManager->HasPackets() && m_baManager->PeekNextPacketByTidAndAddress (queueInfo->queue, hdr, queueInfo->sta, queueInfo->tid, &tstamp) == 0)
+           && queueInfo->queue->IsEmpty());
+}
+
+void
 EdcaTxopN::NotifyAccessGranted (void)
 {
   NS_LOG_FUNCTION (this);
   if (m_currentPacket == 0)
     {
-      if (m_fastQueue->IsEmpty() && m_tidQueue.empty() && !m_baManager->HasPackets ())
-        {
-          NS_LOG_DEBUG ("queue is empty");
-          return;
-        }
-      if (m_baManager->HasBar (m_currentBar))
-        {
-          SendBlockAckRequest (m_currentBar);
-          return;
-        }
       if (!ScheduleTransmission())
         return;
     }
@@ -739,12 +825,7 @@ void EdcaTxopN::NotifyInternalCollision (void)
           NS_LOG_DEBUG ("Dequeueing and discarding head of queue");
           packet = m_queue->Peek (&header);//TODO parece haber un error aqui. no habria que hacer un dequeue?
         }
-      if (m_queue != 0 && !m_queue->IsEmpty())
-        {
-          m_tidQueue.push_back(m_queueInfo);
-        }
-      m_queue = 0;
-      m_queueInfo = 0;
+      UpdateTxQueue();
       m_dcf->ResetCw ();
     }
   else
@@ -888,7 +969,7 @@ EdcaTxopN::MissedCts (void)
           m_currentPacket = 0;
           if (m_queue != 0 && !m_queue->IsEmpty())
             {
-              m_tidQueue.push_back(m_queueInfo);
+              m_tidQueueOld.push_back(m_queueInfo);
             }
           m_queue = 0;
           m_queueInfo = 0;
@@ -949,19 +1030,39 @@ EdcaTxopN::Queue (Ptr<WifiMacQueue> queue, uint8_t tid, Mac48Address recipient)
 {
   NS_LOG_FUNCTION (this << queue);
   //m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
-  TxQueueInfo *queueInfo = new TxQueueInfo;
-  queueInfo->tid = tid;
-  queueInfo->sta = recipient;
-  queueInfo->queue = queue;
   //if (std::find_if (m_tidQueue.begin (), m_tidQueue.end (), TxQueueIsEqual) == m_tidQueue.end ())
-  std::list<TxQueueInfo *>::iterator i = m_tidQueue.begin();
-  while (i != m_tidQueue.end()) {
-    if ((*i)->queue == queueInfo->queue)
-      break;
+  std::list<TxQueueInfo *>::iterator i = m_tidQueueNew.begin();
+  bool found = false;
+  while (!found && i != m_tidQueueNew.end()) {
+    if ((*i)->queue == queue)
+      {
+        found = true;
+      }
     i++;
   }
-  if (i == m_tidQueue.end())
-    m_tidQueue.push_back(queueInfo);
+
+  i = m_tidQueueOld.begin();
+  while (!found && i != m_tidQueueOld.end()) {
+    if ((*i)->queue == queue)
+      {
+        found = true;
+      }
+    i++;
+  }
+  if (!found)
+    {
+      NS_LOG_DEBUG ("Creating a new queue");
+      TxQueueInfo *queueInfo = new TxQueueInfo;
+      queueInfo->tid = tid;
+      queueInfo->sta = recipient;
+      queueInfo->queue = queue;
+      queueInfo->airtimeActive = !recipient.IsGroup();  //Don't use airtime scheduler for boradcast and multicast frames.
+      queueInfo->status = TxQueueStatus::NEW;
+      if (queueInfo->airtimeActive)
+        m_tidQueueNew.push_back(queueInfo);
+      else
+        m_tidQueueOld.push_back(queueInfo);
+    }
   StartAccessIfNeeded ();
 }
 
@@ -1003,12 +1104,7 @@ EdcaTxopN::GotAck (double snr, WifiMode txMode)
       m_dcf->ResetCw ();
       if (!HasTxop ())
         {
-          if (m_queue != 0 && !m_queue->IsEmpty())
-            {
-              m_tidQueue.push_back(m_queueInfo);
-            }
-          m_queue = 0;
-          m_queueInfo = 0;
+          UpdateTxQueue();
           m_cwTrace = m_dcf->GetCw ();
           m_backoffTrace = m_rng->GetNext (0, m_dcf->GetCw ());
           m_dcf->StartBackoffNow (m_backoffTrace);
@@ -1069,13 +1165,7 @@ EdcaTxopN::MissedAck (void)
       //to reset the dcf.
       if (resetCurrentPacket == true)
         {
-          m_currentPacket = 0;
-          if (m_queue != 0 && !m_queue->IsEmpty())
-            {
-              m_tidQueue.push_back(m_queueInfo);
-            }
-          m_queue = 0;
-          m_queueInfo = 0;
+          UpdateTxQueue();
         }
       m_dcf->ResetCw ();
       m_cwTrace = m_dcf->GetCw ();
@@ -1159,12 +1249,7 @@ EdcaTxopN::MissedBlockAck (uint32_t nMpdus)
       NS_LOG_DEBUG ("Block Ack Request Fail");
       //to reset the dcf.
       m_currentPacket = 0;
-      if (m_queue != 0 && !m_queue->IsEmpty())
-        {
-          m_tidQueue.push_back(m_queueInfo);
-        }
-      m_queue = 0;
-      m_queueInfo = 0;
+      UpdateTxQueue();
       m_dcf->ResetCw ();
       m_cwTrace = m_dcf->GetCw ();
     }
@@ -1192,7 +1277,8 @@ EdcaTxopN::RestartAccessIfNeeded (void)
   if ((m_currentPacket != 0
        || (m_queue != 0 && !m_queue->IsEmpty ())
        || m_baManager->HasPackets ()
-       || !m_tidQueue.empty())
+       || !m_tidQueueNew.empty()
+       || !m_tidQueueOld.empty())
       && !m_dcf->IsAccessRequested ())
     {
       m_manager->RequestAccess (m_dcf);
@@ -1207,7 +1293,8 @@ EdcaTxopN::StartAccessIfNeeded (void)
       && ((m_queue != 0 && !m_queue->IsEmpty ())
           || !m_fastQueue->IsEmpty()
           || m_baManager->HasPackets ()
-          || !m_tidQueue.empty())
+          || !m_tidQueueNew.empty()
+          || !m_tidQueueOld.empty())
       && !m_dcf->IsAccessRequested ())
     {
       m_manager->RequestAccess (m_dcf);
@@ -1345,12 +1432,7 @@ EdcaTxopN::StartNext (void)
     }
   else
     {
-      if (m_queue != 0 && !m_queue->IsEmpty())
-        {
-          m_tidQueue.push_back(m_queueInfo);
-        }
-      m_queue = 0;
-      m_queueInfo = 0;
+      UpdateTxQueue();
     }
 }
 
@@ -1425,12 +1507,7 @@ EdcaTxopN::EndTxNoAck (void)
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("a transmission that did not require an ACK just finished");
   m_currentPacket = 0;
-  if (m_queue != 0 && !m_queue->IsEmpty())
-    {
-      m_tidQueue.push_back(m_queueInfo);
-    }
-  m_queue = 0;
-  m_queueInfo = 0;
+  UpdateTxQueue();
   m_dcf->ResetCw ();
   m_cwTrace = m_dcf->GetCw ();
   m_backoffTrace = m_rng->GetNext (0, m_dcf->GetCw ());
@@ -1615,12 +1692,7 @@ EdcaTxopN::GotBlockAck (const CtrlBAckResponseHeader *blockAck, Mac48Address rec
       m_txOkCallback (m_currentHdr);
     }
   m_currentPacket = 0;
-  if (m_queue != 0 && !m_queue->IsEmpty())
-    {
-      m_tidQueue.push_back(m_queueInfo);
-    }
-  m_queue = 0;
-  m_queueInfo = 0;
+  UpdateTxQueue();
   m_dcf->ResetCw ();
   m_cwTrace = m_dcf->GetCw ();
   m_backoffTrace = m_rng->GetNext (0, m_dcf->GetCw ());
