@@ -594,7 +594,7 @@ private:
   /*
    * Assign to m_queue the TID queue to pull packets.
    */
-  bool ScheduleTransmission (void);
+  void ScheduleTransmission (void);
 
   void UpdateTxQueue (void);
   bool TidHasBuffered (TxQueueInfo *queueInfo);
