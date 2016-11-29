@@ -742,6 +742,7 @@ BlockAckManager::NotifyGotBlockAck (Ptr<WifiMacQueue> queue, const CtrlBAckRespo
                     }
                 }
             }
+          NS_LOG_DEBUG ("Got Block Ack with SuccessfulMpdus = " << nSuccessfulMpdus << " and FailedMpdus = " << nFailedMpdus);
           m_stationManager->ReportAmpduTxStatus (recipient, tid, nSuccessfulMpdus, nFailedMpdus, rxSnr, dataSnr);
           uint16_t newSeq = m_txMiddle->GetNextSeqNumberByTidAndAddress (tid, recipient);
           if ((foundFirstLost && !SwitchToBlockAckIfNeeded (queue, recipient, tid, sequenceFirstLost))
