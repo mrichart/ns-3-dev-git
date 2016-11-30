@@ -576,7 +576,7 @@ EdcaTxopN::ScheduleTransmission(void)
         }
       else
         {
-          NS_LOG_DEBUG ("Found a queue with packets");
+          NS_LOG_DEBUG ("Found a queue with packets. Queue size: " << queueInfo->queue->GetSize() << " Retry Queue size: " << m_baManager->GetNRetryNeededPackets(queueInfo->sta, queueInfo->tid));
           m_queueInfo = queueInfo;
           m_queue = queueInfo->queue;
           empty = false;
@@ -607,8 +607,7 @@ EdcaTxopN::TidHasBuffered (TxQueueInfo *queueInfo)
   NS_LOG_FUNCTION (this);
   WifiMacHeader hdr;
   Time tstamp;
-  return (m_baManager->HasPackets() && m_baManager->PeekNextPacketByTidAndAddress (queueInfo->queue, hdr, queueInfo->sta, queueInfo->tid, &tstamp) != 0)
-           || !queueInfo->queue->IsEmpty();
+  return m_baManager->GetNRetryNeededPackets(queueInfo->sta, queueInfo->tid) != 0 || !queueInfo->queue->IsEmpty();
 }
 
 void
@@ -617,7 +616,7 @@ EdcaTxopN::NotifyAccessGranted (void)
   NS_LOG_FUNCTION (this);
   if (m_currentPacket == 0)
     {
-      if (!TidHasBuffered(m_queueInfo) && m_fastQueue->IsEmpty())
+      if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)))
         {
           NS_LOG_DEBUG ("queue is empty");
           return;
@@ -629,7 +628,7 @@ EdcaTxopN::NotifyAccessGranted (void)
         }
 
       m_currentPacket = m_fastQueue->DequeueFirstAvailable(&m_currentHdr, m_currentPacketTimestamp, m_qosBlockedDestinations);
-      if (m_currentPacket == 0)
+      if (m_currentPacket == 0 && m_baManager->GetNRetryNeededPackets(m_queueInfo->sta, m_queueInfo->tid) != 0)
         {
           /* check if packets need retransmission are stored in BlockAckManager */
           m_currentPacket = m_baManager->GetNextPacketByTidAndAddress(m_queueInfo->queue, m_currentHdr, m_queueInfo->sta, m_queueInfo->tid, &m_currentPacketTimestamp);
