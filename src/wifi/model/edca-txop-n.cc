@@ -522,8 +522,6 @@ EdcaTxopN::ScheduleTransmission(void)
           else
             {
               NS_LOG_DEBUG ("Found a new queue with positive deficit: " <<  queueInfo->sta);
-              m_queueInfo = queueInfo;
-              m_queue = queueInfo->queue;
               found = true;
             }
         }
@@ -543,8 +541,6 @@ EdcaTxopN::ScheduleTransmission(void)
           else
             {
               NS_LOG_DEBUG ("Found an old queue with positive deficit: " <<  queueInfo->sta);
-              m_queueInfo = queueInfo;
-              m_queue = queueInfo->queue;
               found = true;
             }
         }
@@ -555,32 +551,34 @@ EdcaTxopN::ScheduleTransmission(void)
           return;
         }
 
-      if (!TidHasBuffered (m_queueInfo))
+      if (!TidHasBuffered (queueInfo))
         {
           NS_LOG_DEBUG ("Could not get a packet from the selected queue");
-          if (m_queueInfo->status == TxQueueStatus::NEW)
+          if (queueInfo->status == TxQueueStatus::NEW)
             {
               if (!m_tidQueueOld.empty())
                 {
-                  m_queueInfo->status = TxQueueStatus::OLD;
+                  queueInfo->status = TxQueueStatus::OLD;
                   m_tidQueueOld.push_back (queueInfo);
                   m_tidQueueNew.pop_front ();
                 }
               else
                 {
-                  m_queueInfo->status = TxQueueStatus::INACTIVE;
+                  queueInfo->status = TxQueueStatus::INACTIVE;
                   m_tidQueueNew.pop_front ();
                 }
             }
           else
             {
-              m_queueInfo->status = TxQueueStatus::INACTIVE;
+              queueInfo->status = TxQueueStatus::INACTIVE;
               m_tidQueueOld.pop_front ();
             }
         }
       else
         {
           NS_LOG_DEBUG ("Found a queue with packets");
+          m_queueInfo = queueInfo;
+          m_queue = queueInfo->queue;
           empty = false;
         }
     }
