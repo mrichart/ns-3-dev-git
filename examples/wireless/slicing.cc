@@ -76,6 +76,7 @@ public:
   void CheckStatistics (double time);
 
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
+  void PhyRxCallback (std::string path, Ptr<const Packet> packet);
   void SetPosition (Ptr<Node> node, Vector position);
   void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
   Vector GetPosition (Ptr<Node> node);
@@ -94,6 +95,12 @@ NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas)
 
 void
 NodeStatistics::RxCallback (std::string path, Ptr<const Packet> packet, const Address &from)
+{
+  m_bytesTotal += packet->GetSize ();
+}
+
+void
+NodeStatistics::PhyRxCallback (std::string path, Ptr<const Packet> packet)
 {
   m_bytesTotal += packet->GetSize ();
 }
@@ -402,14 +409,14 @@ int main (int argc, char *argv[])
   //--------------------------------------------
 
   //Register packet receptions to calculate throughput
-  Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
-                   MakeCallback (&NodeStatistics::RxCallback, &atpCounter));
-  Config::Connect ("/NodeList/2/ApplicationList/*/$ns3::PacketSink/Rx",
-                   MakeCallback (&NodeStatistics::RxCallback, &atpCounter2));
-  Config::Connect ("/NodeList/3/ApplicationList/*/$ns3::PacketSink/Rx",
-                   MakeCallback (&NodeStatistics::RxCallback, &atpCounter3));
-  Config::Connect ("/NodeList/4/ApplicationList/*/$ns3::PacketSink/Rx",
-                   MakeCallback (&NodeStatistics::RxCallback, &atpCounter4));
+  Config::Connect ("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx",
+                   MakeCallback (&NodeStatistics::PhyRxCallback, &atpCounter));
+  Config::Connect ("/NodeList/2/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx",
+                   MakeCallback (&NodeStatistics::PhyRxCallback, &atpCounter2));
+  Config::Connect ("/NodeList/3/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx",
+                   MakeCallback (&NodeStatistics::PhyRxCallback, &atpCounter3));
+  Config::Connect ("/NodeList/4/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx",
+                   MakeCallback (&NodeStatistics::PhyRxCallback, &atpCounter4));
   Config::Connect ("/NodeList/5/ApplicationList/*/$ns3::PacketSink/Rx",
                    MakeCallback (&NodeStatistics::RxCallback, &atpCounter5));
 
