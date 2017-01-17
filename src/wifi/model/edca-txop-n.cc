@@ -511,7 +511,7 @@ EdcaTxopN::ScheduleTransmission(void)
         {
           queueInfo = m_tidQueueNew.front ();
 
-          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta) <= Seconds (0.0))
+          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid) <= Seconds (0.0))
             {
               NS_LOG_DEBUG ("Found a new queue with negative deficit: " << queueInfo->sta);
               m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, MicroSeconds(300));
@@ -530,7 +530,7 @@ EdcaTxopN::ScheduleTransmission(void)
         {
           queueInfo = m_tidQueueOld.front ();
 
-          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta) <= Seconds (0.0))
+          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid) <= Seconds (0.0))
             {
               NS_LOG_DEBUG ("Found an old queue with negative deficit: " << queueInfo->sta);
               m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, MicroSeconds(300));

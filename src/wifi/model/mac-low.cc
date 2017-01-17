@@ -2072,11 +2072,11 @@ MacLow::SendDataPacket (void)
       m_currentPacket->AddTrailer (fcs);
     }
 
-  if (!m_currentHdr.GetAddr1().IsGroup())
+  if (!m_currentHdr.GetAddr1().IsGroup() && m_currentHdr.IsQosData())
     {
-      m_stationManager->DecreaseAirtimeDeficit(m_currentHdr.GetAddr1(), duration);
+      m_stationManager->DecreaseAirtimeDeficit(m_currentHdr.GetAddr1(), m_currentHdr.GetQosTid(), duration);
       NS_LOG_DEBUG ("TX duration: " << duration.GetMicroSeconds());
-      NS_LOG_DEBUG ("Decrease airtime deficit of sta: " << m_currentHdr.GetAddr1() << " new deficit: " << m_stationManager->GetAirtimeDeficit(m_currentHdr.GetAddr1()).GetMicroSeconds());
+      NS_LOG_DEBUG ("Decrease airtime deficit of sta: " << m_currentHdr.GetAddr1() << " new deficit: " << m_stationManager->GetAirtimeDeficit(m_currentHdr.GetAddr1(), m_currentHdr.GetQosTid()).GetMicroSeconds());
     }
 
   ForwardDown (m_currentPacket, &m_currentHdr, m_currentTxVector, preamble);

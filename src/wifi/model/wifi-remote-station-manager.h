@@ -739,21 +739,21 @@ public:
    *
    * \param address the address of the station
    */
-  Time GetAirtimeDeficit (Mac48Address address);
+  Time GetAirtimeDeficit (Mac48Address address, uint8_t tid);
   /**
    * Update the current airtime deficit for the station with the given address.
    *
    * \param address the address of the station
    * \param decrement the amount to decrease the airtime deficit
    */
-  void DecreaseAirtimeDeficit (Mac48Address address, Time decrement);
+  void DecreaseAirtimeDeficit (Mac48Address address, uint8_t tid, Time decrement);
   /**
    * Update the current airtime deficit for the station with the given address.
    *
    * \param address the address of the station
    * \param increment the amount to increase the airtime deficit
    */
-  void IncreaseAirtimeDeficit (Mac48Address address, Time increment);
+  void IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid, Time increment);
 
   /**
    * TracedCallback signature for power change events.
@@ -1319,8 +1319,6 @@ struct WifiRemoteStationState
   bool m_shortSlotTime;       //!< Flag if short ERP slot time is supported by the remote station
   bool m_htSupported;         //!< Flag if HT is supported by the station
   bool m_vhtSupported;        //!< Flag if VHT is supported by the station
-
-  Time m_airtimeDeficit;      //!< Airtime available for this station to transmit.
 };
 
 /**
@@ -1341,6 +1339,8 @@ struct WifiRemoteStation
   uint32_t m_ssrc;                  //!< STA short retry count
   uint32_t m_slrc;                  //!< STA long retry count
   uint8_t m_tid;                    //!< traffic ID
+
+  Time m_airtimeDeficit;            //!< Airtime available for this station to transmit.
 };
 
 } //namespace ns3

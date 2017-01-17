@@ -1475,7 +1475,6 @@ WifiRemoteStationManager::LookupState (Mac48Address address) const
   state->m_stbc = false;
   state->m_htSupported = false;
   state->m_vhtSupported = false;
-  state->m_airtimeDeficit = m_defaultAirtimeDeficit;
   const_cast<WifiRemoteStationManager *> (this)->m_states.push_back (state);
   NS_LOG_DEBUG ("WifiRemoteStationManager::LookupState returning new state");
   return state;
@@ -1515,6 +1514,7 @@ WifiRemoteStationManager::Lookup (Mac48Address address, uint8_t tid) const
   station->m_tid = tid;
   station->m_ssrc = 0;
   station->m_slrc = 0;
+  station->m_airtimeDeficit = m_defaultAirtimeDeficit;
   const_cast<WifiRemoteStationManager *> (this)->m_stations.push_back (station);
   return station;
 }
@@ -1903,53 +1903,27 @@ WifiRemoteStationManager::GetNumberOfTransmitAntennas (void)
 }
 
 Time
-WifiRemoteStationManager::GetAirtimeDeficit(Mac48Address address)
+WifiRemoteStationManager::GetAirtimeDeficit(Mac48Address address, uint8_t tid)
 {
   NS_LOG_FUNCTION (this << address);
-  for (StationStates::const_iterator i = m_states.begin (); i != m_states.end (); i++)
-    {
-      if ((*i)->m_address == address)
-        {
-          NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, returning deficit.");
-          return (*i)->m_airtimeDeficit;
-        }
-    }
-  NS_ASSERT (false);
-  return Seconds (0.0);
+  WifiRemoteStation *station = Lookup (address, tid);
+  return station->m_airtimeDeficit;
 }
 
 void
-WifiRemoteStationManager::DecreaseAirtimeDeficit (Mac48Address address, Time decrement)
+WifiRemoteStationManager::DecreaseAirtimeDeficit (Mac48Address address, uint8_t tid, Time decrement)
 {
   NS_LOG_FUNCTION (this << address);
-  StationStates::const_iterator i;
-  for (i = m_states.begin (); i != m_states.end (); i++)
-    {
-      if ((*i)->m_address == address)
-        {
-          NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, updating deficit.");
-          (*i)->m_airtimeDeficit -= decrement;
-          return;
-        }
-    }
-  NS_ASSERT (false);
+  WifiRemoteStation *station = Lookup (address, tid);
+  station->m_airtimeDeficit -= decrement;
 }
 
 void
-WifiRemoteStationManager::IncreaseAirtimeDeficit (Mac48Address address, Time increment)
+WifiRemoteStationManager::IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid, Time increment)
 {
   NS_LOG_FUNCTION (this << address);
-  StationStates::const_iterator i;
-  for (i = m_states.begin (); i != m_states.end (); i++)
-    {
-      if ((*i)->m_address == address)
-        {
-          NS_LOG_DEBUG ("WifiRemoteStationManager::GetAirtimeDeficit found state, updating deficit.");
-          (*i)->m_airtimeDeficit += increment;
-          return;
-        }
-    }
-  NS_ASSERT (false);
+  WifiRemoteStation *station = Lookup (address, tid);
+  station->m_airtimeDeficit += increment;
 }
 
 WifiRemoteStationInfo::WifiRemoteStationInfo ()
