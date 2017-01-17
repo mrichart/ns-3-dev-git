@@ -576,7 +576,7 @@ EdcaTxopN::ScheduleTransmission(void)
         }
       else
         {
-          NS_LOG_DEBUG ("Found a queue with packets. Queue size: " << queueInfo->queue->GetSize() << " Retry Queue size: " << m_baManager->GetNRetryNeededPackets(queueInfo->sta, queueInfo->tid));
+          NS_LOG_DEBUG ("Found a queue with packets. TID: " << (int) queueInfo->tid << " Address: " << queueInfo->sta << " Queue size: " << queueInfo->queue->GetSize() << " Retry Queue size: " << m_baManager->GetNRetryNeededPackets(queueInfo->sta, queueInfo->tid));
           m_queueInfo = queueInfo;
           m_queue = queueInfo->queue;
           empty = false;
@@ -616,28 +616,34 @@ EdcaTxopN::NotifyAccessGranted (void)
   NS_LOG_FUNCTION (this);
   if (m_currentPacket == 0)
     {
+      NS_LOG_DEBUG ("Access granted but no packet. Get packet from some queue.");
       if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)))
         {
-          NS_LOG_DEBUG ("queue is empty");
+          NS_LOG_DEBUG ("All queues are empty.");
           return;
         }
       if (m_baManager->HasBar (m_currentBar))
         {
           SendBlockAckRequest (m_currentBar);
+          NS_LOG_DEBUG ("BAR sent.");
           return;
         }
 
       m_currentPacket = m_fastQueue->DequeueFirstAvailable(&m_currentHdr, m_currentPacketTimestamp, m_qosBlockedDestinations);
+      if (m_currentPacket != 0)
+        NS_LOG_DEBUG ("Packet in fast queue.");
       if (m_currentPacket == 0 && m_baManager->GetNRetryNeededPackets(m_queueInfo->sta, m_queueInfo->tid) != 0)
         {
           /* check if packets need retransmission are stored in BlockAckManager */
           m_currentPacket = m_baManager->GetNextPacketByTidAndAddress(m_queueInfo->queue, m_currentHdr, m_queueInfo->sta, m_queueInfo->tid, &m_currentPacketTimestamp);
+          if (m_currentPacket != 0)
+              NS_LOG_DEBUG ("Packet in retry queue.");
         }
       if (m_currentPacket == 0)
         {
           if (m_queue->PeekFirstAvailable (&m_currentHdr, m_currentPacketTimestamp, m_qosBlockedDestinations) == 0)
             {
-              NS_LOG_DEBUG ("no available packets in the queue");
+              NS_LOG_DEBUG ("**********No available packets in the queue.**************");
               return;
             }
           if (m_currentHdr.IsQosData () && !m_currentHdr.GetAddr1 ().IsBroadcast ()
@@ -1670,7 +1676,7 @@ void
 EdcaTxopN::GotAddBaResponse (const MgtAddBaResponseHeader *respHdr, Mac48Address recipient)
 {
   NS_LOG_FUNCTION (this << respHdr << recipient);
-  NS_LOG_DEBUG ("received ADDBA response from " << recipient);
+  NS_LOG_DEBUG ("received ADDBA response from " << recipient << " with tid: " << (int) respHdr->GetTid());
   uint8_t tid = respHdr->GetTid ();
   if (m_baManager->ExistsAgreementInState (recipient, tid, OriginatorBlockAckAgreement::PENDING))
     {
@@ -1880,7 +1886,7 @@ EdcaTxopN::SendAddBaRequest (Mac48Address dest, uint8_t tid, uint16_t startSeq,
                              uint16_t timeout, bool immediateBAck)
 {
   NS_LOG_FUNCTION (this << dest << static_cast<uint32_t> (tid) << startSeq << timeout << immediateBAck);
-  NS_LOG_DEBUG ("sent ADDBA request to " << dest);
+  NS_LOG_DEBUG ("sent ADDBA request to " << dest << " with tid: " << (int) tid);
   WifiMacHeader hdr;
   hdr.SetAction ();
   hdr.SetAddr1 (dest);
