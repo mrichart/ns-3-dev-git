@@ -637,7 +637,10 @@ EdcaTxopN::NotifyAccessGranted (void)
           /* check if packets need retransmission are stored in BlockAckManager */
           m_currentPacket = m_baManager->GetNextPacketByTidAndAddress(m_queueInfo->queue, m_currentHdr, m_queueInfo->sta, m_queueInfo->tid, &m_currentPacketTimestamp);
           if (m_currentPacket != 0)
+            {
               NS_LOG_DEBUG ("Packet in retry queue.");
+              goto txPacket;
+            }
         }
       if (m_currentPacket == 0)
         {
@@ -654,23 +657,23 @@ EdcaTxopN::NotifyAccessGranted (void)
             }
           m_currentPacket = m_queue->DequeueFirstAvailable (&m_currentHdr, m_currentPacketTimestamp, m_qosBlockedDestinations);
           NS_ASSERT (m_currentPacket != 0);
-
-          uint16_t sequence = m_txMiddle->GetNextSequenceNumberfor (&m_currentHdr);
-          m_currentHdr.SetSequenceNumber (sequence);
-          m_stationManager->UpdateFragmentationThreshold ();
-          m_currentHdr.SetFragmentNumber (0);
-          m_currentHdr.SetNoMoreFragments ();
-          m_currentHdr.SetNoRetry ();
-          m_fragmentNumber = 0;
-          NS_LOG_DEBUG ("dequeued size=" << m_currentPacket->GetSize () <<
-                        ", to=" << m_currentHdr.GetAddr1 () <<
-                        ", seq=" << m_currentHdr.GetSequenceControl ());
-          if (m_currentHdr.IsQosData () && !m_currentHdr.GetAddr1 ().IsBroadcast ())
-            {
-              VerifyBlockAck ();
-            }
+        }
+      uint16_t sequence = m_txMiddle->GetNextSequenceNumberfor (&m_currentHdr);
+      m_currentHdr.SetSequenceNumber (sequence);
+      m_stationManager->UpdateFragmentationThreshold ();
+      m_currentHdr.SetFragmentNumber (0);
+      m_currentHdr.SetNoMoreFragments ();
+      m_currentHdr.SetNoRetry ();
+      m_fragmentNumber = 0;
+      NS_LOG_DEBUG ("dequeued size=" << m_currentPacket->GetSize () <<
+                    ", to=" << m_currentHdr.GetAddr1 () <<
+                    ", seq=" << m_currentHdr.GetSequenceControl ());
+      if (m_currentHdr.IsQosData () && !m_currentHdr.GetAddr1 ().IsBroadcast ())
+        {
+          VerifyBlockAck ();
         }
     }
+  txPacket:
   MacLowTransmissionParameters params;
   params.DisableOverrideDurationId ();
   if (m_currentHdr.GetAddr1 ().IsGroup ())
@@ -1294,6 +1297,7 @@ EdcaTxopN::RestartAccessIfNeeded (void)
   NS_LOG_FUNCTION (this);
   if ((m_currentPacket != 0
        || (m_queue != 0 && !m_queue->IsEmpty ())
+       || !m_fastQueue->IsEmpty()
        || m_baManager->HasPackets ()
        || !m_tidQueueNew.empty()
        || !m_tidQueueOld.empty())
@@ -1668,7 +1672,7 @@ EdcaTxopN::PushFront (Ptr<const Packet> packet, const WifiMacHeader &hdr)
   NS_LOG_FUNCTION (this << packet << &hdr);
   WifiMacTrailer fcs;
   m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packet);
-  m_fastQueue->PushFront (packet, hdr);
+  m_fastQueue->Enqueue (packet, hdr);
   StartAccessIfNeeded ();
 }
 
