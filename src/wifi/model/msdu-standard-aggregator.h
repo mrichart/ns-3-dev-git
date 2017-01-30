@@ -37,7 +37,19 @@ public:
   MsduStandardAggregator ();
   ~MsduStandardAggregator ();
 
+  /**
+   * Sets the maximum A-MSDU size in bytes.
+   * Value 0 means that MSDU aggregation is disabled.
+   *
+   * \param maxSize the maximum A-MSDU size in bytes.
+   */
   virtual void SetMaxAmsduSize (uint32_t maxSize);
+  /**
+   * Returns the maximum A-MSDU size in bytes.
+   * Value 0 means that MSDU aggregation is disabled.
+   *
+   * \return the maximum A-MSDU size in bytes.
+   */
   virtual uint32_t GetMaxAmsduSize (void) const;
   /**
    * \param packet Packet we have to insert into <i>aggregatedPacket</i>.
@@ -52,7 +64,7 @@ public:
    * Returns true if <i>packet</i> can be aggregated to <i>aggregatedPacket</i>, false otherwise.
    */
   virtual bool Aggregate (Ptr<const Packet> packet, Ptr<Packet> aggregatedPacket,
-                          Mac48Address src, Mac48Address dest);
+                          Mac48Address src, Mac48Address dest) const;
 private:
   /**
    * Calculates how much padding must be added to the end of aggregated packet,
@@ -63,7 +75,7 @@ private:
    *
    * \return the number of octets required for padding
    */
-  uint32_t CalculatePadding (Ptr<const Packet> packet);
+  uint32_t CalculatePadding (Ptr<const Packet> packet) const;
 
   uint32_t m_maxAmsduLength;
 };

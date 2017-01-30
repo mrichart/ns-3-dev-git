@@ -22,9 +22,7 @@
 #define WIFI_PHY_STATE_HELPER_H
 
 #include "wifi-phy.h"
-#include "ns3/traced-callback.h"
 #include "ns3/object.h"
-#include <vector>
 
 namespace ns3 {
 
@@ -69,61 +67,61 @@ public:
    *
    * \return the current state of WifiPhy
    */
-  enum WifiPhy::State GetState (void);
+  WifiPhy::State GetState (void) const;
   /**
    * Check whether the current state is CCA busy.
    *
    * \return true if the current state is CCA busy, false otherwise
    */
-  bool IsStateCcaBusy (void);
+  bool IsStateCcaBusy (void) const;
   /**
    * Check whether the current state is IDLE.
    *
    * \return true if the current state is IDLE, false otherwise
    */
-  bool IsStateIdle (void);
+  bool IsStateIdle (void) const;
   /**
    * Check whether the current state is not IDLE.
    *
    * \return true if the current state is not IDLE, false otherwise
    */
-  bool IsStateBusy (void);
+  bool IsStateBusy (void) const;
   /**
    * Check whether the current state is RX.
    *
    * \return true if the current state is RX, false otherwise
    */
-  bool IsStateRx (void);
+  bool IsStateRx (void) const;
   /**
    * Check whether the current state is TX.
    *
    * \return true if the current state is TX, false otherwise
    */
-  bool IsStateTx (void);
+  bool IsStateTx (void) const;
   /**
    * Check whether the current state is SWITCHING.
    *
    * \return true if the current state is SWITCHING, false otherwise
    */
-  bool IsStateSwitching (void);
+  bool IsStateSwitching (void) const;
   /**
    * Check whether the current state is SLEEP.
    *
    * \return true if the current state is SLEEP, false otherwise
    */
-  bool IsStateSleep (void);
+  bool IsStateSleep (void) const;
   /**
    * Return the elapsed time of the current state.
    *
    * \return the elapsed time of the current state
    */
-  Time GetStateDuration (void);
+  Time GetStateDuration (void) const;
   /**
    * Return the time before the state is back to IDLE.
    *
    * \return the delay before the state is back to IDLE
    */
-  Time GetDelayUntilIdle (void);
+  Time GetDelayUntilIdle (void) const;
   /**
    * Return the time the last RX start.
    *
@@ -138,9 +136,8 @@ public:
    * \param packet the packet
    * \param txPowerDbm the nominal tx power in dBm
    * \param txVector the tx vector of the packet
-   * \param preamble the preamble of the packet
    */
-  void SwitchToTx (Time txDuration, Ptr<const Packet> packet, double txPowerDbm, WifiTxVector txVector, WifiPreamble preamble);
+  void SwitchToTx (Time txDuration, Ptr<const Packet> packet, double txPowerDbm, WifiTxVector txVector);
   /**
    * Switch state to RX for the given duration.
    *
@@ -159,9 +156,8 @@ public:
    * \param packet the successfully received packet
    * \param snr the SNR of the received packet
    * \param txVector TXVECTOR of the packet
-   * \param preamble the preamble of the received packet
    */
-  void SwitchFromRxEndOk (Ptr<Packet> packet, double snr, WifiTxVector txVector, enum WifiPreamble preamble);
+  void SwitchFromRxEndOk (Ptr<Packet> packet, double snr, WifiTxVector txVector);
   /**
    * Switch from RX after the reception failed.
    *
@@ -187,7 +183,7 @@ public:
   void SwitchFromSleep (Time duration);
 
   /** \todo Why is this public? */
-  TracedCallback<Time, Time, enum WifiPhy::State> m_stateLogger;
+  TracedCallback<Time, Time, WifiPhy::State> m_stateLogger;
 
   /**
    * TracedCallback signature for state changes.
@@ -306,9 +302,9 @@ private:
   Time m_previousStateChangeTime;
 
   Listeners m_listeners;
-  TracedCallback<Ptr<const Packet>, double, WifiMode, enum WifiPreamble> m_rxOkTrace;
+  TracedCallback<Ptr<const Packet>, double, WifiMode, WifiPreamble> m_rxOkTrace;
   TracedCallback<Ptr<const Packet>, double> m_rxErrorTrace;
-  TracedCallback<Ptr<const Packet>,WifiMode,WifiPreamble,uint8_t> m_txTrace;
+  TracedCallback<Ptr<const Packet>, WifiMode, WifiPreamble, uint8_t> m_txTrace;
   WifiPhy::RxOkCallback m_rxOkCallback;
   WifiPhy::RxErrorCallback m_rxErrorCallback;
 };

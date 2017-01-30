@@ -253,9 +253,11 @@ public:
    * \param [in] rnti
    * \param [in] rsrp
    * \param [in] sinr
+   * \param [in] componentCarrierId
    */
   typedef void (* RsrpSinrTracedCallback)
-    (uint16_t cellId, uint16_t rnti, double rsrp, double sinr);
+    (uint16_t cellId, uint16_t rnti,
+     double rsrp, double sinr, uint8_t componentCarrierId);
 
   /**
    * TracedCallback signature for cell RSRP and RSRQ.
@@ -265,10 +267,11 @@ public:
    * \param [in] rsrp
    * \param [in] rsrq
    * \param [in] isServingCell
+   * \param [in] componentCarrierId
    */
   typedef void (* RsrpRsrqTracedCallback)
     (uint16_t rnti, uint16_t cellId, double rsrp, double rsrq,
-     bool isServingCell);
+     bool isServingCell, uint8_t componentCarrierId);
 
 private:
 
@@ -310,11 +313,11 @@ private:
 
   // UE CPHY SAP methods
   void DoReset ();
-  void DoStartCellSearch (uint16_t dlEarfcn);
+  void DoStartCellSearch (uint32_t dlEarfcn);
   void DoSynchronizeWithEnb (uint16_t cellId);
-  void DoSynchronizeWithEnb (uint16_t cellId, uint16_t dlEarfcn);
-  void DoSetDlBandwidth (uint8_t ulBandwidth);
-  void DoConfigureUplink (uint16_t ulEarfcn, uint8_t ulBandwidth);
+  void DoSynchronizeWithEnb (uint16_t cellId, uint32_t dlEarfcn);
+  void DoSetDlBandwidth (uint8_t dlBandwidth);
+  void DoConfigureUplink (uint32_t ulEarfcn, uint8_t ulBandwidth);
   void DoConfigureReferenceSignalPower (int8_t referenceSignalPower);
   void DoSetRnti (uint16_t rnti);
   void DoSetTransmissionMode (uint8_t txMode);
@@ -345,7 +348,7 @@ private:
   Ptr<LteUePowerControl> m_powerControl;
 
   /// Wideband Periodic CQI. 2, 5, 10, 16, 20, 32, 40, 64, 80 or 160 ms.
-  Time m_p10CqiPeriocity;
+  Time m_p10CqiPeriodicity;
   Time m_p10CqiLast;
 
   /**
@@ -353,7 +356,7 @@ private:
    * Grant.
    * \note Defines a periodicity for academic studies.
    */
-  Time m_a30CqiPeriocity;
+  Time m_a30CqiPeriodicity;
   Time m_a30CqiLast;
 
   LteUePhySapProvider* m_uePhySapProvider;
@@ -442,9 +445,9 @@ private:
   /**
    * The `ReportCurrentCellRsrpSinr` trace source. Trace information regarding
    * RSRP and average SINR (see TS 36.214). Exporting cell ID, RNTI, RSRP, and
-   * SINR.
+   * SINR. Moreover it reports the m_componentCarrierId.
    */
-  TracedCallback<uint16_t, uint16_t, double, double> m_reportCurrentCellRsrpSinrTrace;
+  TracedCallback<uint16_t, uint16_t, double, double, uint8_t> m_reportCurrentCellRsrpSinrTrace;
   /**
    * The `RsrpSinrSamplePeriod` attribute. The sampling period for reporting
    * RSRP-SINR stats.
@@ -456,9 +459,9 @@ private:
    * The `ReportUeMeasurements` trace source. Contains trace information
    * regarding RSRP and RSRQ measured from a specific cell (see TS 36.214).
    * Exporting RNTI, the ID of the measured cell, RSRP (in dBm), RSRQ (in dB),
-   * and whether the cell is the serving cell.
+   * and whether the cell is the serving cell. Moreover it report the m_componentCarrierId.
    */
-  TracedCallback<uint16_t, uint16_t, double, double, bool> m_reportUeMeasurements;
+  TracedCallback<uint16_t, uint16_t, double, double, bool, uint8_t> m_reportUeMeasurements;
 
   EventId m_sendSrsEvent;
 

@@ -21,10 +21,7 @@
 #ifndef EDCA_PARAMETER_SET_H
 #define EDCA_PARAMETER_SET_H
 
-#include <stdint.h>
-#include <ostream>
-#include "ns3/buffer.h"
-#include "ns3/wifi-information-element.h"
+#include "wifi-information-element.h"
 
 namespace ns3 {
 
@@ -39,6 +36,7 @@ class EdcaParameterSet : public WifiInformationElement
 public:
   EdcaParameterSet ();
   void SetQosSupported (uint8_t qosSupported);
+  uint8_t IsQosSupported (void) const;
   
   /**
    * Set the QoS Info field in the EdcaParameterSet information element.

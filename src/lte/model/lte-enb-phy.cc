@@ -704,6 +704,7 @@ LteEnbPhy::StartSubFrame (void)
                   params.m_size = dci->GetDci ().m_tbsSize.at (i);
                   params.m_rv = dci->GetDci ().m_rv.at (i);
                   params.m_ndi = dci->GetDci ().m_ndi.at (i);
+                  params.m_ccId = m_componentCarrierId;
                   m_dlPhyTransmission (params);
                 }
 
@@ -908,7 +909,7 @@ LteEnbPhy::DoSetBandwidth (uint8_t ulBandwidth, uint8_t dlBandwidth)
 }
 
 void 
-LteEnbPhy::DoSetEarfcn (uint16_t ulEarfcn, uint16_t dlEarfcn)
+LteEnbPhy::DoSetEarfcn (uint32_t ulEarfcn, uint32_t dlEarfcn)
 {
   NS_LOG_FUNCTION (this << ulEarfcn << dlEarfcn);
   m_ulEarfcn = ulEarfcn;
@@ -1012,7 +1013,7 @@ LteEnbPhy::CreateSrsReport (uint16_t rnti, double srs)
   (*it).second++;
   if ((*it).second == m_srsSamplePeriod)
     {
-      m_reportUeSinr (m_cellId, rnti, srs);
+      m_reportUeSinr (m_cellId, rnti, srs, (uint16_t) m_componentCarrierId);
       (*it).second = 0;
     }
 }

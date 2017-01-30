@@ -21,7 +21,6 @@
 
 #include "interference-helper.h"
 #include "wifi-phy.h"
-#include "error-rate-model.h"
 #include "ns3/simulator.h"
 #include "ns3/log.h"
 #include <algorithm>
@@ -34,12 +33,9 @@ NS_LOG_COMPONENT_DEFINE ("InterferenceHelper");
  *       Phy event class
  ****************************************************************/
 
-InterferenceHelper::Event::Event (uint32_t size, WifiTxVector txVector,
-                                  enum WifiPreamble preamble,
-                                  Time duration, double rxPower)
+InterferenceHelper::Event::Event (uint32_t size, WifiTxVector txVector, Time duration, double rxPower)
   : m_size (size),
     m_txVector (txVector),
-    m_preamble (preamble),
     m_startTime (Simulator::Now ()),
     m_endTime (m_startTime + duration),
     m_rxPowerW (rxPower)
@@ -92,12 +88,6 @@ InterferenceHelper::Event::GetPayloadMode (void) const
   return m_txVector.GetMode ();
 }
 
-enum WifiPreamble
-InterferenceHelper::Event::GetPreambleType (void) const
-{
-  return m_preamble;
-}
-
 
 /****************************************************************
  *       Class which records SNIR change events for a
@@ -135,6 +125,7 @@ InterferenceHelper::NiChange::operator < (const InterferenceHelper::NiChange& o)
 
 InterferenceHelper::InterferenceHelper ()
   : m_errorRateModel (0),
+    m_numRxAntennas (1),
     m_firstPower (0.0),
     m_rxing (false)
 {
@@ -147,17 +138,11 @@ InterferenceHelper::~InterferenceHelper ()
 }
 
 Ptr<InterferenceHelper::Event>
-InterferenceHelper::Add (uint32_t size, WifiTxVector txVector,
-                         enum WifiPreamble preamble,
-                         Time duration, double rxPowerW)
+InterferenceHelper::Add (uint32_t size, WifiTxVector txVector, Time duration, double rxPowerW)
 {
   Ptr<InterferenceHelper::Event> event;
 
-  event = Create<InterferenceHelper::Event> (size,
-                                             txVector,
-                                             preamble,
-                                             duration,
-                                             rxPowerW);
+  event = Create<InterferenceHelper::Event> (size, txVector, duration, rxPowerW);
   AppendEvent (event);
   return event;
 }
@@ -168,7 +153,7 @@ InterferenceHelper::AddForeignSignal (Time duration, double rxPowerW)
   // Parameters other than duration and rxPowerW are unused for this type
   // of signal, so we provide dummy versions
   WifiTxVector fakeTxVector;
-  Add (0, fakeTxVector, WIFI_PREAMBLE_NONE, duration, rxPowerW);
+  Add (0, fakeTxVector, duration, rxPowerW);
 }
 
 void
@@ -193,6 +178,12 @@ Ptr<ErrorRateModel>
 InterferenceHelper::GetErrorRateModel (void) const
 {
   return m_errorRateModel;
+}
+
+void
+InterferenceHelper::SetNumberOfReceiveAntennas (uint8_t rx)
+{
+  m_numRxAntennas = rx;
 }
 
 Time
@@ -242,7 +233,7 @@ InterferenceHelper::AppendEvent (Ptr<InterferenceHelper::Event> event)
 
 
 double
-InterferenceHelper::CalculateSnr (double signal, double noiseInterference, uint32_t channelWidth) const
+InterferenceHelper::CalculateSnr (double signal, double noiseInterference, uint8_t channelWidth) const
 {
   //thermal noise at 290K in J/s = W
   static const double BOLTZMANN = 1.3803e-23;
@@ -252,7 +243,7 @@ InterferenceHelper::CalculateSnr (double signal, double noiseInterference, uint3
   double noiseFloor = m_noiseFigure * Nt;
   double noise = noiseFloor + noiseInterference;
   double snr = signal / noise; //linear scale
-  NS_LOG_DEBUG ("bandwidth(MHz)=" << channelWidth << ", signal(W)= " << signal << ", noise(W)=" << noiseFloor << ", interference(W)=" << noiseInterference << ", snr(linear)=" << snr);
+  NS_LOG_DEBUG ("bandwidth(MHz)=" << (uint16_t)channelWidth << ", signal(W)= " << signal << ", noise(W)=" << noiseFloor << ", interference(W)=" << noiseInterference << ", snr(linear)=" << snr);
   return snr;
 }
 
@@ -281,8 +272,15 @@ InterferenceHelper::CalculateChunkSuccessRate (double snir, Time duration, WifiM
     {
       return 1.0;
     }
-  uint32_t rate = mode.GetPhyRate (txVector);
+  uint64_t rate = mode.GetPhyRate (txVector);
   uint64_t nbits = (uint64_t)(rate * duration.GetSeconds ());
+  if (txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_HT || txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_VHT)
+    {
+      nbits /= txVector.GetNss (); //divide effective number of bits by NSS to achieve same chunk error rate as SISO for AWGN
+      double gain = (txVector.GetNTx () * m_numRxAntennas); //compute gain offered by MIMO, SIMO or MISO compared to SISO for AWGN
+      NS_LOG_DEBUG ("TX=" << (uint16_t)txVector.GetNTx () << ", RX=" << (uint16_t)m_numRxAntennas << ", SNIR improvement=+" << 10.0 * std::log10 (gain) << "dB");
+      snir *= gain;
+    }
   double csr = m_errorRateModel->GetChunkSuccessRate (mode, txVector, snir, (uint32_t)nbits);
   return csr;
 }
@@ -295,11 +293,11 @@ InterferenceHelper::CalculatePlcpPayloadPer (Ptr<const InterferenceHelper::Event
   NiChanges::iterator j = ni->begin ();
   Time previous = (*j).GetTime ();
   WifiMode payloadMode = event->GetPayloadMode ();
-  WifiPreamble preamble = event->GetPreambleType ();
-  Time plcpHeaderStart = (*j).GetTime () + WifiPhy::GetPlcpPreambleDuration (event->GetTxVector (), preamble); //packet start time + preamble
-  Time plcpHsigHeaderStart = plcpHeaderStart + WifiPhy::GetPlcpHeaderDuration (event->GetTxVector (), preamble); //packet start time + preamble + L-SIG
-  Time plcpHtTrainingSymbolsStart = plcpHsigHeaderStart + WifiPhy::GetPlcpHtSigHeaderDuration (preamble) + WifiPhy::GetPlcpVhtSigA1Duration (preamble) + WifiPhy::GetPlcpVhtSigA2Duration (preamble); //packet start time + preamble + L-SIG + HT-SIG or VHT-SIG-A (A1 + A2)
-  Time plcpPayloadStart = plcpHtTrainingSymbolsStart + WifiPhy::GetPlcpHtTrainingSymbolDuration (preamble, event->GetTxVector ()) + WifiPhy::GetPlcpVhtSigBDuration (preamble); //packet start time + preamble + L-SIG + HT-SIG or VHT-SIG-A (A1 + A2) + (V)HT Training + VHT-SIG-B
+  WifiPreamble preamble = event->GetTxVector ().GetPreambleType ();
+  Time plcpHeaderStart = (*j).GetTime () + WifiPhy::GetPlcpPreambleDuration (event->GetTxVector ()); //packet start time + preamble
+  Time plcpHsigHeaderStart = plcpHeaderStart + WifiPhy::GetPlcpHeaderDuration (event->GetTxVector ()); //packet start time + preamble + L-SIG
+  Time plcpHtTrainingSymbolsStart = plcpHsigHeaderStart + WifiPhy::GetPlcpHtSigHeaderDuration (preamble) + WifiPhy::GetPlcpSigA1Duration (preamble) + WifiPhy::GetPlcpSigA2Duration (preamble); //packet start time + preamble + L-SIG + HT-SIG or SIG-A (A1 + A2)
+  Time plcpPayloadStart = plcpHtTrainingSymbolsStart + WifiPhy::GetPlcpTrainingSymbolDuration (event->GetTxVector ()) + WifiPhy::GetPlcpSigBDuration (preamble); //packet start time + preamble + L-SIG + HT-SIG or VHT-SIG-A (A1 + A2) + (V)HT Training + SIG-B
   double noiseInterferenceW = (*j).GetDelta ();
   double powerW = event->GetRxPowerW ();
   j++;
@@ -347,9 +345,9 @@ InterferenceHelper::CalculatePlcpHeaderPer (Ptr<const InterferenceHelper::Event>
   NiChanges::iterator j = ni->begin ();
   Time previous = (*j).GetTime ();
   WifiMode payloadMode = event->GetPayloadMode ();
-  WifiPreamble preamble = event->GetPreambleType ();
+  WifiPreamble preamble = event->GetTxVector ().GetPreambleType ();
   WifiMode htHeaderMode;
-  if (preamble == WIFI_PREAMBLE_HT_MF)
+  if (preamble == WIFI_PREAMBLE_HT_MF || preamble == WIFI_PREAMBLE_HT_GF)
     {
       //mode for PLCP header fields sent with HT modulation
       htHeaderMode = WifiPhy::GetHtPlcpHeaderMode (payloadMode);
@@ -359,11 +357,16 @@ InterferenceHelper::CalculatePlcpHeaderPer (Ptr<const InterferenceHelper::Event>
       //mode for PLCP header fields sent with VHT modulation
       htHeaderMode = WifiPhy::GetVhtPlcpHeaderMode (payloadMode);
     }
-  WifiMode headerMode = WifiPhy::GetPlcpHeaderMode (payloadMode, preamble, event->GetTxVector ());
-  Time plcpHeaderStart = (*j).GetTime () + WifiPhy::GetPlcpPreambleDuration (event->GetTxVector (), preamble); //packet start time + preamble
-  Time plcpHsigHeaderStart = plcpHeaderStart + WifiPhy::GetPlcpHeaderDuration (event->GetTxVector (), preamble); //packet start time + preamble + L-SIG
-  Time plcpHtTrainingSymbolsStart = plcpHsigHeaderStart + WifiPhy::GetPlcpHtSigHeaderDuration (preamble) + WifiPhy::GetPlcpVhtSigA1Duration (preamble) + WifiPhy::GetPlcpVhtSigA2Duration (preamble); //packet start time + preamble + L-SIG + HT-SIG or VHT-SIG-A (A1 + A2)
-  Time plcpPayloadStart = plcpHtTrainingSymbolsStart + WifiPhy::GetPlcpHtTrainingSymbolDuration (preamble, event->GetTxVector ()) + WifiPhy::GetPlcpVhtSigBDuration (preamble); //packet start time + preamble + L-SIG + HT-SIG or VHT-SIG-A (A1 + A2) + (V)HT Training + VHT-SIG-B
+  else if (preamble == WIFI_PREAMBLE_HE_SU)
+    {
+      //mode for PLCP header fields sent with HE modulation
+      htHeaderMode = WifiPhy::GetHePlcpHeaderMode (payloadMode);
+    }
+  WifiMode headerMode = WifiPhy::GetPlcpHeaderMode (event->GetTxVector ());
+  Time plcpHeaderStart = (*j).GetTime () + WifiPhy::GetPlcpPreambleDuration (event->GetTxVector ()); //packet start time + preamble
+  Time plcpHsigHeaderStart = plcpHeaderStart + WifiPhy::GetPlcpHeaderDuration (event->GetTxVector ()); //packet start time + preamble + L-SIG
+  Time plcpHtTrainingSymbolsStart = plcpHsigHeaderStart + WifiPhy::GetPlcpHtSigHeaderDuration (preamble) + WifiPhy::GetPlcpSigA1Duration (preamble) + WifiPhy::GetPlcpSigA2Duration (preamble); //packet start time + preamble + L-SIG + HT-SIG or SIG-A (A1 + A2)
+  Time plcpPayloadStart = plcpHtTrainingSymbolsStart + WifiPhy::GetPlcpTrainingSymbolDuration (event->GetTxVector ()) + WifiPhy::GetPlcpSigBDuration (preamble); //packet start time + preamble + L-SIG + HT-SIG or VHT-SIG-A (A1 + A2) + (V)HT Training + SIG-B
   double noiseInterferenceW = (*j).GetDelta ();
   double powerW = event->GetRxPowerW ();
   j++;
@@ -430,7 +433,7 @@ InterferenceHelper::CalculatePlcpHeaderPer (Ptr<const InterferenceHelper::Event>
 
                   NS_LOG_DEBUG ("Case 3ai - previous is in VHT-SIG-A and current after payload start: VHT mode=" << htHeaderMode << ", non-VHT mode=" << headerMode << ", psr=" << psr);
                 }
-              //Case 3aii: HT mixed format of HT greenfield
+              //Case 3aii: HT mixed format or HT greenfield
               else
                 {
                   psr *= CalculateChunkSuccessRate (CalculateSnr (powerW,
@@ -463,7 +466,7 @@ InterferenceHelper::CalculatePlcpHeaderPer (Ptr<const InterferenceHelper::Event>
 
                   NS_LOG_DEBUG ("Case 3bi - previous is in VHT-SIG-A and current is in VHT training or in VHT-SIG-B: VHT mode=" << htHeaderMode << ", non-VHT mode=" << headerMode << ", psr=" << psr);
                 }
-              //Case 3bii: HT mixed format of HT greenfield
+              //Case 3bii: HT mixed format or HT greenfield
               else
                 {
                   psr *= CalculateChunkSuccessRate (CalculateSnr (powerW,
@@ -490,7 +493,7 @@ InterferenceHelper::CalculatePlcpHeaderPer (Ptr<const InterferenceHelper::Event>
 
                   NS_LOG_DEBUG ("Case 3ci - previous with current in VHT-SIG-A: VHT mode=" << htHeaderMode << ", non-VHT mode=" << headerMode << ", psr=" << psr);
                 }
-              //Case 3bii: HT mixed format of HT greenfield
+              //Case 3bii: HT mixed format or HT greenfield
               else
                 {
                   psr *= CalculateChunkSuccessRate (CalculateSnr (powerW,
@@ -692,7 +695,7 @@ InterferenceHelper::CalculatePlcpHeaderPer (Ptr<const InterferenceHelper::Event>
                                                     plcpHsigHeaderStart - plcpHeaderStart, //HT GF: plcpHsigHeaderStart - plcpHeaderStart = 0
                                                     headerMode, event->GetTxVector ());
 
-                  NS_LOG_DEBUG ("Case 4a - previous is in the preamble and current is after payload start: HT mode=" << htHeaderMode << ", non-HT mode=" << headerMode << ", psr=" << psr);
+                  NS_LOG_DEBUG ("Case 5aiii - previous is in the preamble and current is after payload start: HT mode=" << htHeaderMode << ", non-HT mode=" << headerMode << ", psr=" << psr);
                 }
             }
           //Case 5b: current is in (V)HT training or in VHT-SIG-B. Non (V)HT will not come here since it went in previous if or if the previous if is not true this will be not true

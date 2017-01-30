@@ -18,6 +18,9 @@
  * Author: Giuseppe Piro  <g.piro@poliba.it>
  *         Nicola Baldo <nbaldo@cttc.es>
  *         Marco Miozzo <mmiozzo@cttc.es>
+ * Modified by:
+ *          Danilo Abrignani <danilo.abrignani@unibo.it> (Carrier Aggregation - GSoC 2015)
+ *          Biljana Bojovic <biljana.bojovic@cttc.es> (Carrier Aggregation)
  */
 
 #include "ns3/llc-snap-header.h"
@@ -43,6 +46,9 @@
 #include <ns3/ipv4-l3-protocol.h>
 #include <ns3/log.h>
 #include "epc-tft.h"
+#include <ns3/lte-ue-component-carrier-manager.h>
+#include <ns3/object-map.h>
+#include <ns3/object-factory.h>
 
 namespace ns3 {
 
@@ -78,6 +84,15 @@ TypeId LteUeNetDevice::GetTypeId (void)
                    PointerValue (),
                    MakePointerAccessor (&LteUeNetDevice::m_phy),
                    MakePointerChecker <LteUePhy> ())
+    .AddAttribute ("LteUeComponentCarrierManager",
+                   "The ComponentCarrierManager associated to this UeNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteUeNetDevice::m_componentCarrierManager),
+                   MakePointerChecker <LteUeComponentCarrierManager> ())
+    .AddAttribute ("ComponentCarrierMapUe", "List of all component Carrier.",
+                   ObjectMapValue (),
+                   MakeObjectMapAccessor (&LteUeNetDevice::m_ccMap),
+                   MakeObjectMapChecker<ComponentCarrierUe> ())
     .AddAttribute ("Imsi",
                    "International Mobile Subscriber Identity assigned to this UE",
                    UintegerValue (0),
@@ -89,7 +104,7 @@ TypeId LteUeNetDevice::GetTypeId (void)
                    UintegerValue (100),
                    MakeUintegerAccessor (&LteUeNetDevice::SetDlEarfcn,
                                          &LteUeNetDevice::GetDlEarfcn),
-                   MakeUintegerChecker<uint16_t> (0, 6149))
+                   MakeUintegerChecker<uint32_t> (0, 262143))
     .AddAttribute ("CsgId",
                    "The Closed Subscriber Group (CSG) identity that this UE is associated with, "
                    "i.e., giving the UE access to cells which belong to this particular CSG. "
@@ -179,6 +194,13 @@ LteUeNetDevice::GetPhy (void) const
   return m_phy;
 }
 
+Ptr<LteUeComponentCarrierManager>
+LteUeNetDevice::GetComponentCarrierManager (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_componentCarrierManager;
+}
+
 Ptr<EpcUeNas>
 LteUeNetDevice::GetNas (void) const
 {
@@ -193,7 +215,7 @@ LteUeNetDevice::GetImsi () const
   return m_imsi;
 }
 
-uint16_t
+uint32_t
 LteUeNetDevice::GetDlEarfcn () const
 {
   NS_LOG_FUNCTION (this);
@@ -201,7 +223,7 @@ LteUeNetDevice::GetDlEarfcn () const
 }
 
 void
-LteUeNetDevice::SetDlEarfcn (uint16_t earfcn)
+LteUeNetDevice::SetDlEarfcn (uint32_t earfcn)
 {
   NS_LOG_FUNCTION (this << earfcn);
   m_dlEarfcn = earfcn;
@@ -237,6 +259,18 @@ LteUeNetDevice::GetTargetEnb (void)
   return m_targetEnb;
 }
 
+std::map < uint8_t, Ptr<ComponentCarrierUe> >
+LteUeNetDevice::GetCcMap ()
+{
+  return m_ccMap;
+}
+
+void
+LteUeNetDevice::SetCcMap (std::map< uint8_t, Ptr<ComponentCarrierUe> > ccm)
+{
+  m_ccMap = ccm;
+}
+
 void 
 LteUeNetDevice::DoInitialize (void)
 {
@@ -254,7 +288,7 @@ LteUeNetDevice::Send (Ptr<Packet> packet, const Address& dest, uint16_t protocol
   NS_LOG_FUNCTION (this << dest << protocolNumber);
   if (protocolNumber != Ipv4L3Protocol::PROT_NUMBER)
     {
-      NS_LOG_INFO("unsupported protocol " << protocolNumber << ", only IPv4 is supported");
+      NS_LOG_INFO ("unsupported protocol " << protocolNumber << ", only IPv4 is supported");
       return true;
     }  
   return m_nas->Send (packet);

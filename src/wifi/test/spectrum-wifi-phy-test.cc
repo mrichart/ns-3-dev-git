@@ -17,18 +17,13 @@
  */
 
 #include "ns3/test.h"
-#include "ns3/packet.h"
-#include "ns3/tag.h"
-#include "ns3/packet-burst.h"
 #include "ns3/spectrum-wifi-helper.h"
 #include "ns3/wifi-spectrum-value-helper.h"
 #include "ns3/spectrum-wifi-phy.h"
-#include "ns3/interference-helper.h"
 #include "ns3/nist-error-rate-model.h"
 #include "ns3/wifi-mac-header.h"
 #include "ns3/wifi-mac-trailer.h"
 #include "ns3/wifi-phy-tag.h"
-#include "ns3/wifi-phy-standard.h"
 #include "ns3/wifi-spectrum-signal-parameters.h"
 
 using namespace ns3;
@@ -48,7 +43,8 @@ protected:
   Ptr<SpectrumWifiPhy> m_phy;
   Ptr<SpectrumSignalParameters> MakeSignal (double txPowerWatts);
   void SendSignal (double txPowerWatts);
-  void SpectrumWifiPhyReceiver (bool rxSucceeded);
+  void SpectrumWifiPhyRxSuccess (Ptr<Packet> p, double snr, WifiTxVector txVector);
+  void SpectrumWifiPhyRxFailure (Ptr<Packet> p, double snr);
   uint32_t m_count;
 private:
   virtual void DoRun (void);
@@ -70,11 +66,8 @@ SpectrumWifiPhyBasicTest::SpectrumWifiPhyBasicTest (std::string name)
 Ptr<SpectrumSignalParameters> 
 SpectrumWifiPhyBasicTest::MakeSignal (double txPowerWatts)
 {
-  WifiPreamble preamble;
-  preamble = WIFI_PREAMBLE_LONG;
-  WifiMode mode = WifiPhy::GetOfdmRate6Mbps ();
-  WifiTxVector txVector = WifiTxVector (mode, 0, 0, false, 1, 0, 20000000, false, false);
-  enum mpduType mpdutype = NORMAL_MPDU;
+  WifiTxVector txVector = WifiTxVector (WifiPhy::GetOfdmRate6Mbps (), 0, 0, WIFI_PREAMBLE_LONG, false, 1, 1, 0, 20, false, false);
+  MpduType mpdutype = NORMAL_MPDU;
 
   Ptr<Packet> pkt = Create<Packet> (1000);
   WifiMacHeader hdr;
@@ -83,12 +76,12 @@ SpectrumWifiPhyBasicTest::MakeSignal (double txPowerWatts)
   hdr.SetType (WIFI_MAC_QOSDATA);
   hdr.SetQosTid (0);
   uint32_t size = pkt->GetSize () + hdr.GetSize () + trailer.GetSerializedSize ();
-  Time txDuration = m_phy->CalculateTxDuration (size, txVector, preamble, m_phy->GetFrequency(), mpdutype, 0);
+  Time txDuration = m_phy->CalculateTxDuration (size, txVector, m_phy->GetFrequency(), mpdutype, 0);
   hdr.SetDuration (txDuration);
 
   pkt->AddHeader (hdr);
   pkt->AddTrailer (trailer);
-  WifiPhyTag tag (txVector, preamble, mpdutype);
+  WifiPhyTag tag (txVector, mpdutype);
   pkt->AddPacketTag (tag);
   Ptr<SpectrumValue> txPowerSpectrum = WifiSpectrumValueHelper::CreateOfdmTxPowerSpectralDensity (FREQUENCY, CHANNEL_WIDTH, txPowerWatts);
   Ptr<WifiSpectrumSignalParameters> txParams = Create<WifiSpectrumSignalParameters> ();
@@ -107,7 +100,13 @@ SpectrumWifiPhyBasicTest::SendSignal (double txPowerWatts)
 }
 
 void
-SpectrumWifiPhyBasicTest::SpectrumWifiPhyReceiver (bool rxSucceeded)
+SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxSuccess (Ptr<Packet> p, double snr, WifiTxVector txVector)
+{
+  m_count++;
+}
+
+void
+SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxFailure (Ptr<Packet> p, double snr)
 {
   m_count++;
 }
@@ -127,7 +126,10 @@ SpectrumWifiPhyBasicTest::DoSetup (void)
   m_phy->SetErrorRateModel (error);
   m_phy->SetChannelNumber (CHANNEL_NUMBER);
   m_phy->SetFrequency (FREQUENCY);
-  m_phy->SetPacketReceivedCallback (MakeCallback (&SpectrumWifiPhyBasicTest::SpectrumWifiPhyReceiver, this));
+  m_phy->SetReceiveOkCallback (MakeCallback (&SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxSuccess, this));
+  m_phy->SetReceiveErrorCallback (MakeCallback (&SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxFailure, this));
+  //Bug 2460: CcaMode1Threshold default should be set to -62 dBm when using Spectrum
+  m_phy->SetCcaMode1Threshold (-62.0);
 }
 
 // Test that the expected number of packet receptions occur.

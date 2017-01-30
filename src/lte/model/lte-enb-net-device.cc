@@ -18,6 +18,7 @@
  * Author: Giuseppe Piro  <g.piro@poliba.it>
  * Author: Marco Miozzo <mmiozzo@cttc.es> : Update to FF API Architecture
  * Author: Nicola Baldo <nbaldo@cttc.es>  : Integrated with new RRC and MAC architecture
+ * Author: Danilo Abrignani <danilo.abrignani@unibo.it> : Integrated with new architecture - GSoC 2015 - Carrier Aggregation
  */
 
 #include <ns3/llc-snap-header.h>
@@ -44,6 +45,9 @@
 #include <ns3/ipv4-l3-protocol.h>
 #include <ns3/abort.h>
 #include <ns3/log.h>
+#include <ns3/lte-enb-component-carrier-manager.h>
+#include <ns3/object-map.h>
+#include <ns3/object-factory.h>
 
 namespace ns3 {
 
@@ -93,6 +97,15 @@ TypeId LteEnbNetDevice::GetTypeId (void)
                    PointerValue (),
                    MakePointerAccessor (&LteEnbNetDevice::m_phy),
                    MakePointerChecker <LteEnbPhy> ())
+    .AddAttribute ("LteEnbComponentCarrierManager",
+                   "The RRC associated to this EnbNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteEnbNetDevice::m_componentCarrierManager),
+                   MakePointerChecker <LteEnbComponentCarrierManager> ())
+    .AddAttribute ("ComponentCarrierMap", "List of component carriers.",
+                   ObjectMapValue (),
+                   MakeObjectMapAccessor (&LteEnbNetDevice::m_ccMap),
+                   MakeObjectMapChecker<ComponentCarrierEnb> ())
     .AddAttribute ("UlBandwidth",
                    "Uplink Transmission Bandwidth Configuration in number of Resource Blocks",
                    UintegerValue (25),
@@ -115,13 +128,13 @@ TypeId LteEnbNetDevice::GetTypeId (void)
                    "as per 3GPP 36.101 Section 5.7.3. ",
                    UintegerValue (100),
                    MakeUintegerAccessor (&LteEnbNetDevice::m_dlEarfcn),
-                   MakeUintegerChecker<uint16_t> (0, 6599))
+                   MakeUintegerChecker<uint32_t> (0, 262143))
     .AddAttribute ("UlEarfcn",
                    "Uplink E-UTRA Absolute Radio Frequency Channel Number (EARFCN) "
                    "as per 3GPP 36.101 Section 5.7.3. ",
                    UintegerValue (18100),
                    MakeUintegerAccessor (&LteEnbNetDevice::m_ulEarfcn),
-                   MakeUintegerChecker<uint16_t> (18000, 24599))
+                   MakeUintegerChecker<uint32_t> (0, 262143))
     .AddAttribute ("CsgId",
                    "The Closed Subscriber Group (CSG) identity that this eNodeB belongs to",
                    UintegerValue (0),
@@ -199,10 +212,28 @@ LteEnbNetDevice::GetPhy () const
   return m_phy;
 }
 
+Ptr<LteEnbMac>
+LteEnbNetDevice::GetMac (uint8_t index) 
+{
+  return m_ccMap.at (index)->GetMac ();
+}
+
+Ptr<LteEnbPhy>
+LteEnbNetDevice::GetPhy(uint8_t index)  
+{
+  return m_ccMap.at (index)->GetPhy ();
+}
+
 Ptr<LteEnbRrc>
 LteEnbNetDevice::GetRrc () const
 {
   return m_rrc;
+}
+
+Ptr<LteEnbComponentCarrierManager>
+LteEnbNetDevice::GetComponentCarrierManager () const
+{
+  return  m_componentCarrierManager;
 }
 
 uint16_t
@@ -265,27 +296,27 @@ LteEnbNetDevice::SetDlBandwidth (uint8_t bw)
     }
 }
 
-uint16_t 
+uint32_t 
 LteEnbNetDevice::GetDlEarfcn () const
 {
   return m_dlEarfcn;
 }
 
 void 
-LteEnbNetDevice::SetDlEarfcn (uint16_t earfcn)
+LteEnbNetDevice::SetDlEarfcn (uint32_t earfcn)
 { 
   NS_LOG_FUNCTION (this << earfcn);
   m_dlEarfcn = earfcn;
 }
 
-uint16_t 
+uint32_t 
 LteEnbNetDevice::GetUlEarfcn () const
 {
   return m_ulEarfcn;
 }
 
 void 
-LteEnbNetDevice::SetUlEarfcn (uint16_t earfcn)
+LteEnbNetDevice::SetUlEarfcn (uint32_t earfcn)
 { 
   NS_LOG_FUNCTION (this << earfcn);
   m_ulEarfcn = earfcn;
@@ -319,6 +350,17 @@ LteEnbNetDevice::SetCsgIndication (bool csgIndication)
   UpdateConfig (); // propagate the change to RRC level
 }
 
+std::map < uint8_t, Ptr<ComponentCarrierEnb> >
+LteEnbNetDevice::GetCcMap ()
+{
+  return m_ccMap;
+}
+
+void
+LteEnbNetDevice::SetCcMap (std::map< uint8_t, Ptr<ComponentCarrierEnb> > ccm)
+{
+  m_ccMap = ccm;
+}
 
 void 
 LteEnbNetDevice::DoInitialize (void)

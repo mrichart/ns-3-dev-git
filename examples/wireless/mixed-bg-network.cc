@@ -19,11 +19,9 @@
  */
 
 #include "ns3/core-module.h"
-#include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/mobility-module.h"
-#include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/internet-module.h"
 
 // This example shows how the presence of an 802.11b station in an 802.11g network does affect the performance.
@@ -234,7 +232,7 @@ int main (int argc, char *argv[])
   std::cout << "Protection mode" << "\t\t" << "Slot time supported" << "\t\t" << "PLCP preamble supported" << "\t\t" << "Scenario" << "\t" << "Throughput" << std::endl;
 
   throughput = experiment.Run (false, false, false, false, isUdp, payloadSize, simulationTime);
-  if (throughput < 23 || throughput > 24)
+  if (throughput < 22.5 || throughput > 23.5)
     {
       NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
       exit (1);
@@ -250,7 +248,7 @@ int main (int argc, char *argv[])
   std::cout << "Disabled" << "\t\t" << "Short" << "\t\t\t\t" << "Long" << "\t\t\t\t" << "G-only" << "\t\t" << throughput <<" Mbit/s" << std::endl;
   
   throughput = experiment.Run (false, false, false, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 23 || throughput > 24)
+  if (throughput < 22.5 || throughput > 23.5)
     {
       NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
       exit (1);
@@ -258,7 +256,7 @@ int main (int argc, char *argv[])
   std::cout << "Disabled" << "\t\t" << "Long" << "\t\t\t\t" << "Long" << "\t\t\t\t" << "Mixed" << "\t\t" << throughput <<" Mbit/s" << std::endl;
   
   throughput = experiment.Run (false, false, true, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 23 || throughput > 24)
+  if (throughput < 22.5 || throughput > 23.5)
     {
       NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
       exit (1);
@@ -286,7 +284,7 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::ProtectionMode", StringValue ("Cts-To-Self"));
   
   throughput = experiment.Run (true, false, false, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 21 || throughput > 22)
+  if (throughput < 20.5 || throughput > 21.5)
     {
       NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
       exit (1);
@@ -294,7 +292,7 @@ int main (int argc, char *argv[])
   std::cout << "CTS-TO-SELF" << "\t\t" << "Long" << "\t\t\t\t" << "Long" << "\t\t\t\t" << "Mixed" << "\t\t" << throughput <<" Mbit/s" << std::endl;
   
   throughput = experiment.Run (true, false, true, true, isUdp, payloadSize, simulationTime);
-  if (throughput < 21 || throughput > 22)
+  if (throughput < 20.5 || throughput > 21.5)
     {
       NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
       exit (1);

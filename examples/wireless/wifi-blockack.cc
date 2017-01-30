@@ -39,6 +39,7 @@
  *    - the originator receives a block ack frame.
  *    - the recipient receives a block ack request or a MPDU with ack policy Block Ack. 
  */
+
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
@@ -50,8 +51,11 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("Test-block-ack");
 
-int main (int argc, char const* argv[])
+int main (int argc, char * argv[])
 {
+  CommandLine cmd;
+  cmd.Parse (argc, argv);
+  
   LogComponentEnable ("EdcaTxopN", LOG_LEVEL_DEBUG);
   LogComponentEnable ("BlockAckManager", LOG_LEVEL_INFO);
  

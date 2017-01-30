@@ -21,10 +21,7 @@
 #ifndef DSSS_PARAMETER_SET_H
 #define DSSS_PARAMETER_SET_H
 
-#include <stdint.h>
-#include <ostream>
-#include "ns3/buffer.h"
-#include "ns3/wifi-information-element.h"
+#include "wifi-information-element.h"
 
 namespace ns3 {
 

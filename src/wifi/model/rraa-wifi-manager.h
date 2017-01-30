@@ -21,7 +21,6 @@
 #ifndef RRAA_WIFI_MANAGER_H
 #define RRAA_WIFI_MANAGER_H
 
-#include "ns3/nstime.h"
 #include "wifi-remote-station-manager.h"
 
 namespace ns3 {
@@ -37,9 +36,9 @@ struct RraaWifiRemoteStation;
  * by "Starsky H. Y. Wong", "Hao Yang", "Songwu Lu", and,
  * "Vaduvur Bharghavan" published in Mobicom 06.
  *
- * This RAA does not support HT or VHT modes and will error exit
- * if the user tries to configure this RAA with a Wi-Fi MAC that
- * has VhtSupported or HtSupported set.
+ * This RAA does not support HT, VHT nor HE modes and will error
+ * exit if the user tries to configure this RAA with a Wi-Fi MAC
+ * that has VhtSupported, HtSupported or HeSupported set.
  */
 class RraaWifiManager : public WifiRemoteStationManager
 {
@@ -52,6 +51,7 @@ public:
   // Inherited from WifiRemoteStationManager
   virtual void SetHtSupported (bool enable);
   virtual void SetVhtSupported (bool enable);
+  virtual void SetHeSupported (bool enable);
 
 private:
   struct ThresholdsItem
@@ -131,7 +131,7 @@ private:
    *
    * \return threshold
    */
-  struct ThresholdsItem GetThresholds (WifiMode mode, RraaWifiRemoteStation *station) const;
+  ThresholdsItem GetThresholds (WifiMode mode, RraaWifiRemoteStation *station) const;
   /**
    * Get a threshold for the given station and mode index.
    *
@@ -140,7 +140,7 @@ private:
    *
    * \return threshold
    */
-  struct ThresholdsItem GetThresholds (RraaWifiRemoteStation *station, uint32_t rate) const;
+  ThresholdsItem GetThresholds (RraaWifiRemoteStation *station, uint32_t rate) const;
 
   bool m_basic;
   Time m_timeout;

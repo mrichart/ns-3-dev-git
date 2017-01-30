@@ -19,7 +19,6 @@
  */
 
 #include "arf-wifi-manager.h"
-#include "ns3/assert.h"
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
 
@@ -214,7 +213,8 @@ ArfWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
       channelWidth = 20;
     }
-  return WifiTxVector (GetSupported (station, station->m_rate), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 1, channelWidth, GetAggregation (station), false);
+  WifiMode mode = GetSupported (station, station->m_rate);
+  return WifiTxVector (mode, GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
 WifiTxVector
@@ -231,14 +231,16 @@ ArfWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
       channelWidth = 20;
     }
   WifiTxVector rtsTxVector;
+  WifiMode mode;
   if (GetUseNonErpProtection () == false)
     {
-      rtsTxVector = WifiTxVector (GetSupported (station, 0), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+      mode = GetSupported (station, 0);
     }
   else
     {
-      rtsTxVector = WifiTxVector (GetNonErpSupported (station, 0), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+      mode = GetNonErpSupported (station, 0);
     }
+  rtsTxVector = WifiTxVector (mode, GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
   return rtsTxVector;
 }
 
@@ -266,6 +268,16 @@ ArfWifiManager::SetVhtSupported (bool enable)
   if (enable)
     {
       NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support VHT rates");
+    }
+}
+
+void
+ArfWifiManager::SetHeSupported (bool enable)
+{
+  //HE is not supported by this algorithm.
+  if (enable)
+    {
+      NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support HE rates");
     }
 }
 

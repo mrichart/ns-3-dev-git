@@ -22,10 +22,7 @@
 #ifndef HT_CAPABILITIES_H
 #define HT_CAPABILITIES_H
 
-#include <stdint.h>
-#include "ns3/buffer.h"
-#include "ns3/attribute-helper.h"
-#include "ns3/wifi-information-element.h"
+#include "wifi-information-element.h"
 
 /**
  * This defines the maximum number of supported MCSs that a STA is

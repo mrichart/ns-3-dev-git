@@ -17,6 +17,9 @@
  *
  * Author: Marco Miozzo  <marco.miozzo@cttc.es>
  *         Nicola Baldo  <nbaldo@cttc.es>
+ * Modified by:
+ *          Danilo Abrignani <danilo.abrignani@unibo.it> (Carrier Aggregation - GSoC 2015)
+ *          Biljana Bojovic <biljana.bojovic@cttc.es> (Carrier Aggregation)
  */
 
 #ifndef LTE_ENB_MAC_H
@@ -35,6 +38,7 @@
 #include "ns3/trace-source-accessor.h"
 #include <ns3/packet.h>
 #include <ns3/packet-burst.h>
+#include <ns3/lte-ccm-mac-sap.h>
 
 namespace ns3 {
 
@@ -54,6 +58,7 @@ class LteEnbMac :   public Object
   friend class EnbMacMemberFfMacSchedSapUser;
   friend class EnbMacMemberFfMacCschedSapUser;
   friend class EnbMacMemberLteEnbPhySapUser;
+  friend class MemberLteCcmMacSapProvider<LteEnbMac>;
 
 public:
   static TypeId GetTypeId (void);
@@ -62,7 +67,7 @@ public:
   virtual ~LteEnbMac (void);
   virtual void DoDispose (void);
 
-
+  void SetComponentCarrierId (uint8_t index);
   /**
    * \brief Set the scheduler SAP provider
    * \param s a pointer SAP provider of the FF packet scheduler
@@ -121,6 +126,19 @@ public:
   void SetLteEnbPhySapProvider (LteEnbPhySapProvider* s);
 
   /**
+  * \brief Get the eNB-ComponetCarrierManager SAP User
+  * \return a pointer to the SAP User of the ComponetCarrierManager
+  */
+  LteCcmMacSapProvider* GetLteCcmMacSapProvider ();
+
+  /**
+  * \brief Set the ComponentCarrierManager SAP user
+  * \param s a pointer to the ComponentCarrierManager provider
+  */
+  void SetLteCcmMacSapUser (LteCcmMacSapUser* s);
+  
+
+  /**
    * TracedCallback signature for DL scheduling events.
    *
    * \param [in] frame Frame number.
@@ -130,11 +148,12 @@ public:
    * \param [in] tbs0Size
    * \param [in] mcs1 The MCS for transport block.
    * \param [in] tbs1Size
+   * \param [in] component carrier id
    */
   typedef void (* DlSchedulingTracedCallback)
-    (uint32_t frame, uint32_t subframe,  uint16_t rnti,
-     uint8_t mcs0, uint16_t tbs0Size,
-     uint8_t mcs1, uint16_t tbs1Size);
+    (const uint32_t frame, const uint32_t subframe, const uint16_t rnti,
+     const uint8_t mcs0, const uint16_t tbs0Size,
+     const uint8_t mcs1, const uint16_t tbs1Size, const uint8_t ccId);
 
   /**
    *  TracedCallback signature for UL scheduling events.
@@ -146,8 +165,8 @@ public:
    * \param [in] tbsSize
    */
   typedef void (* UlSchedulingTracedCallback)
-    (uint32_t frame, uint32_t subframe, uint16_t rnti,
-     uint8_t mcs, uint16_t tbsSize);
+    (const uint32_t frame, const uint32_t subframe, const uint16_t rnti,
+     const uint8_t mcs, const uint16_t tbsSize);
   
 private:
 
@@ -203,6 +222,9 @@ private:
   void DoSubframeIndication (uint32_t frameNo, uint32_t subframeNo);
   void DoReceiveRachPreamble (uint8_t prachId);
 
+  // forwarded by LteCcmMacSapProvider
+  void DoReportMacCeToScheduler (MacCeListElement_s bsr);
+  
 public:
   // legacy public for use the Phy callback
   void DoReceivePhyPdu (Ptr<Packet> p);
@@ -245,21 +267,30 @@ private:
   LteEnbPhySapProvider* m_enbPhySapProvider;
   LteEnbPhySapUser* m_enbPhySapUser;
 
+  // Sap For ComponentCarrierManager 'Uplink case'
+  LteCcmMacSapProvider* m_ccmMacSapProvider;
+  LteCcmMacSapUser* m_ccmMacSapUser;
+  /**
+   * frame number of current subframe indication
+   */
   uint32_t m_frameNo;
+  /**
+   * subframe number of current subframe indication
+   */
   uint32_t m_subframeNo;
   /**
    * Trace information regarding DL scheduling
    * Frame number, Subframe number, RNTI, MCS of TB1, size of TB1,
    * MCS of TB2 (0 if not present), size of TB2 (0 if not present)
    */
-  TracedCallback<uint32_t, uint32_t, uint16_t,
-                 uint8_t, uint16_t, uint8_t, uint16_t> m_dlScheduling;
+  TracedCallback<DlSchedulingCallbackInfo> m_dlScheduling;
+
   /**
    * Trace information regarding UL scheduling
-   * Frame number, Subframe number, RNTI, MCS of TB, size of TB
+   * Frame number, Subframe number, RNTI, MCS of TB, size of TB, component carrier id
    */
   TracedCallback<uint32_t, uint32_t, uint16_t,
-                 uint8_t, uint16_t> m_ulScheduling;
+                 uint8_t, uint16_t, uint8_t> m_ulScheduling;
   
   uint8_t m_macChTtiDelay; // delay of MAC, PHY and channel in terms of TTIs
 
@@ -290,6 +321,10 @@ private:
   std::map<uint8_t, uint32_t> m_receivedRachPreambleCount;
 
   std::map<uint8_t, uint32_t> m_rapIdRntiMap;
+
+  // component carrier Id used to address sap
+  uint8_t m_componentCarrierId;
+ 
 };
 
 } // end namespace ns3

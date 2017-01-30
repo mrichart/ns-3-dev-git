@@ -19,7 +19,6 @@
  */
 
 #include "rraa-wifi-manager.h"
-#include "ns3/assert.h"
 #include "ns3/log.h"
 #include "ns3/boolean.h"
 #include "ns3/double.h"
@@ -295,7 +294,8 @@ RraaWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
     {
       ResetCountersBasic (station);
     }
-  return WifiTxVector (GetSupported (station, station->m_rate), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+  WifiMode mode = GetSupported (station, station->m_rate);
+  return WifiTxVector (mode, GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
 WifiTxVector
@@ -309,14 +309,16 @@ RraaWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
       channelWidth = 20;
     }
   WifiTxVector rtsTxVector;
+  WifiMode mode;
   if (GetUseNonErpProtection () == false)
     {
-      rtsTxVector = WifiTxVector (GetSupported (st, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (st), false, 1, 0, channelWidth, GetAggregation (station), false);
+      mode = GetSupported (st, 0);
     }
   else
     {
-      rtsTxVector = WifiTxVector (GetNonErpSupported (st, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (st), false, 1, 0, channelWidth, GetAggregation (station), false);
+      mode = GetNonErpSupported (st, 0);
     }
+  rtsTxVector = WifiTxVector (mode, GetDefaultTxPowerLevel (), GetShortRetryCount (st), GetPreambleForTransmission (mode, GetAddress (st)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
   return rtsTxVector;
 }
 
@@ -391,7 +393,7 @@ RraaWifiManager::ARts (RraaWifiRemoteStation *station)
     }
 }
 
-struct RraaWifiManager::ThresholdsItem
+RraaWifiManager::ThresholdsItem
 RraaWifiManager::GetThresholds (RraaWifiRemoteStation *station,
                                 uint32_t rate) const
 {
@@ -399,11 +401,10 @@ RraaWifiManager::GetThresholds (RraaWifiRemoteStation *station,
   return GetThresholds (mode, station);
 }
 
-struct RraaWifiManager::ThresholdsItem
+RraaWifiManager::ThresholdsItem
 RraaWifiManager::GetThresholds (WifiMode mode, RraaWifiRemoteStation *station) const
 {
-  uint8_t nss = 1;  // This RAA only supports 1 spatial stream
-  switch (mode.GetDataRate (GetChannelWidth (station), GetShortGuardInterval (station), nss) / 1000000)
+  switch (mode.GetDataRate (GetChannelWidth (station)) / 1000000)
     {
     case 54:
       {
@@ -513,6 +514,16 @@ RraaWifiManager::SetVhtSupported (bool enable)
   if (enable)
     {
       NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support VHT rates");
+    }
+}
+
+void
+RraaWifiManager::SetHeSupported (bool enable)
+{
+  //HE is not supported by this algorithm.
+  if (enable)
+    {
+      NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support HE rates");
     }
 }
 

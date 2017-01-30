@@ -23,9 +23,9 @@
 #include "ns3/core-module.h"
 #include "ns3/tcp-header.h"
 #include "ns3/buffer.h"
-#include "../model/tcp-option-rfc793.h"
+#include "ns3/private/tcp-option-rfc793.h"
 
-namespace ns3 {
+using namespace ns3;
 
 #define GET_RANDOM_UINT32(RandomVariable) \
   static_cast<uint32_t> (RandomVariable->GetInteger (0, UINT32_MAX))
@@ -39,9 +39,21 @@ namespace ns3 {
 #define GET_RANDOM_UINT6(RandomVariable) \
   static_cast<uint8_t> (RandomVariable->GetInteger (0, UINT8_MAX >> 2))
 
+
+
+/**
+ * \ingroup internet-test
+ * \ingroup tests
+ *
+ * \brief TCP header Get/Set test.
+ */
 class TcpHeaderGetSetTestCase : public TestCase
 {
 public:
+  /**
+   * Constructor.
+   * \param name Test description.
+   */
   TcpHeaderGetSetTestCase (std::string name);
 protected:
 private:
@@ -53,15 +65,16 @@ private:
 TcpHeaderGetSetTestCase::TcpHeaderGetSetTestCase (std::string name) : TestCase (name)
 {
 }
+
 void TcpHeaderGetSetTestCase::DoRun (void)
 {
-  uint16_t sourcePort;        //!< Source port
-  uint16_t destinationPort;   //!< Destination port
-  SequenceNumber32 sequenceNumber;  //!< Sequence number
-  SequenceNumber32 ackNumber;       //!< ACK number
-  uint8_t flags;              //!< Flags (really a uint6_t)
-  uint16_t windowSize;        //!< Window size
-  uint16_t urgentPointer;     //!< Urgent pointer
+  uint16_t sourcePort;        // Source port
+  uint16_t destinationPort;   // Destination port
+  SequenceNumber32 sequenceNumber;  // Sequence number
+  SequenceNumber32 ackNumber;       // ACK number
+  uint8_t flags;              // Flags (really a uint6_t)
+  uint16_t windowSize;        // Window size
+  uint16_t urgentPointer;     // Urgent pointer
   TcpHeader header;
   Buffer buffer;
 
@@ -85,58 +98,67 @@ void TcpHeaderGetSetTestCase::DoRun (void)
       header.SetUrgentPointer (urgentPointer);
 
       NS_TEST_ASSERT_MSG_EQ (header.GetLength (), 5, "TcpHeader without option is"
-                         " not 5 word");
+                             " not 5 word");
 
       buffer.AddAtStart (header.GetSerializedSize ());
       header.Serialize (buffer.Begin ());
 
       NS_TEST_ASSERT_MSG_EQ (sourcePort, header.GetSourcePort (),
-                         "Different source port found");
+                             "Different source port found");
       NS_TEST_ASSERT_MSG_EQ (destinationPort, header.GetDestinationPort (),
-                         "Different destination port found");
+                             "Different destination port found");
       NS_TEST_ASSERT_MSG_EQ (sequenceNumber, header.GetSequenceNumber (),
-                         "Different sequence number found");
+                             "Different sequence number found");
       NS_TEST_ASSERT_MSG_EQ (ackNumber, header.GetAckNumber (),
-                         "Different ack number found");
+                             "Different ack number found");
       NS_TEST_ASSERT_MSG_EQ (flags, header.GetFlags (),
-                         "Different flags found");
+                             "Different flags found");
       NS_TEST_ASSERT_MSG_EQ (windowSize, header.GetWindowSize (),
-                         "Different window size found");
+                             "Different window size found");
       NS_TEST_ASSERT_MSG_EQ (urgentPointer, header.GetUrgentPointer (),
-                         "Different urgent pointer found");
+                             "Different urgent pointer found");
 
       NS_TEST_ASSERT_MSG_EQ (header.GetLength (), 5, "TcpHeader without option is"
-                         " not 5 word");
+                             " not 5 word");
 
       TcpHeader copyHeader;
 
       copyHeader.Deserialize (buffer.Begin ());
 
       NS_TEST_ASSERT_MSG_EQ (sourcePort, copyHeader.GetSourcePort (),
-                         "Different source port found in deserialized header");
+                             "Different source port found in deserialized header");
       NS_TEST_ASSERT_MSG_EQ (destinationPort, copyHeader.GetDestinationPort (),
-                         "Different destination port found in deserialized header");
+                             "Different destination port found in deserialized header");
       NS_TEST_ASSERT_MSG_EQ (sequenceNumber, copyHeader.GetSequenceNumber (),
-                         "Different sequence number found in deserialized header");
+                             "Different sequence number found in deserialized header");
       NS_TEST_ASSERT_MSG_EQ (ackNumber, copyHeader.GetAckNumber (),
-                         "Different ack number found in deserialized header");
+                             "Different ack number found in deserialized header");
       NS_TEST_ASSERT_MSG_EQ (flags, copyHeader.GetFlags (),
-                         "Different flags found in deserialized header");
+                             "Different flags found in deserialized header");
       NS_TEST_ASSERT_MSG_EQ (windowSize, copyHeader.GetWindowSize (),
-                         "Different window size found in deserialized header");
+                             "Different window size found in deserialized header");
       NS_TEST_ASSERT_MSG_EQ (urgentPointer, copyHeader.GetUrgentPointer (),
-                         "Different urgent pointer found in deserialized header");
+                             "Different urgent pointer found in deserialized header");
     }
 }
 
 void TcpHeaderGetSetTestCase::DoTeardown (void)
 {
-
 }
 
+/**
+ * \ingroup internet-test
+ * \ingroup tests
+ *
+ * \brief TCP header with RFC793 Options test.
+ */
 class TcpHeaderWithRFC793OptionTestCase : public TestCase
 {
 public:
+  /**
+   * Constructor.
+   * \param name Test description.
+   */
   TcpHeaderWithRFC793OptionTestCase (std::string name);
 
 private:
@@ -144,11 +166,16 @@ private:
   virtual void DoTeardown (void);
 
   /**
-   * \brief Check an header with only one kind of option
-   *
+   * \brief Check an header with only one kind of option.
    */
   void OneOptionAtTime ();
+  /**
+   * \brief Check an header for the correct padding.
+   */
   void CheckNoPadding ();
+  /**
+   * \brief Check the correct header deserialization.
+   */
   void CheckCorrectDeserialize ();
 };
 
@@ -309,6 +336,8 @@ TcpHeaderWithRFC793OptionTestCase::OneOptionAtTime ()
     dest.Deserialize (buffer.Begin ());
     NS_TEST_ASSERT_MSG_EQ (header.HasOption (TcpOption::MSS),
                            true, "MSS option not correctly serialized");
+    NS_TEST_ASSERT_MSG_EQ (header.GetOptionLength (), oMSS.GetSerializedSize (),
+                           "MSS Option not counted in the total");
   }
 }
 
@@ -322,9 +351,19 @@ TcpHeaderWithRFC793OptionTestCase::DoTeardown ()
 
 }
 
+/**
+ * \ingroup internet-test
+ * \ingroup tests
+ *
+ * \brief TCP header Flags to Striing test.
+ */
 class TcpHeaderFlagsToString : public TestCase
 {
 public:
+  /**
+   * Constructor.
+   * \param name Test description.
+   */
   TcpHeaderFlagsToString (std::string name);
 
 private:
@@ -381,7 +420,14 @@ TcpHeaderFlagsToString::DoRun (void)
   NS_TEST_ASSERT_MSG_EQ (str, target, "str " << str <<  " does not equal target " << target);
 }
 
-static class TcpHeaderTestSuite : public TestSuite
+
+/**
+ * \ingroup internet-test
+ * \ingroup tests
+ *
+ * \brief TCP header TestSuite
+ */
+class TcpHeaderTestSuite : public TestSuite
 {
 public:
   TcpHeaderTestSuite ()
@@ -392,6 +438,7 @@ public:
     AddTestCase (new TcpHeaderFlagsToString ("Test flags to string function"), TestCase::QUICK);
   }
 
-} g_TcpHeaderTestSuite;
+};
 
-} // namespace ns3
+static TcpHeaderTestSuite g_TcpHeaderTestSuite; //!< Static variable for test initialization
+

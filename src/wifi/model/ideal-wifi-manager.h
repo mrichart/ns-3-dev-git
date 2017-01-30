@@ -21,10 +21,7 @@
 #ifndef IDEAL_WIFI_MANAGER_H
 #define IDEAL_WIFI_MANAGER_H
 
-#include <stdint.h>
-#include <vector>
 #include "ns3/traced-value.h"
-#include "wifi-mode.h"
 #include "wifi-remote-station-manager.h"
 
 namespace ns3 {
@@ -53,6 +50,7 @@ public:
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 
+  virtual void SetHeSupported (bool enable); //HE rates not yet supported
 
 private:
   //overriden from base class
@@ -66,7 +64,7 @@ private:
                               double ctsSnr, WifiMode ctsMode, double rtsSnr);
   virtual void DoReportDataOk (WifiRemoteStation *station,
                                double ackSnr, WifiMode ackMode, double dataSnr);
-  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint32_t nSuccessfulMpdus, uint32_t nFailedMpdus, double rxSnr, double dataSnr);
+  virtual void DoReportAmpduTxStatus (WifiRemoteStation *station, uint8_t nSuccessfulMpdus, uint8_t nFailedMpdus, double rxSnr, double dataSnr);
   virtual void DoReportFinalRtsFailed (WifiRemoteStation *station);
   virtual void DoReportFinalDataFailed (WifiRemoteStation *station);
   virtual WifiTxVector DoGetDataTxVector (WifiRemoteStation *station);
@@ -96,10 +94,10 @@ private:
    * \param non-(V)HT WifiMode
    * \return the channel width (MHz) for the selected mode
    */
-  uint32_t GetChannelWidthForMode (WifiMode mode) const;
+  uint8_t GetChannelWidthForMode (WifiMode mode) const;
 
   /**
-   * A vector of <snr, WifiTxVector> pair holding the minimum SNR for the 
+   * A vector of <snr, WifiTxVector> pair holding the minimum SNR for the
    * WifiTxVector
    */
   typedef std::vector<std::pair<double, WifiTxVector> > Thresholds;

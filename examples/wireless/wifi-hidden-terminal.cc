@@ -29,9 +29,9 @@
  *  - Use of OnOffApplication to generate CBR stream 
  *  - IP flow monitor
  */
+
 #include "ns3/core-module.h"
 #include "ns3/propagation-module.h"
-#include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/internet-module.h"
@@ -177,6 +177,9 @@ void experiment (bool enableCtsRts)
 
 int main (int argc, char **argv)
 {
+  CommandLine cmd;
+  cmd.Parse (argc, argv);
+  
   std::cout << "Hidden station experiment with RTS/CTS disabled:\n" << std::flush;
   experiment (false);
   std::cout << "------------------------------------------------\n";

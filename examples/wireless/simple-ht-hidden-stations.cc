@@ -19,11 +19,9 @@
  */
 
 #include "ns3/core-module.h"
-#include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/mobility-module.h"
-#include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/internet-module.h"
 
 // This example considers two hidden stations in an 802.11n network which supports MPDU aggregation.
@@ -70,8 +68,6 @@ int main (int argc, char *argv[])
     {
       Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
     }
-
-  Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("990000"));
 
   //Set the maximum size for A-MPDU with regards to the payload size
   maxAmpduSize = nMpdus * (payloadSize + 200);
@@ -170,6 +166,10 @@ int main (int argc, char *argv[])
   uint32_t totalPacketsThrough = DynamicCast<UdpServer> (serverApp.Get (0))->GetReceived ();
   double throughput = totalPacketsThrough * payloadSize * 8 / (simulationTime * 1000000.0);
   std::cout << "Throughput: " << throughput << " Mbit/s" << '\n';
-
+  if (throughput < 16.75 || throughput > 17)
+    {
+      NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
+      exit (1);
+    }
   return 0;
 }

@@ -19,18 +19,11 @@
  */
 
 #include "wifi-net-device.h"
-#include "regular-wifi-mac.h"
 #include "wifi-phy.h"
-#include "wifi-remote-station-manager.h"
-#include "wifi-channel.h"
-#include "qos-utils.h"
+#include "regular-wifi-mac.h"
 #include "ns3/llc-snap-header.h"
-#include "ns3/packet.h"
 #include "ns3/socket.h"
-#include "ns3/uinteger.h"
 #include "ns3/pointer.h"
-#include "ns3/node.h"
-#include "ns3/trace-source-accessor.h"
 #include "ns3/log.h"
 
 namespace ns3 {
@@ -54,7 +47,7 @@ WifiNetDevice::GetTypeId (void)
     .AddAttribute ("Channel", "The channel attached to this device",
                    PointerValue (),
                    MakePointerAccessor (&WifiNetDevice::DoGetChannel),
-                   MakePointerChecker<WifiChannel> ())
+                   MakePointerChecker<Channel> ())
     .AddAttribute ("Phy", "The PHY layer attached to this device.",
                    PointerValue (),
                    MakePointerAccessor (&WifiNetDevice::GetPhy,
@@ -223,7 +216,7 @@ WifiNetDevice::GetChannel (void) const
   return m_phy->GetChannel ();
 }
 
-Ptr<WifiChannel>
+Ptr<Channel>
 WifiNetDevice::DoGetChannel (void) const
 {
   return m_phy->GetChannel ();
@@ -358,7 +351,7 @@ WifiNetDevice::ForwardUp (Ptr<Packet> packet, Mac48Address from, Mac48Address to
 {
   NS_LOG_FUNCTION (this << packet << from << to);
   LlcSnapHeader llc;
-  enum NetDevice::PacketType type;
+  NetDevice::PacketType type;
   if (to.IsBroadcast ())
     {
       type = NetDevice::PACKET_BROADCAST;
@@ -386,7 +379,7 @@ WifiNetDevice::ForwardUp (Ptr<Packet> packet, Mac48Address from, Mac48Address to
     {
       packet->RemoveHeader (llc);
     }
-    
+
   if (!m_promiscRx.IsNull ())
     {
       m_mac->NotifyPromiscRx (packet);

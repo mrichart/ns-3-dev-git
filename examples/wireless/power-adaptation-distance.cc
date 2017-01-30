@@ -85,18 +85,12 @@
  * \endcode
  */
 
-#include <sstream>
-#include <fstream>
-#include <math.h>
-
 #include "ns3/core-module.h"
-#include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/stats-module.h"
-#include "ns3/flow-monitor-module.h"
 
 using namespace ns3;
 using namespace std;
@@ -173,7 +167,8 @@ NodeStatistics::SetupPhy (Ptr<WifiPhy> phy)
       WifiMode mode = phy->GetMode (i);
       WifiTxVector txVector;
       txVector.SetMode (mode);
-      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (packetSize, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ()), mode));
+      txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
+      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (packetSize, txVector, phy->GetFrequency ()), mode));
     }
 }
 

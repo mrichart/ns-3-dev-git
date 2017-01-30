@@ -19,15 +19,12 @@
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Mirko Banchi <mk.banchi@gmail.com>
  */
+
 #ifndef STA_WIFI_MAC_H
 #define STA_WIFI_MAC_H
 
 #include "regular-wifi-mac.h"
-#include "ns3/event-id.h"
-#include "ns3/packet.h"
-#include "ns3/traced-callback.h"
 #include "supported-rates.h"
-#include "amsdu-subframe-header.h"
 #include "capability-information.h"
 
 namespace ns3  {
@@ -170,7 +167,7 @@ private:
    *
    * \param value the new state
    */
-  void SetState (enum MacState value);
+  void SetState (MacState value);
   /**
    * Set the EDCA parameters.
    *
@@ -188,7 +185,7 @@ private:
    */
   CapabilityInformation GetCapabilities (void) const;
 
-  enum MacState m_state;
+  MacState m_state;
   Time m_probeRequestTimeout;
   Time m_assocRequestTimeout;
   EventId m_probeRequestEvent;

@@ -55,11 +55,7 @@
  * \endcode
  */
 
-#include <sstream>
-#include <fstream>
-
 #include "ns3/core-module.h"
-#include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/wifi-module.h"
@@ -168,7 +164,8 @@ NodeStatistics::SetupPhy (Ptr<WifiPhy> phy)
       WifiMode mode = phy->GetMode (i);
       WifiTxVector txVector;
       txVector.SetMode (mode);
-      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (packetSize, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ()), mode));
+      txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
+      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (packetSize, txVector, phy->GetFrequency ()), mode));
     }
 }
 

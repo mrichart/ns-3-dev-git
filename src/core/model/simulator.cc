@@ -23,6 +23,7 @@
 #include "scheduler.h"
 #include "map-scheduler.h"
 #include "event-impl.h"
+#include "des-metrics.h"
 
 #include "ptr.h"
 #include "string.h"
@@ -36,6 +37,7 @@
 #include <list>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 
 /**
  * \file
@@ -84,7 +86,31 @@ static GlobalValue g_schedTypeImpl = GlobalValue ("SchedulerType",
 static void
 TimePrinter (std::ostream &os)
 {
-  os << Simulator::Now ().GetSeconds () << "s";
+  std::ios_base::fmtflags ff = os.flags (); // Save stream flags
+  std::streamsize oldPrecision = os.precision ();
+  if (Time::GetResolution () == Time::NS)
+    {
+      os << std::fixed << std::setprecision (9) << Simulator::Now ().As (Time::S);
+    }
+  else if (Time::GetResolution () == Time::PS) 
+    {
+      os << std::fixed << std::setprecision (12) << Simulator::Now ().As (Time::S);
+    }
+  else if (Time::GetResolution () == Time::FS) 
+    {
+      os << std::fixed << std::setprecision (15) << Simulator::Now ().As (Time::S);
+    }
+  else if (Time::GetResolution () == Time::US) 
+    {
+      os << std::fixed << std::setprecision (6) << Simulator::Now ().As (Time::S);
+    }
+  else
+    {
+      // default C++ precision of 5
+      os << std::fixed << std::setprecision (5) << Simulator::Now ().As (Time::S);
+    }
+  os << std::setprecision (oldPrecision);
+  os.flags (ff); // Restore stream flags
 }
 
 /**
@@ -249,6 +275,9 @@ Simulator::ScheduleNow (const Ptr<EventImpl> &ev)
 void
 Simulator::ScheduleWithContext (uint32_t context, const Time &delay, EventImpl *impl)
 {
+#ifdef ENABLE_DES_METRICS
+  DesMetrics::Get ()->TraceWithContext (context, Now (), delay);
+#endif
   return GetImpl ()->ScheduleWithContext (context, delay, impl);
 }
 EventId
@@ -259,11 +288,17 @@ Simulator::ScheduleDestroy (const Ptr<EventImpl> &ev)
 EventId 
 Simulator::DoSchedule (Time const &time, EventImpl *impl)
 {
+#ifdef ENABLE_DES_METRICS
+  DesMetrics::Get ()->Trace (Now (), time);
+#endif
   return GetImpl ()->Schedule (time, impl);
 }
 EventId 
 Simulator::DoScheduleNow (EventImpl *impl)
 {
+#ifdef ENABLE_DES_METRICS
+  DesMetrics::Get ()->Trace (Now (), Time (0));
+#endif
   return GetImpl ()->ScheduleNow (impl);
 }
 EventId 

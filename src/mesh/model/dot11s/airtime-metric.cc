@@ -19,9 +19,7 @@
  */
 
 #include "airtime-metric.h"
-#include "ns3/wifi-remote-station-manager.h"
-#include "ns3/wifi-mode.h"
-#include "ns3/wifi-tx-vector.h"
+#include "ns3/wifi-phy.h"
 
 namespace ns3 {
 namespace dot11s {
@@ -93,10 +91,11 @@ AirtimeLinkMetricCalculator::CalculateMetric (Mac48Address peerAddress, Ptr<Mesh
   NS_ASSERT (failAvg < 1.0);
   WifiTxVector txVector;
   txVector.SetMode (mode);
+  txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
   //calculate metric
   uint32_t metric = (uint32_t)((double)( /*Overhead + payload*/
                                  mac->GetPifs () + mac->GetSlot () + mac->GetEifsNoDifs () + //DIFS + SIFS + AckTxTime = PIFS + SLOT + EifsNoDifs
-                                 mac->GetWifiPhy ()->CalculateTxDuration (m_testFrame->GetSize (), txVector, WIFI_PREAMBLE_LONG, mac->GetWifiPhy ()->GetFrequency())
+                                 mac->GetWifiPhy ()->CalculateTxDuration (m_testFrame->GetSize (), txVector, mac->GetWifiPhy ()->GetFrequency())
                                  ).GetMicroSeconds () / (10.24 * (1.0 - failAvg)));
   return metric;
 }

@@ -339,6 +339,10 @@ TcpSocketBase::TcpSocketBase (void)
                                           MakeCallback (&TcpSocketBase::UpdateCongState, this));
   NS_ASSERT (ok == true);
 
+  ok = m_tcb->TraceConnectWithoutContext ("NextTxSequence",
+                                          MakeCallback (&TcpSocketBase::UpdateNextTxSequence, this));
+  NS_ASSERT (ok == true);
+
   ok = m_tcb->TraceConnectWithoutContext ("HighestSequence",
                                           MakeCallback (&TcpSocketBase::UpdateHighTxMark, this));
   NS_ASSERT (ok == true);
@@ -430,8 +434,13 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
                                           MakeCallback (&TcpSocketBase::UpdateCongState, this));
   NS_ASSERT (ok == true);
 
+  ok = m_tcb->TraceConnectWithoutContext ("NextTxSequence",
+                                          MakeCallback (&TcpSocketBase::UpdateNextTxSequence, this));
+  NS_ASSERT (ok == true);
+
   ok = m_tcb->TraceConnectWithoutContext ("HighestSequence",
                                           MakeCallback (&TcpSocketBase::UpdateHighTxMark, this));
+  NS_ASSERT (ok == true);
 }
 
 TcpSocketBase::~TcpSocketBase (void)
@@ -649,7 +658,7 @@ TcpSocketBase::Connect (const Address & address)
   NS_LOG_FUNCTION (this << address);
 
   // If haven't do so, Bind() this socket first
-  if (InetSocketAddress::IsMatchingType (address) && m_endPoint6 == 0)
+  if (InetSocketAddress::IsMatchingType (address))
     {
       if (m_endPoint == 0)
         {
@@ -672,7 +681,7 @@ TcpSocketBase::Connect (const Address & address)
           return -1;
         }
     }
-  else if (Inet6SocketAddress::IsMatchingType (address)  && m_endPoint == 0)
+  else if (Inet6SocketAddress::IsMatchingType (address))
     {
       // If we are operating on a v4-mapped address, translate the address to
       // a v4 address and re-call this function
@@ -698,7 +707,8 @@ TcpSocketBase::Connect (const Address & address)
 
       // Get the appropriate local address and port number from the routing protocol and set up endpoint
       if (SetupEndpoint6 () != 0)
-        { // Route to destination does not exist
+        {
+          NS_LOG_ERROR ("Route to destination does not exist ?!");
           return -1;
         }
     }
@@ -1431,6 +1441,114 @@ TcpSocketBase::ProcessEstablished (Ptr<Packet> packet, const TcpHeader& tcpHeade
     }
 }
 
+bool
+TcpSocketBase::IsTcpOptionEnabled (uint8_t kind) const
+{
+  NS_LOG_FUNCTION (this << (int)kind);
+
+  switch (kind)
+    {
+    case TcpOption::TS:
+      return m_timestampEnabled;
+    case TcpOption::WINSCALE:
+      return m_winScalingEnabled;
+    default:
+      break;
+    }
+  return false;
+}
+
+void
+TcpSocketBase::ReadOptions (const TcpHeader &tcpHeader)
+{
+  NS_LOG_FUNCTION (this << tcpHeader);
+  TcpHeader::TcpOptionList::const_iterator it;
+  const TcpHeader::TcpOptionList options = tcpHeader.GetOptionList ();
+
+  for (it = options.begin (); it != options.end (); ++it)
+    {
+      const Ptr<const TcpOption> option = (*it);
+      // Placeholder for a switch statement
+    }
+}
+
+void
+TcpSocketBase::LimitedTransmit ()
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT (m_limitedTx);
+  NS_ASSERT (m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0);
+
+  NS_LOG_INFO ("Limited transmit");
+  uint32_t sz = SendDataPacket (m_tcb->m_nextTxSequence, m_tcb->m_segmentSize, true);
+  m_tcb->m_nextTxSequence += sz;
+}
+
+void
+TcpSocketBase::FastRetransmit ()
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT (m_tcb->m_congState != TcpSocketState::CA_RECOVERY);
+
+  m_recover = m_tcb->m_highTxMark;
+  m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_RECOVERY);
+  m_tcb->m_congState = TcpSocketState::CA_RECOVERY;
+
+  m_tcb->m_ssThresh = m_congestionControl->GetSsThresh (m_tcb,
+                                                        BytesInFlight ());
+  m_tcb->m_cWnd = m_tcb->m_ssThresh + m_dupAckCount * m_tcb->m_segmentSize;
+
+  NS_LOG_INFO (m_dupAckCount << " dupack. Enter fast recovery mode." <<
+               "Reset cwnd to " << m_tcb->m_cWnd << ", ssthresh to " <<
+               m_tcb->m_ssThresh << " at fast recovery seqnum " << m_recover);
+  DoRetransmit ();
+}
+
+void
+TcpSocketBase::DupAck ()
+{
+  NS_LOG_FUNCTION (this);
+  ++m_dupAckCount;
+
+  if (m_tcb->m_congState == TcpSocketState::CA_OPEN)
+    {
+      // From Open we go Disorder
+      NS_ASSERT_MSG (m_dupAckCount == 1, "From OPEN->DISORDER but with " <<
+                     m_dupAckCount << " dup ACKs");
+
+      m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_DISORDER);
+      m_tcb->m_congState = TcpSocketState::CA_DISORDER;
+
+      NS_LOG_DEBUG ("OPEN -> DISORDER");
+    }
+
+  if (m_tcb->m_congState == TcpSocketState::CA_DISORDER)
+    {
+      if ((m_dupAckCount == m_retxThresh) && (m_highRxAckMark >= m_recover))
+        {
+          // triple duplicate ack triggers fast retransmit (RFC2582 sec.3 bullet #1)
+          NS_LOG_DEBUG (TcpSocketState::TcpCongStateName[m_tcb->m_congState] <<
+                        " -> RECOVERY");
+          FastRetransmit ();
+        }
+      else if (m_limitedTx && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0)
+        {
+          // RFC3042 Limited transmit: Send a new packet for each duplicated ACK before fast retransmit
+          LimitedTransmit ();
+        }
+    }
+  else if (m_tcb->m_congState == TcpSocketState::CA_RECOVERY)
+    { // Increase cwnd for every additional dupack (RFC2582, sec.3 bullet #3)
+      m_tcb->m_cWnd += m_tcb->m_segmentSize;
+      NS_LOG_INFO (m_dupAckCount << " Dupack received in fast recovery mode."
+                   "Increase cwnd to " << m_tcb->m_cWnd);
+      SendPendingData (m_connected);
+    }
+
+  // Artificially call PktsAcked. After all, one segment has been ACKed.
+  m_congestionControl->PktsAcked (m_tcb, 1, m_lastRtt);
+}
+
 /* Process the newly received ACK */
 void
 TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
@@ -1440,20 +1558,9 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
   NS_ASSERT (0 != (tcpHeader.GetFlags () & TcpHeader::ACK));
   NS_ASSERT (m_tcb->m_segmentSize > 0);
 
+  ReadOptions (tcpHeader);
+
   SequenceNumber32 ackNumber = tcpHeader.GetAckNumber ();
-  uint32_t bytesAcked = ackNumber - m_txBuffer->HeadSequence ();
-  uint32_t segsAcked  = bytesAcked / m_tcb->m_segmentSize;
-  m_bytesAckedNotProcessed += bytesAcked % m_tcb->m_segmentSize;
-
-  if (m_bytesAckedNotProcessed >= m_tcb->m_segmentSize)
-    {
-      segsAcked += 1;
-      m_bytesAckedNotProcessed -= m_tcb->m_segmentSize;
-    }
-
-  NS_LOG_LOGIC (" Bytes acked: " << bytesAcked <<
-                " Segments acked: " << segsAcked <<
-                " bytes left: " << m_bytesAckedNotProcessed);
 
   NS_LOG_DEBUG ("ACK of " << ackNumber <<
                 " SND.UNA=" << m_txBuffer->HeadSequence () <<
@@ -1466,65 +1573,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
       && packet->GetSize () == 0)
     {
       // There is a DupAck
-      ++m_dupAckCount;
-
-      if (m_tcb->m_congState == TcpSocketState::CA_OPEN)
-        {
-          // From Open we go Disorder
-          NS_ASSERT_MSG (m_dupAckCount == 1, "From OPEN->DISORDER but with " <<
-                         m_dupAckCount << " dup ACKs");
-
-          m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_DISORDER);
-          m_tcb->m_congState = TcpSocketState::CA_DISORDER;
-
-          if (m_limitedTx && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0)
-            {
-              // RFC3042 Limited transmit: Send a new packet for each duplicated ACK before fast retransmit
-              NS_LOG_INFO ("Limited transmit");
-              uint32_t sz = SendDataPacket (m_tcb->m_nextTxSequence, m_tcb->m_segmentSize, true);
-              m_tcb->m_nextTxSequence += sz;
-            }
-
-          NS_LOG_DEBUG ("OPEN -> DISORDER");
-        }
-      else if (m_tcb->m_congState == TcpSocketState::CA_DISORDER)
-        {
-          if ((m_dupAckCount == m_retxThresh) && (m_highRxAckMark >= m_recover))
-            {
-              // triple duplicate ack triggers fast retransmit (RFC2582 sec.3 bullet #1)
-              NS_LOG_DEBUG (TcpSocketState::TcpCongStateName[m_tcb->m_congState] <<
-                            " -> RECOVERY");
-              m_recover = m_tcb->m_highTxMark;
-              m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_RECOVERY);
-              m_tcb->m_congState = TcpSocketState::CA_RECOVERY;
-
-              m_tcb->m_ssThresh = m_congestionControl->GetSsThresh (m_tcb,
-                                                                    BytesInFlight ());
-              m_tcb->m_cWnd = m_tcb->m_ssThresh + m_dupAckCount * m_tcb->m_segmentSize;
-
-              NS_LOG_INFO (m_dupAckCount << " dupack. Enter fast recovery mode." <<
-                           "Reset cwnd to " << m_tcb->m_cWnd << ", ssthresh to " <<
-                           m_tcb->m_ssThresh << " at fast recovery seqnum " << m_recover);
-              DoRetransmit ();
-            }
-          else if (m_limitedTx && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0)
-            {
-              // RFC3042 Limited transmit: Send a new packet for each duplicated ACK before fast retransmit
-              NS_LOG_INFO ("Limited transmit");
-              uint32_t sz = SendDataPacket (m_tcb->m_nextTxSequence, m_tcb->m_segmentSize, true);
-              m_tcb->m_nextTxSequence += sz;
-            }
-        }
-      else if (m_tcb->m_congState == TcpSocketState::CA_RECOVERY)
-        { // Increase cwnd for every additional dupack (RFC2582, sec.3 bullet #3)
-          m_tcb->m_cWnd += m_tcb->m_segmentSize;
-          NS_LOG_INFO (m_dupAckCount << " Dupack received in fast recovery mode."
-                       "Increase cwnd to " << m_tcb->m_cWnd);
-          SendPendingData (m_connected);
-        }
-
-      // Artificially call PktsAcked. After all, one segment has been ACKed.
-      m_congestionControl->PktsAcked (m_tcb, 1, m_lastRtt);
+      DupAck ();
     }
   else if (ackNumber == m_txBuffer->HeadSequence ()
            && ackNumber == m_tcb->m_nextTxSequence)
@@ -1535,6 +1584,19 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
     { // Case 3: New ACK, reset m_dupAckCount and update m_txBuffer
       bool callCongestionControl = true;
       bool resetRTO = true;
+      uint32_t bytesAcked = ackNumber - m_txBuffer->HeadSequence ();
+      uint32_t segsAcked  = bytesAcked / m_tcb->m_segmentSize;
+      m_bytesAckedNotProcessed += bytesAcked % m_tcb->m_segmentSize;
+
+      if (m_bytesAckedNotProcessed >= m_tcb->m_segmentSize)
+        {
+          segsAcked += 1;
+          m_bytesAckedNotProcessed -= m_tcb->m_segmentSize;
+        }
+
+      NS_LOG_LOGIC (" Bytes acked: " << bytesAcked <<
+                    " Segments acked: " << segsAcked <<
+                    " bytes left: " << m_bytesAckedNotProcessed);
 
       /* The following switch is made because m_dupAckCount can be
        * "inflated" through out-of-order segments (e.g. from retransmission,
@@ -1656,9 +1718,12 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
           m_congestionControl->PktsAcked (m_tcb, segsAcked, m_lastRtt);
           m_dupAckCount = 0;
           m_retransOut = 0;
-          m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_OPEN);
-          m_tcb->m_congState = TcpSocketState::CA_OPEN;
-          NS_LOG_DEBUG ("LOSS -> OPEN");
+          if(ackNumber >= m_recover + 1)
+            {
+              m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_OPEN);
+              m_tcb->m_congState = TcpSocketState::CA_OPEN;
+              NS_LOG_DEBUG ("LOSS -> OPEN");
+            }
         }
 
       if (callCongestionControl)
@@ -2812,8 +2877,8 @@ TcpSocketBase::EstimateRtt (const TcpHeader& tcpHeader)
         { // Ok to use this sample
           if (m_timestampEnabled && tcpHeader.HasOption (TcpOption::TS))
             {
-              Ptr<TcpOptionTS> ts;
-              ts = DynamicCast<TcpOptionTS> (tcpHeader.GetOption (TcpOption::TS));
+              Ptr<const TcpOptionTS> ts;
+              ts = DynamicCast<const TcpOptionTS> (tcpHeader.GetOption (TcpOption::TS));
               m = TcpOptionTS::ElapsedTimeFromTsValue (ts->GetEcho ());
             }
           else

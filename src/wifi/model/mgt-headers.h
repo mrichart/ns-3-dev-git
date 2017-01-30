@@ -23,19 +23,18 @@
 #ifndef MGT_HEADERS_H
 #define MGT_HEADERS_H
 
-#include <stdint.h>
-
-#include "ns3/header.h"
 #include "status-code.h"
 #include "capability-information.h"
 #include "supported-rates.h"
 #include "ssid.h"
 #include "dsss-parameter-set.h"
 #include "ht-capabilities.h"
-#include "ht-operations.h"
+#include "ht-operation.h"
 #include "vht-capabilities.h"
+#include "vht-operation.h"
 #include "erp-information.h"
 #include "edca-parameter-set.h"
+#include "he-capabilities.h"
 
 namespace ns3 {
 
@@ -86,6 +85,12 @@ public:
    */
   void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
   /**
+   * Set the HE capabilities.
+   *
+   * \param hecapabilities HE capabilities
+   */
+  void SetHeCapabilities (HeCapabilities hecapabilities);
+  /**
    * Return the Capability information.
    *
    * \return Capability information
@@ -103,6 +108,12 @@ public:
    * \return VHT capabilities
    */
   VhtCapabilities GetVhtCapabilities (void) const;
+  /**
+   * Return the HE capabilities.
+   *
+   * \return HE capabilities
+   */
+  HeCapabilities GetHeCapabilities (void) const;
   /**
    * Return the Service Set Identifier (SSID).
    *
@@ -140,6 +151,7 @@ private:
   CapabilityInformation m_capability; //!< Capability information
   HtCapabilities m_htCapability;      //!< HT capabilities
   VhtCapabilities m_vhtCapability;    //!< VHT capabilities
+  HeCapabilities m_heCapability;      //!< HE capabilities
   uint16_t m_listenInterval;
 };
 
@@ -173,23 +185,35 @@ public:
    */
   CapabilityInformation GetCapabilities (void) const;
   /**
-   * Set the Capability information.
-   *
-   * \param capabilities Capability information
-   */
-  void SetCapabilities (CapabilityInformation capabilities);
-  /**
    * Return the HT capabilities.
    *
    * \return HT capabilities
    */
   HtCapabilities GetHtCapabilities (void) const;
   /**
-   * Return the HT operations.
+   * Return the HT operation.
    *
-   * \return HT operations
+   * \return HT operation
    */
-  HtOperations GetHtOperations (void) const;
+  HtOperation GetHtOperation (void) const;
+  /**
+   * Return the VHT capabilities.
+   *
+   * \return VHT capabilities
+   */
+  VhtCapabilities GetVhtCapabilities (void) const;
+  /**
+   * Return the VHT operation.
+   *
+   * \return VHT operation
+   */
+  VhtOperation GetVhtOperation (void) const;
+  /**
+   * Return the HE capabilities.
+   *
+   * \return HE capabilities
+   */
+  HeCapabilities GetHeCapabilities (void) const;
   /**
    * Return the ERP information.
    *
@@ -203,17 +227,23 @@ public:
    */
   EdcaParameterSet GetEdcaParameterSet (void) const;
   /**
+   * Set the Capability information.
+   *
+   * \param capabilities Capability information
+   */
+  void SetCapabilities (CapabilityInformation capabilities);
+  /**
+   * Set the VHT operation.
+   *
+   * \param vhtoperation VHT operation
+   */
+  void SetVhtOperation (VhtOperation vhtoperation);
+  /**
    * Set the VHT capabilities.
    *
    * \param vhtcapabilities VHT capabilities
    */
   void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
-  /**
-   * Return the VHT capabilities.
-   *
-   * \return VHT capabilities
-   */
-  VhtCapabilities GetVhtCapabilities (void) const;
   /**
    * Set the HT capabilities.
    *
@@ -221,11 +251,11 @@ public:
    */
   void SetHtCapabilities (HtCapabilities htcapabilities);
   /**
-   * Set the HT operations.
+   * Set the HT operation.
    *
-   * \param htoperations HT operations
+   * \param htoperation HT operation
    */
-  void SetHtOperations (HtOperations htoperations);
+  void SetHtOperation (HtOperation htoperation);
   /**
    * Set the supported rates.
    *
@@ -250,6 +280,12 @@ public:
    * \param edcaParameterSet the EDCA Parameter Set
    */
   void SetEdcaParameterSet (EdcaParameterSet edcaParameterSet);
+  /**
+   * Set the HE capabilities.
+   *
+   * \param hecapabilities HE capabilities
+   */
+  void SetHeCapabilities (HeCapabilities hecapabilities);
 
   /**
    * Register this type.
@@ -269,10 +305,12 @@ private:
   StatusCode m_code; //!< Status code
   uint16_t m_aid;
   HtCapabilities m_htCapability; //!< HT capabilities
-  HtOperations m_htOperations; //!< HT operations
+  HtOperation m_htOperation; //!< HT operation
   VhtCapabilities m_vhtCapability; //!< VHT capabilities
+  VhtOperation m_vhtOperation; //!< VHT operation
   ErpInformation m_erpInformation; //!< ERP information
   EdcaParameterSet m_edcaParameterSet; //!< EDCA Parameter Set
+  HeCapabilities m_heCapability; //!< HE capabilities
 };
 
 
@@ -298,6 +336,24 @@ public:
    */
   void SetSupportedRates (SupportedRates rates);
   /**
+   * Set the HT capabilities.
+   *
+   * \param htcapabilities HT capabilities
+   */
+  void SetHtCapabilities (HtCapabilities htcapabilities);
+  /**
+   * Set the VHT capabilities.
+   *
+   * \param vhtcapabilities VHT capabilities
+   */
+  void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
+  /**
+   * Set the HE capabilities.
+   *
+   * \param hecapabilities HE capabilities
+   */
+  void SetHeCapabilities (HeCapabilities hecapabilities);
+  /**
    * Return the Service Set Identifier (SSID).
    *
    * \return SSID
@@ -310,29 +366,23 @@ public:
    */
   SupportedRates GetSupportedRates (void) const;
   /**
-   * Set the HT capabilities.
-   *
-   * \param htcapabilities HT capabilities
-   */
-  void SetHtCapabilities (HtCapabilities htcapabilities);
-  /**
    * Return the HT capabilities.
    *
    * \return HT capabilities
    */
   HtCapabilities GetHtCapabilities (void) const;
   /**
-   * Set the VHT capabilities.
+   * Return the VHT capabilities.
    *
-   * \param vhtcapabilities VHT capabilities
+   * \return VHT capabilities
    */
-  void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
-  /**
-  * Return the VHT capabilities.
-  *
-  * \return VHT capabilities
-  */
   VhtCapabilities GetVhtCapabilities (void) const;
+  /**
+   * Return the HE capabilities.
+   *
+   * \return HE capabilities
+   */
+  HeCapabilities GetHeCapabilities (void) const;
 
   /**
    * Register this type.
@@ -351,6 +401,7 @@ private:
   SupportedRates m_rates;          //!< List of supported rates
   HtCapabilities m_htCapability;   //!< HT capabilities
   VhtCapabilities m_vhtCapability; //!< VHT capabilities
+  HeCapabilities m_heCapability; //!< HE capabilities
 };
 
 
@@ -401,17 +452,29 @@ public:
    */
   HtCapabilities GetHtCapabilities (void) const;
   /**
-   * Return the HT operations.
+   * Return the HT operation.
    *
-   * \return HT operations
+   * \return HT operation
    */
-  HtOperations GetHtOperations (void) const;
+  HtOperation GetHtOperation (void) const;
   /**
    * Return the VHT capabilities.
    *
    * \return VHT capabilities
    */
   VhtCapabilities GetVhtCapabilities (void) const;
+  /**
+   * Return the VHT operation.
+   *
+   * \return VHT operation
+   */
+  VhtOperation GetVhtOperation (void) const;
+  /**
+   * Return the HE capabilities.
+   *
+   * \return HE capabilities
+   */
+  HeCapabilities GetHeCapabilities (void) const;
   /**
    * Return the ERP information.
    *
@@ -437,17 +500,29 @@ public:
    */
   void SetHtCapabilities (HtCapabilities htcapabilities);
   /**
-   * Set the HT operations.
+   * Set the HT operation.
    *
-   * \param htoperations HT operations
+   * \param htoperation HT operation
    */
-  void SetHtOperations (HtOperations htoperations);
+  void SetHtOperation (HtOperation htoperation);
   /**
    * Set the VHT capabilities.
    *
    * \param vhtcapabilities VHT capabilities
    */
   void SetVhtCapabilities (VhtCapabilities vhtcapabilities);
+  /**
+   * Set the VHT operation.
+   *
+   * \param vhtoperation VHT operation
+   */
+  void SetVhtOperation (VhtOperation vhtoperation);
+  /**
+   * Set the HE capabilities.
+   *
+   * \param hecapabilities HE capabilities
+   */
+  void SetHeCapabilities (HeCapabilities hecapabilities);
   /**
    * Set the Service Set Identifier (SSID).
    *
@@ -511,8 +586,10 @@ private:
   CapabilityInformation m_capability;  //!< Capability information
   DsssParameterSet m_dsssParameterSet; //!< DSSS Parameter Set
   HtCapabilities m_htCapability;       //!< HT capabilities
-  HtOperations m_htOperations;         //!< HT operations
+  HtOperation m_htOperation;           //!< HT operation
   VhtCapabilities m_vhtCapability;     //!< VHT capabilities
+  VhtOperation m_vhtOperation;         //!< VHT operation
+  HeCapabilities m_heCapability;     //!< HE capabilities
   ErpInformation m_erpInformation;     //!< ERP information
   EdcaParameterSet m_edcaParameterSet; //!< EDCA Parameter Set
 };
@@ -614,10 +691,10 @@ public:
    */
   typedef union
   {
-    enum MeshActionValue meshAction;
-    enum MultihopActionValue multihopAction;
-    enum SelfProtectedActionValue selfProtectedAction;
-    enum BlockAckActionValue blockAck;
+    MeshActionValue meshAction;
+    MultihopActionValue multihopAction;
+    SelfProtectedActionValue selfProtectedAction;
+    BlockAckActionValue blockAck;
   } ActionValue;
   /**
    * Set action for this Action header.
@@ -625,7 +702,7 @@ public:
    * \param type category
    * \param action action
    */
-  void   SetAction (enum CategoryValue type,ActionValue action);
+  void   SetAction (CategoryValue type, ActionValue action);
 
   /**
    * Return the category value.

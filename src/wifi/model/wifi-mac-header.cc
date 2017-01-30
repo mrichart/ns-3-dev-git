@@ -16,11 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
- * Author: Mirko Banchi <mk.banchi@gmail.com>
+ * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ *          Mirko Banchi <mk.banchi@gmail.com>
  */
 
-#include "ns3/assert.h"
 #include "ns3/address-utils.h"
 #include "wifi-mac-header.h"
 
@@ -177,7 +176,7 @@ WifiMacHeader::SetMultihopAction (void)
 }
 
 void
-WifiMacHeader::SetType (enum WifiMacType type)
+WifiMacHeader::SetType (WifiMacType type)
 {
   switch (type)
     {
@@ -396,7 +395,7 @@ void WifiMacHeader::SetQosNoEosp ()
   m_qosEosp = 0;
 }
 
-void WifiMacHeader::SetQosAckPolicy (enum QosAckPolicy policy)
+void WifiMacHeader::SetQosAckPolicy (QosAckPolicy policy)
 {
   switch (policy)
     {
@@ -487,7 +486,7 @@ WifiMacHeader::GetAddr4 (void) const
   return m_addr4;
 }
 
-enum WifiMacType
+WifiMacType
 WifiMacHeader::GetType (void) const
 {
   switch (m_ctrlType)
@@ -609,7 +608,7 @@ WifiMacHeader::GetType (void) const
     }
   // NOTREACHED
   NS_ASSERT (false);
-  return (enum WifiMacType) -1;
+  return (WifiMacType) - 1;
 }
 
 bool
@@ -856,7 +855,7 @@ WifiMacHeader::GetQosTid (void) const
   return m_qosTid;
 }
 
-enum WifiMacHeader::QosAckPolicy
+WifiMacHeader::QosAckPolicy
 WifiMacHeader::GetQosAckPolicy (void) const
 {
   switch (m_qosAckPolicy)
@@ -876,7 +875,7 @@ WifiMacHeader::GetQosAckPolicy (void) const
     }
   // NOTREACHED
   NS_ASSERT (false);
-  return (enum QosAckPolicy) -1;
+  return (QosAckPolicy) - 1;
 }
 
 uint8_t

@@ -22,9 +22,7 @@
 #ifndef WIFI_INFORMATION_ELEMENT_VECTOR_H
 #define WIFI_INFORMATION_ELEMENT_VECTOR_H
 
-#include "ns3/header.h"
-#include "ns3/simple-ref-count.h"
-#include "ns3/wifi-information-element.h"
+#include "wifi-information-element.h"
 
 namespace ns3 {
 

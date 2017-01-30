@@ -18,23 +18,14 @@
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
 
-#include "ns3/wifi-net-device.h"
 #include "ns3/yans-wifi-channel.h"
-#include "ns3/yans-wifi-phy.h"
 #include "ns3/propagation-loss-model.h"
 #include "ns3/propagation-delay-model.h"
-#include "ns3/error-rate-model.h"
-#include "ns3/yans-error-rate-model.h"
-#include "ns3/ptr.h"
-#include "ns3/mobility-model.h"
+#include "ns3/nist-error-rate-model.h"
 #include "ns3/constant-position-mobility-model.h"
-#include "ns3/vector.h"
-#include "ns3/packet.h"
 #include "ns3/simulator.h"
-#include "ns3/nstime.h"
 #include "ns3/command-line.h"
 #include "ns3/flow-id-tag.h"
-#include "ns3/wifi-tx-vector.h"
 
 using namespace ns3;
 
@@ -60,7 +51,7 @@ public:
 
 private:
   void Send (void);
-  void Receive (Ptr<Packet> p, double snr, WifiTxVector txVector, enum WifiPreamble preamble);
+  void Receive (Ptr<Packet> p, double snr, WifiTxVector txVector);
   Ptr<WifiPhy> m_tx;
   struct Input m_input;
   struct Output m_output;
@@ -74,11 +65,12 @@ PsrExperiment::Send (void)
   WifiTxVector txVector;
   txVector.SetTxPowerLevel (m_input.txPowerLevel);
   txVector.SetMode (mode);
-  m_tx->SendPacket (p, txVector, WIFI_PREAMBLE_LONG);
+  txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
+  m_tx->SendPacket (p, txVector);
 }
 
 void
-PsrExperiment::Receive (Ptr<Packet> p, double snr, WifiTxVector txVector, enum WifiPreamble preamble)
+PsrExperiment::Receive (Ptr<Packet> p, double snr, WifiTxVector txVector)
 {
   m_output.received++;
 }
@@ -113,7 +105,7 @@ PsrExperiment::Run (struct PsrExperiment::Input input)
 
   Ptr<YansWifiPhy> tx = CreateObject<YansWifiPhy> ();
   Ptr<YansWifiPhy> rx = CreateObject<YansWifiPhy> ();
-  Ptr<ErrorRateModel> error = CreateObject<YansErrorRateModel> ();
+  Ptr<ErrorRateModel> error = CreateObject<NistErrorRateModel> ();
   tx->SetErrorRateModel (error);
   rx->SetErrorRateModel (error);
   tx->SetChannel (channel);
@@ -165,7 +157,7 @@ public:
 private:
   void SendA (void) const;
   void SendB (void) const;
-  void Receive (Ptr<Packet> p, double snr, WifiTxVector txVector, enum WifiPreamble preamble);
+  void Receive (Ptr<Packet> p, double snr, WifiTxVector txVector);
   Ptr<WifiPhy> m_txA;
   Ptr<WifiPhy> m_txB;
   uint32_t m_flowIdA;
@@ -182,7 +174,8 @@ CollisionExperiment::SendA (void) const
   WifiTxVector txVector;
   txVector.SetTxPowerLevel (m_input.txPowerLevelA);
   txVector.SetMode (WifiMode (m_input.txModeA));
-  m_txA->SendPacket (p, txVector, WIFI_PREAMBLE_LONG);
+  txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
+  m_txA->SendPacket (p, txVector);
 }
 
 void
@@ -193,11 +186,12 @@ CollisionExperiment::SendB (void) const
   WifiTxVector txVector;
   txVector.SetTxPowerLevel (m_input.txPowerLevelB);
   txVector.SetMode (WifiMode (m_input.txModeB));
-  m_txB->SendPacket (p, txVector, WIFI_PREAMBLE_LONG);
+  txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
+  m_txB->SendPacket (p, txVector);
 }
 
 void
-CollisionExperiment::Receive (Ptr<Packet> p, double snr, WifiTxVector txVector, enum WifiPreamble preamble)
+CollisionExperiment::Receive (Ptr<Packet> p, double snr, WifiTxVector txVector)
 {
   FlowIdTag tag;
   if (p->FindFirstMatchingByteTag (tag))
@@ -256,7 +250,7 @@ CollisionExperiment::Run (struct CollisionExperiment::Input input)
   Ptr<YansWifiPhy> txB = CreateObject<YansWifiPhy> ();
   Ptr<YansWifiPhy> rx = CreateObject<YansWifiPhy> ();
 
-  Ptr<ErrorRateModel> error = CreateObject<YansErrorRateModel> ();
+  Ptr<ErrorRateModel> error = CreateObject<NistErrorRateModel> ();
   txA->SetErrorRateModel (error);
   txB->SetErrorRateModel (error);
   rx->SetErrorRateModel (error);

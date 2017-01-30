@@ -19,21 +19,26 @@
  */
 
 #include "supported-rates.h"
-#include "ns3/assert.h"
 #include "ns3/log.h"
 
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("SupportedRates");
 
+#define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
+#define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
+#define BSS_MEMBERSHIP_SELECTOR_HE_PHY 125
+
 SupportedRates::SupportedRates ()
   : extended (this),
     m_nRates (0)
 {
+  NS_LOG_FUNCTION (this);
 }
 
 SupportedRates::SupportedRates (const SupportedRates &rates)
 {
+  NS_LOG_FUNCTION (this);
   m_nRates = rates.m_nRates;
   memcpy (m_rates, rates.m_rates, MAX_SUPPORTED_RATES);
   //reset the back pointer to this object
@@ -53,19 +58,47 @@ SupportedRates::operator= (const SupportedRates& rates)
 void
 SupportedRates::AddSupportedRate (uint32_t bs)
 {
+  NS_LOG_FUNCTION (this << bs);
+  NS_ASSERT_MSG (IsBssMembershipSelectorRate (bs) == false, "Invalid rate");
   NS_ASSERT (m_nRates < MAX_SUPPORTED_RATES);
-  if (IsSupportedRate (bs))
+  if (bs == BSS_MEMBERSHIP_SELECTOR_HT_PHY)
     {
-      return;
+      // Encoding defined in Sec. 8.4.2.3, IEEE 802.11-2012
+      m_rates[m_nRates] = (BSS_MEMBERSHIP_SELECTOR_HT_PHY | 0x80);
+      m_nRates++;
+      NS_LOG_DEBUG ("add HT_PHY membership selector");
     }
-  m_rates[m_nRates] = bs / 500000;
-  m_nRates++;
-  NS_LOG_DEBUG ("add rate=" << bs << ", n rates=" << (uint32_t)m_nRates);
+  else if (bs == BSS_MEMBERSHIP_SELECTOR_VHT_PHY)
+    {
+      // Encoding defined in Sec. 8.4.2.3, IEEE 802.11-2012
+      m_rates[m_nRates] = (BSS_MEMBERSHIP_SELECTOR_VHT_PHY | 0x80);
+      m_nRates++;
+      NS_LOG_DEBUG ("add VHT_PHY membership selector");
+    }
+  else if (bs == BSS_MEMBERSHIP_SELECTOR_HE_PHY)
+    {
+      // Encoding defined in Sec. 8.4.2.3, IEEE 802.11-2012
+      m_rates[m_nRates] = (BSS_MEMBERSHIP_SELECTOR_HE_PHY | 0x80);
+      m_nRates++;
+      NS_LOG_DEBUG ("add HE_PHY membership selector");
+    }
+  else
+    {
+      if (IsSupportedRate (bs))
+        {
+          return;
+        }
+      m_rates[m_nRates] = bs / 500000;
+      m_nRates++;
+      NS_LOG_DEBUG ("add rate=" << bs << ", n rates=" << (uint32_t)m_nRates);
+    }
 }
 
 void
 SupportedRates::SetBasicRate (uint32_t bs)
 {
+  NS_LOG_FUNCTION (this << bs);
+  NS_ASSERT_MSG (IsBssMembershipSelectorRate (bs) == false, "Invalid rate");
   uint8_t rate = bs / 500000;
   for (uint8_t i = 0; i < m_nRates; i++)
     {
@@ -84,9 +117,31 @@ SupportedRates::SetBasicRate (uint32_t bs)
   SetBasicRate (bs);
 }
 
+void
+SupportedRates::AddBssMembershipSelectorRate (uint32_t bs)
+{
+  NS_LOG_FUNCTION (this << bs);
+  if ((bs != BSS_MEMBERSHIP_SELECTOR_HT_PHY) && (bs != BSS_MEMBERSHIP_SELECTOR_VHT_PHY) && (bs != BSS_MEMBERSHIP_SELECTOR_HE_PHY))
+    {
+      NS_ASSERT_MSG (false, "Value " << bs << " not a BSS Membership Selector");
+    }
+  uint32_t rate = (bs | 0x80);
+  for (uint8_t i = 0; i < m_nRates; i++)
+    {
+      if (rate == m_rates[i])
+        {
+          return;
+        }
+    }
+  m_rates[m_nRates] = rate;
+  NS_LOG_DEBUG ("add BSS membership selector rate " << bs << " as rate " << m_nRates);
+  m_nRates++;
+}
+
 bool
 SupportedRates::IsBasicRate (uint32_t bs) const
 {
+  NS_LOG_FUNCTION (this << bs);
   uint8_t rate = (bs / 500000) | 0x80;
   for (uint8_t i = 0; i < m_nRates; i++)
     {
@@ -101,6 +156,7 @@ SupportedRates::IsBasicRate (uint32_t bs) const
 bool
 SupportedRates::IsSupportedRate (uint32_t bs) const
 {
+  NS_LOG_FUNCTION (this << bs);
   uint8_t rate = bs / 500000;
   for (uint8_t i = 0; i < m_nRates; i++)
     {
@@ -109,6 +165,19 @@ SupportedRates::IsSupportedRate (uint32_t bs) const
         {
           return true;
         }
+    }
+  return false;
+}
+
+bool
+SupportedRates::IsBssMembershipSelectorRate (uint32_t bs) const
+{
+  NS_LOG_FUNCTION (this << bs);
+  if ((bs & 0x7f) == BSS_MEMBERSHIP_SELECTOR_HT_PHY
+      || (bs & 0x7f) == BSS_MEMBERSHIP_SELECTOR_VHT_PHY
+      || (bs & 0x7f) == BSS_MEMBERSHIP_SELECTOR_HE_PHY)
+    {
+      return true;
     }
   return false;
 }

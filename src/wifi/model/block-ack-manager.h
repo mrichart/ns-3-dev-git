@@ -21,22 +21,17 @@
 #ifndef BLOCK_ACK_MANAGER_H
 #define BLOCK_ACK_MANAGER_H
 
-#include <map>
-#include <list>
-#include <deque>
-#include "ns3/packet.h"
 #include "wifi-mac-header.h"
 #include "originator-block-ack-agreement.h"
 #include "ctrl-headers.h"
 #include "qos-utils.h"
-#include "wifi-mode.h"
 #include "wifi-remote-station-manager.h"
+#include <map>
 
 namespace ns3 {
 
 class MgtAddBaResponseHeader;
 class MgtAddBaRequestHeader;
-class MgtDelBaHeader;
 class MacTxMiddle;
 class WifiMacQueue;
 
@@ -110,7 +105,7 @@ public:
    * station addressed by <i>recipient</i> for tid <i>tid</i>.
    */
   bool ExistsAgreementInState (Mac48Address recipient, uint8_t tid,
-                               enum OriginatorBlockAckAgreement::State state) const;
+                               OriginatorBlockAckAgreement::State state) const;
   /**
    * \param reqHdr Relative Add block ack request (action frame).
    * \param recipient Address of peer station involved in block ack mechanism.
@@ -152,7 +147,16 @@ public:
    * corresponding block ack bitmap.
    */
   Ptr<const Packet> GetNextPacket (WifiMacHeader &hdr);
-  bool HasBar (struct Bar &bar);
+  /**
+   * \param hdr 802.11 header of returned packet (if exists).
+   *
+   * \return the packet
+   *
+   * This methods returns a packet (if exists) indicated as not received in
+   * corresponding block ack bitmap. This method doesn't remove the packet from this queue.
+   */
+  Ptr<const Packet> PeekNextPacket (WifiMacHeader &hdr);
+  bool HasBar (Bar &bar);
   /**
    * Returns true if there are packets that need of retransmission or at least a
    * BAR is scheduled. Returns false otherwise.
@@ -249,7 +253,7 @@ public:
    *
    * See ctrl-headers.h for more details.
    */
-  void SetBlockAckType (enum BlockAckType bAckType);
+  void SetBlockAckType (BlockAckType bAckType);
   /**
    * \param recipient Address of station involved in block ack mechanism.
    * \param tid Traffic ID.
@@ -314,15 +318,17 @@ public:
   /**
    * Checks if the packet already exists in the retransmit queue or not if it does then it doesn't add it again
    */
-  bool AlreadyExists (uint16_t currentSeq, Mac48Address recipient, uint8_t tid);
+  bool AlreadyExists (uint16_t currentSeq, Mac48Address recipient, uint8_t tid) const;
   /**
    * Remove a packet after you peek in the queue and get it
    */
   bool RemovePacket (uint8_t tid, Mac48Address recipient, uint16_t seqnumber);
   /*
-   * Peek in retransmit queue and get the next packet without removing it from the queue
+   * Peek in retransmit queue and get the next packet having address indicated
+   * by <i>type</i> equals to <i>addr</i>, and tid equals to <i>tid</i>.
+   * This method doesn't remove the packet from this queue.
    */
-  Ptr<const Packet> PeekNextPacket (WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *timestamp);
+  Ptr<const Packet> PeekNextPacketByTidAndAddress (WifiMacHeader &hdr, Mac48Address recipient, uint8_t tid, Time *timestamp);
   /**
    * This function returns true if the lifetime of the packets a BAR refers to didn't expire yet else it returns false.
    * If it return false then the BAR will be discarded (i.e. will not be re-transmitted)
@@ -439,7 +445,7 @@ private:
   std::list<Bar> m_bars;
 
   uint8_t m_blockAckThreshold;
-  enum BlockAckType m_blockAckType;
+  BlockAckType m_blockAckType;
   Time m_maxDelay;
   MacTxMiddle* m_txMiddle;
   Mac48Address m_address;

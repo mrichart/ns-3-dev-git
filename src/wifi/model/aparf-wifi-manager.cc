@@ -20,16 +20,14 @@
 
 #include "aparf-wifi-manager.h"
 #include "wifi-phy.h"
-#include "ns3/assert.h"
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
-#include "ns3/trace-source-accessor.h"
 
 #define Min(a,b) ((a < b) ? a : b)
 
-NS_LOG_COMPONENT_DEFINE ("ns3::AparfWifiManager");
-
 namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("AparfWifiManager");
 
 /**
  * Hold per-remote-station state for APARF Wifi manager.
@@ -64,12 +62,12 @@ AparfWifiManager::GetTypeId (void)
     .SetParent<WifiRemoteStationManager> ()
     .SetGroupName ("Wifi")
     .AddConstructor<AparfWifiManager> ()
-    .AddAttribute ("SuccessThreshold 1",
+    .AddAttribute ("SuccessThreshold1",
                    "The minimum number of successful transmissions in \"High\" state to try a new power or rate.",
                    UintegerValue (3),
                    MakeUintegerAccessor (&AparfWifiManager::m_succesMax1),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("SuccessThreshold 2",
+    .AddAttribute ("SuccessThreshold2",
                    "The minimum number of successful transmissions in \"Low\" state to try a new power or rate.",
                    UintegerValue (10),
                    MakeUintegerAccessor (&AparfWifiManager::m_succesMax2),
@@ -84,22 +82,22 @@ AparfWifiManager::GetTypeId (void)
                    UintegerValue (10),
                    MakeUintegerAccessor (&AparfWifiManager::m_powerMax),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("Power decrement step",
+    .AddAttribute ("PowerDecrementStep",
                    "Step size for decrement the power.",
                    UintegerValue (1),
                    MakeUintegerAccessor (&AparfWifiManager::m_powerDec),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("Power increment step",
+    .AddAttribute ("PowerIncrementStep",
                    "Step size for increment the power.",
                    UintegerValue (1),
                    MakeUintegerAccessor (&AparfWifiManager::m_powerInc),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("Rate decrement step",
+    .AddAttribute ("RateDecrementStep",
                    "Step size for decrement the rate.",
                    UintegerValue (1),
                    MakeUintegerAccessor (&AparfWifiManager::m_rateDec),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("Rate increment step",
+    .AddAttribute ("RateIncrementStep",
                    "Step size for increment the rate.",
                    UintegerValue (1),
                    MakeUintegerAccessor (&AparfWifiManager::m_rateInc),
@@ -353,14 +351,16 @@ AparfWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
       channelWidth = 20;
     }
   WifiTxVector rtsTxVector;
+  WifiMode mode;
   if (GetUseNonErpProtection () == false)
     {
-      rtsTxVector = WifiTxVector (GetSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+      mode = GetSupported (station, 0);
     }
   else
     {
-      rtsTxVector = WifiTxVector (GetNonErpSupported (station, 0), GetDefaultTxPowerLevel (), GetShortRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+      mode = GetNonErpSupported (station, 0);
     }
+  rtsTxVector = WifiTxVector (mode, GetDefaultTxPowerLevel (), GetShortRetryCount (station), GetPreambleForTransmission (mode, GetAddress (st)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
   return rtsTxVector;
 }
 
@@ -388,6 +388,16 @@ AparfWifiManager::SetVhtSupported (bool enable)
   if (enable)
     {
       NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support VHT rates");
+    }
+}
+
+void
+AparfWifiManager::SetHeSupported (bool enable)
+{
+  //HE is not supported by this algorithm.
+  if (enable)
+    {
+      NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support HE rates");
     }
 }
 

@@ -25,10 +25,7 @@
 
 #include "regular-wifi-mac.h"
 #include "capability-information.h"
-#include "ht-capabilities.h"
-#include "ht-operations.h"
-#include "vht-capabilities.h"
-#include "amsdu-subframe-header.h"
+#include "ht-operation.h"
 #include "supported-rates.h"
 #include "dsss-parameter-set.h"
 #include "erp-information.h"
@@ -116,6 +113,14 @@ public:
    * stations support short PLCP preamble.
    */
   bool GetShortPreambleEnabled (void) const;
+  /**
+   * Determine whether non-Greenfield HT stations are present or not.
+   */
+  bool IsNonGfHtStasPresent (void) const;
+  /**
+   * Determine the VHT operational channel width.
+   */
+  uint8_t GetVhtOperationalChannelWidth (void) const;
 
   /**
    * Assign a fixed random variable stream number to the random variables
@@ -217,11 +222,17 @@ private:
    */
   EdcaParameterSet GetEdcaParameterSet (void) const;
   /**
-   * Return the HT operations of the current AP.
+   * Return the HT operation of the current AP.
    *
-   * \return the HT operations that we support
+   * \return the HT operation that we support
    */
-  HtOperations GetHtOperations (void) const;
+  HtOperation GetHtOperation (void) const;
+  /**
+   * Return the VHT operation of the current AP.
+   *
+   * \return the VHT operation that we support
+   */
+  VhtOperation GetVhtOperation (void) const;
   /**
    * Return an instance of SupportedRates that contains all rates that we support
    * including HT rates.

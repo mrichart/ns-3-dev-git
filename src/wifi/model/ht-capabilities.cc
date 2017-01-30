@@ -20,12 +20,8 @@
  */
 
 #include "ht-capabilities.h"
-#include "ns3/assert.h"
-#include "ns3/log.h"
 
 namespace ns3 {
-
-NS_LOG_COMPONENT_DEFINE ("HtCapabilities");
 
 HtCapabilities::HtCapabilities ()
   : m_ldpc (0),
@@ -595,11 +591,14 @@ ATTRIBUTE_HELPER_CPP (HtCapabilities);
 std::ostream &
 operator << (std::ostream &os, const HtCapabilities &htcapabilities)
 {
-  os <<  bool (htcapabilities.GetLdpc ())
+  os << bool (htcapabilities.GetLdpc ())
      << "|" << bool (htcapabilities.GetSupportedChannelWidth ())
      << "|" << bool (htcapabilities.GetGreenfield ())
-     << "|" << bool (htcapabilities.GetShortGuardInterval20 ());
-
+     << "|" << bool (htcapabilities.GetShortGuardInterval20 ()) << "|";
+  for (uint32_t k = 0; k < MAX_SUPPORTED_MCS; k++)
+    {
+      os << htcapabilities.IsSupportedMcs (k) << " ";
+    }
   return os;
 }
 

@@ -66,7 +66,6 @@
 #include "ns3/nstime.h"
 #include "ns3/boolean.h"
 #include "ns3/data-rate.h"
-#include "ns3/nstime.h"
 #include "ns3/random-variable-stream.h"
 
 namespace ns3 {
@@ -108,6 +107,8 @@ public:
     uint32_t unforcedDrop;  //!< Early probability drops
     uint32_t forcedDrop;    //!< Forced drops, qavg > max threshold
     uint32_t qLimDrop;      //!< Drops due to queue limits
+    uint32_t unforcedMark;  //!< Early probability marks
+    uint32_t forcedMark;    //!< Forced marks, qavg > max threshold
   } Stats;
 
   /** 
@@ -236,9 +237,8 @@ private:
    /**
     * \brief Update m_curMaxP
     * \param newAve new average queue length
-    * \param now Current Time
     */
-  void UpdateMaxP (double newAve, Time now);
+  void UpdateMaxP (double newAve);
   /**
    * \brief Check if a packet needs to be dropped due to probability mark
    * \param item queue item
@@ -298,6 +298,8 @@ private:
   bool m_isNs1Compat;       //!< Ns-1 compatibility
   DataRate m_linkBandwidth; //!< Link bandwidth
   Time m_linkDelay;         //!< Link delay
+  bool m_useEcn;            //!< True if ECN is used (packets are marked instead of being dropped)
+  bool m_useHardDrop;       //!< True if packets are always dropped above max threshold
 
   // ** Variables maintained by RED
   double m_vProb1;          //!< Prob. of packet drop before "count"
@@ -316,8 +318,8 @@ private:
   uint32_t m_count;         //!< Number of packets since last random number generation
   /**
    * 0 for default RED
-   * 1 experimental (see red-queue.cc)
-   * 2 experimental (see red-queue.cc)
+   * 1 experimental (see red-queue-disc.cc)
+   * 2 experimental (see red-queue-disc.cc)
    * 3 use Idle packet size in the ptc
    */
   uint32_t m_cautious;

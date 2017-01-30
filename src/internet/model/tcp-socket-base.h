@@ -282,6 +282,10 @@ public:
    */
   virtual TypeId GetInstanceTypeId () const;
 
+  /**
+   * \brief TcpGeneralTest friend class (for tests).
+   * \relates TcpGeneralTest
+   */
   friend class TcpGeneralTest;
 
   /**
@@ -619,7 +623,7 @@ protected:
   uint32_t SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool withAck);
 
   /**
-   * \brief Send a empty packet that carries a flag, e.g. ACK
+   * \brief Send a empty packet that carries a flag, e.g., ACK
    *
    * \param flags the packet's flags
    */
@@ -860,6 +864,21 @@ protected:
   virtual void NewAck (SequenceNumber32 const& seq, bool resetRTO);
 
   /**
+   * \brief Dupack management
+   */
+  void DupAck ();
+
+  /**
+   * \brief Limited transmit algorithm
+   */
+  void LimitedTransmit ();
+
+  /**
+   * \brief Enter the FastRetransmit, and retransmit the head
+   */
+  void FastRetransmit ();
+
+  /**
    * \brief Call Retransmit() upon RTO event
    */
   virtual void ReTxTimeout (void);
@@ -896,7 +915,24 @@ protected:
    *
    * \param tcpHeader TcpHeader to add options to
    */
-  virtual void AddOptions (TcpHeader& tcpHeader);
+  void AddOptions (TcpHeader& tcpHeader);
+
+  /**
+   * \brief Read TCP options begore Ack processing
+   *
+   * Timestamp and Window scale are managed in other pieces of code.
+   *
+   * \param tcpHeader Header of the segment
+   */
+  void ReadOptions (const TcpHeader &tcpHeader);
+
+  /**
+   * \brief Return true if the specified option is enabled
+   *
+   * \param kind kind of TCP option
+   * \return true if the option is enabled
+   */
+  bool IsTcpOptionEnabled (uint8_t kind) const;
 
   /**
    * \brief Read and parse the Window scale option

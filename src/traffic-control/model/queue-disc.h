@@ -91,6 +91,13 @@ public:
    */
   virtual void Print (std::ostream &os) const;
 
+  /**
+   * \brief Marks the packet as a substitute for dropping it, such as for Explicit Congestion Notification
+   *
+   * \return true if the packet gets marked, false otherwise
+   */
+  virtual bool Mark (void) = 0;
+
 private:
   /**
    * \brief Default constructor
@@ -419,7 +426,7 @@ public:
    *
    * \return the wake mode adopted by this queue disc.
    */
-  WakeMode GetWakeMode (void);
+  virtual WakeMode GetWakeMode (void) const;
 
   /// Callback invoked by a child queue disc to notify the parent of a packet drop
   typedef Callback<void, Ptr<QueueItem> > ParentDropCallback;
@@ -441,8 +448,12 @@ protected:
 
   /**
    * \brief Check whether the configuration is correct and initialize parameters
+   *
+   * This method is not virtual to prevent subclasses from redefining it.
+   * Subclasses must instead provide the implementation of the CheckConfig
+   * and InitializeParams methods (which are called by this method).
    */
-  virtual void DoInitialize (void);
+  void DoInitialize (void);
 
   /**
    *  \brief Drop a packet

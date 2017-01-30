@@ -51,7 +51,7 @@ class Ipv4GlobalRouting;
 class GlobalRoutingLinkRecord
 {
 public:
-  friend class GlobalRoutingLSA;
+  friend class GlobalRoutingLSA; //!< Friend class.
 /**
  * @enum LinkType
  * @brief Enumeration of the possible types of Global Routing Link Records.
@@ -384,10 +384,12 @@ public:
 
 /**
  * @brief Return the LSType field of the LSA 
+ * @returns The LS Type.
  */
   LSType GetLSType (void) const;
 /**
  * @brief Set the LS type field of the LSA
+ * @param typ the LS Type.
  */
   void SetLSType (LSType typ);
 
@@ -433,6 +435,7 @@ public:
 /**
  * @brief For a Network LSA, set the Network Mask field that precedes
  * the list of attached routers.
+ * @param mask the Network Mask field.
  */
   void SetNetworkLSANetworkMask (Ipv4Mask mask);
 
@@ -828,6 +831,22 @@ private:
   void BuildNetworkLSAs (NetDeviceContainer c);
 
   /**
+   * \brief Return a container of all non-bridged NetDevices on a link
+   *
+   * This method will recursively find all of the 'edge' devices in an
+   * L2 broadcast domain.  If there are no bridged devices, then the
+   * container returned is simply the set of devices on the channel
+   * passed in as an argument.  If the link has bridges on it 
+   * (and therefore multiple ns3::Channel objects interconnected by 
+   * bridges), the method will find all of the non-bridged devices
+   * in the L2 broadcast domain.
+   *
+   * \param ch a channel from the link
+   * \returns the NetDeviceContainer.
+   */
+  NetDeviceContainer FindAllNonBridgedDevicesOnLink (Ptr<Channel> ch) const;
+
+  /**
    * \brief Decide whether or not a given net device is being bridged by a BridgeNetDevice.
    *
    * \param nd the NetDevice
@@ -878,11 +897,14 @@ private:
 
 /**
  * @brief Global Router copy construction is disallowed.
+ * @param sr object to copy from.
  */
   GlobalRouter (GlobalRouter& sr);
 
 /**
  * @brief Global Router assignment operator is disallowed.
+ * @param sr object to copy from.
+ * @returns The object copied.
  */
   GlobalRouter& operator= (GlobalRouter& sr);
 };

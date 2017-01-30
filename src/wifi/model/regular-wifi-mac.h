@@ -21,17 +21,12 @@
 #ifndef REGULAR_WIFI_MAC_H
 #define REGULAR_WIFI_MAC_H
 
-#include "ns3/wifi-mac.h"
+#include "wifi-mac.h"
 #include "dca-txop.h"
 #include "edca-txop-n.h"
-#include "wifi-remote-station-manager.h"
-#include "ssid.h"
-#include "qos-utils.h"
-#include <map>
 
 namespace ns3 {
 
-class Dcf;
 class MacLow;
 class MacRxMiddle;
 class MacTxMiddle;
@@ -232,6 +227,12 @@ public:
    * \return the VHT capability that we support
    */
   VhtCapabilities GetVhtCapabilities (void) const;
+  /**
+   * Return the HE capability of the device.
+   *
+   * \return the HE capability that we support
+   */
+  HeCapabilities GetHeCapabilities (void) const;
 
   /**
    * This type defines the callback of a higher layer that a
@@ -339,8 +340,8 @@ protected:
    * deal with certain values in the WifiPhyStandard enumeration, and
    * chain up to this implementation to deal with the remainder.
    */
-  virtual void FinishConfigureStandard (enum WifiPhyStandard standard);
-  
+  virtual void FinishConfigureStandard (WifiPhyStandard standard);
+
   /**
    * \param cwMin the minimum congestion window size
    * \param cwMax the maximum congestion window size
@@ -491,7 +492,7 @@ protected:
    * \return true if VHT is supported, false otherwise
    */
   bool GetVhtSupported () const;
-  
+
   /**
    * This Boolean is set \c true iff this WifiMac is to model
    * 802.11g. It is exposed through the attribute system.
@@ -509,7 +510,7 @@ protected:
    * \return true if ERP is supported, false otherwise
    */
   bool GetErpSupported () const;
-  
+
   /**
    * This Boolean is set \c true iff this WifiMac is to model
    * 802.11b. It is exposed through the attribute system.
@@ -528,6 +529,24 @@ protected:
    */
   bool GetDsssSupported () const;
 
+  /**
+   * This Boolean is set \c true iff this WifiMac is to model
+   * 802.11ax. It is exposed through the attribute system.
+   */
+  bool m_heSupported;
+  /**
+   * Enable or disable HE support for the device.
+   *
+   * \param enable whether HE is supported
+   */
+  void SetHeSupported (bool enable);
+  /**
+   * Return whether the device supports HE.
+   *
+   * \return true if HE is supported, false otherwise
+   */
+  bool GetHeSupported () const;
+
 
 private:
   RegularWifiMac (const RegularWifiMac &);
@@ -539,7 +558,7 @@ private:
    *
    * \param ac the Access Category index of the queue to initialise.
    */
-  void SetupEdcaQueue (enum AcIndex ac);
+  void SetupEdcaQueue (AcIndex ac);
 
   void SetVoMaxAmsduSize (uint32_t size);
   void SetViMaxAmsduSize (uint32_t size);
@@ -550,17 +569,17 @@ private:
   void SetViMaxAmpduSize (uint32_t size);
   void SetBeMaxAmpduSize (uint32_t size);
   void SetBkMaxAmpduSize (uint32_t size);
-  
+
   void SetVoBlockAckThreshold (uint8_t threshold);
   void SetViBlockAckThreshold (uint8_t threshold);
   void SetBeBlockAckThreshold (uint8_t threshold);
   void SetBkBlockAckThreshold (uint8_t threshold);
-  
+
   void SetVoBlockAckInactivityTimeout (uint16_t timeout);
   void SetViBlockAckInactivityTimeout (uint16_t timeout);
   void SetBeBlockAckInactivityTimeout (uint16_t timeout);
   void SetBkBlockAckInactivityTimeout (uint16_t timeout);
-  
+
   void ConfigureAggregation (void);
   void EnableAggregation (void);
   void DisableAggregation (void);
@@ -577,7 +596,7 @@ private:
 
   TracedCallback<const WifiMacHeader &> m_txOkCallback;
   TracedCallback<const WifiMacHeader &> m_txErrCallback;
-  
+
   bool m_shortSlotTimeSupported;
 };
 

@@ -18,17 +18,8 @@
  * Author: Nicola Baldo <nbaldo@cttc.es>
  */
 
-#include <ns3/ptr.h>
-#include <ns3/object.h>
-#include <ns3/net-device.h>
-#include <ns3/mobility-model.h>
-#include <ns3/wifi-phy.h>
-#include <ns3/spectrum-phy.h>
-#include <ns3/spectrum-signal-parameters.h>
 #include <ns3/log.h>
 #include <ns3/spectrum-value.h>
-#include <ns3/antenna-model.h>
-
 #include "wifi-spectrum-phy-interface.h"
 #include "spectrum-wifi-phy.h"
 
@@ -42,7 +33,8 @@ TypeId
 WifiSpectrumPhyInterface::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::WifiSpectrumPhyInterface")
-    .SetParent<SpectrumPhy> ();
+    .SetParent<SpectrumPhy> ()
+    .SetGroupName ("Wifi");
   return tid;
 }
 
@@ -56,6 +48,8 @@ WifiSpectrumPhyInterface::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
   m_spectrumWifiPhy = 0;
+  m_netDevice = 0;
+  m_channel = 0;
 }
 
 void WifiSpectrumPhyInterface::SetSpectrumWifiPhy (Ptr<SpectrumWifiPhy> spectrumWifiPhy)
@@ -112,6 +106,5 @@ WifiSpectrumPhyInterface::StartRx (Ptr<SpectrumSignalParameters> params)
 {
   m_spectrumWifiPhy->StartRx (params);
 }
-
 
 } //namespace ns3

@@ -19,11 +19,9 @@
  */
 
 #include "ns3/core-module.h"
-#include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/mobility-module.h"
-#include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/internet-module.h"
 
 // This is an example that illustrates how 802.11n aggregation is configured.
@@ -42,7 +40,7 @@
 // - station A uses default aggregation parameter values (A-MSDU disabled, A-MPDU enabled with maximum size of 65 kB);
 // - station B doesn't use aggregation (both A-MPDU and A-MSDU are disabled);
 // - station C enables A-MSDU (with maximum size of 8 kB) but disables A-MPDU;
-// - station C uses two-level aggregation (A-MPDU with maximum size of 32 kB and A-MSDU with maximum size of 4 kB).
+// - station D uses two-level aggregation (A-MPDU with maximum size of 32 kB and A-MSDU with maximum size of 4 kB).
 //
 // Packets in this simulation aren't marked with a QosTag so they
 // are considered belonging to BestEffort Access Class (AC_BE).
@@ -51,7 +49,7 @@
 // Example: ./waf --run "wifi-aggregation --distance=10 --enableRts=0 --simulationTime=20"
 //
 // The output prints the throughput measured for the 4 cases/networks decribed above. When default aggregation parameters are enabled, the
-// maximum A-MPDU size is 65 kB and the throughput is maximal. When aggregation is disabled, the thoughput is about the half of the
+// maximum A-MPDU size is 65 kB and the throughput is maximal. When aggregation is disabled, the throughput is about the half of the
 // physical bitrate as in legacy wifi networks. When only A-MSDU is enabled, the throughput is increased but is not maximal, since the maximum
 // A-MSDU size is limited to 7935 bytes (whereas the maximum A-MPDU size is limited to 65535 bytes). When A-MSDU and A-MPDU are both enabled
 // (= two-level aggregation), the throughput is slightly smaller than the first scenario since we set a smaller maximum A-MPDU size.
@@ -282,18 +280,38 @@ int main (int argc, char *argv[])
   uint32_t totalPacketsThrough = DynamicCast<UdpServer> (serverAppA.Get (0))->GetReceived ();
   double throughput = totalPacketsThrough * payloadSize * 8 / (simulationTime * 1000000.0);
   std::cout << "Throughput with default configuration (A-MPDU aggregation enabled, 65kB): " << throughput << " Mbit/s" << '\n';
+  if (throughput < 59.5 || throughput > 60.5)
+    {
+      NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
+      exit (1);
+    }
   
   totalPacketsThrough = DynamicCast<UdpServer> (serverAppB.Get (0))->GetReceived ();
   throughput = totalPacketsThrough * payloadSize * 8 / (simulationTime * 1000000.0);
   std::cout << "Throughput with aggregation disabled: " << throughput << " Mbit/s" << '\n';
-  
+  if (throughput < 30 || throughput > 30.5)
+    {
+      NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
+      exit (1);
+    }
+
   totalPacketsThrough = DynamicCast<UdpServer> (serverAppC.Get (0))->GetReceived ();
   throughput = totalPacketsThrough * payloadSize * 8 / (simulationTime * 1000000.0);
   std::cout << "Throughput with A-MPDU disabled and A-MSDU enabled (8kB): " << throughput << " Mbit/s" << '\n';
-  
+  if (throughput < 51 || throughput > 52)
+    {
+      NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
+      exit (1);
+    }
+
   totalPacketsThrough = DynamicCast<UdpServer> (serverAppD.Get (0))->GetReceived ();
   throughput = totalPacketsThrough * payloadSize * 8 / (simulationTime * 1000000.0);
   std::cout << "Throughput with A-MPDU enabled (32kB) and A-MSDU enabled (4kB): " << throughput << " Mbit/s" << '\n';
+  if (throughput < 58 || throughput > 59)
+    {
+      NS_LOG_ERROR ("Obtained throughput " << throughput << " is not in the expected boundaries!");
+      exit (1);
+    }
 
   return 0;
 }

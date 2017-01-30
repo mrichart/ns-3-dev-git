@@ -20,7 +20,6 @@
  */
 
 #include "ampdu-tag.h"
-#include "ns3/tag.h"
 #include "ns3/uinteger.h"
 
 namespace ns3 {
@@ -34,7 +33,7 @@ AmpduTag::GetTypeId (void)
     .SetParent<Tag> ()
     .SetGroupName ("Wifi")
     .AddConstructor<AmpduTag> ()
-    .AddAttribute ("Ampdu Exists", "The value that indicates that the packet contains an AMPDU",
+    .AddAttribute ("AmpduExists", "The value that indicates that the packet contains an AMPDU",
                    UintegerValue (false),
                    MakeUintegerAccessor (&AmpduTag::GetAmpdu),
                    MakeUintegerChecker<uint8_t> ())

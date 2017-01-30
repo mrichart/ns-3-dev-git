@@ -152,19 +152,19 @@ WifiAcMappingTest::DoRun (void)
   // Get the four wifi mac queues and set their MaxDelay attribute to a large
   // value, so that packets are not removed by the Cleanup method
   apMac->GetAttribute ("BE_EdcaTxopN", ptr);
-  queues[0] = ptr.Get<EdcaTxopN> ()->GetEdcaQueue ();
+  queues[0] = ptr.Get<EdcaTxopN> ()->GetQueue ();
   queues[0]->SetAttribute ("MaxDelay", TimeValue (Seconds (10.0)));
 
   apMac->GetAttribute ("BK_EdcaTxopN", ptr);
-  queues[1] = ptr.Get<EdcaTxopN> ()->GetEdcaQueue ();
+  queues[1] = ptr.Get<EdcaTxopN> ()->GetQueue ();
   queues[1]->SetAttribute ("MaxDelay", TimeValue (Seconds (10.0)));
 
   apMac->GetAttribute ("VI_EdcaTxopN", ptr);
-  queues[2] = ptr.Get<EdcaTxopN> ()->GetEdcaQueue ();
+  queues[2] = ptr.Get<EdcaTxopN> ()->GetQueue ();
   queues[2]->SetAttribute ("MaxDelay", TimeValue (Seconds (10.0)));
 
   apMac->GetAttribute ("VO_EdcaTxopN", ptr);
-  queues[3] = ptr.Get<EdcaTxopN> ()->GetEdcaQueue ();
+  queues[3] = ptr.Get<EdcaTxopN> ()->GetQueue ();
   queues[3]->SetAttribute ("MaxDelay", TimeValue (Seconds (10.0)));
 
 
@@ -183,7 +183,7 @@ WifiAcMappingTest::DoRun (void)
     }
 
   uint32_t totalOctetsThrough =
-    DynamicCast<PacketSink>(sinkApp.Get (0))->GetTotalRx ();
+    DynamicCast<PacketSink> (sinkApp.Get (0))->GetTotalRx ();
 
   // Check that the first packet has been received
   NS_TEST_ASSERT_MSG_EQ (totalOctetsThrough, 500, "A single packet should have been received");

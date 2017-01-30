@@ -22,12 +22,9 @@
  *
  * Adapted from ht-wifi-network.cc example
  */
-#include <sstream>
-#include <iomanip>
 
+#include <iomanip>
 #include "ns3/core-module.h"
-#include "ns3/config-store-module.h"
-#include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/mobility-module.h"
@@ -92,7 +89,7 @@ int main (int argc, char *argv[])
   double distance = 1;
   double simulationTime = 10; //seconds
   uint16_t index = 256;
-  uint32_t channelWidth;
+  uint32_t channelWidth = 0;
   std::string wifiType = "ns3::SpectrumWifiPhy";
   std::string errorModelType = "ns3::NistErrorRateModel";
   bool enablePcap = false;
@@ -166,34 +163,41 @@ int main (int argc, char *argv[])
           else if (i > 31 && i <= 39)
             {
               phy.Set ("ShortGuardEnabled", BooleanValue (false));
-              phy.Set ("RxAntennas", UintegerValue (2));
-              phy.Set ("TxAntennas", UintegerValue (2));
+              phy.Set ("Antennas", UintegerValue (2));
+              phy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              phy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 20;
             }
           else if (i > 39 && i <= 47)
             {
               phy.Set ("ShortGuardEnabled", BooleanValue (true));
-              phy.Set ("RxAntennas", UintegerValue (2));
-              phy.Set ("TxAntennas", UintegerValue (2));
+              phy.Set ("Antennas", UintegerValue (2));
+              phy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              phy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 20;
             }
           else if (i > 47 && i <= 55)
             {
               phy.Set ("ShortGuardEnabled", BooleanValue (false));
-              phy.Set ("RxAntennas", UintegerValue (2));
-              phy.Set ("TxAntennas", UintegerValue (2));
+              phy.Set ("Antennas", UintegerValue (2));
+              phy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              phy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 40;
             }
           else if (i > 55 && i <= 63)
             {
               phy.Set ("ShortGuardEnabled", BooleanValue (true));
-              phy.Set ("RxAntennas", UintegerValue (2));
-              phy.Set ("TxAntennas", UintegerValue (2));
+              phy.Set ("Antennas", UintegerValue (2));
+              phy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              phy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 40;
             }
         }
       else if (wifiType == "ns3::SpectrumWifiPhy")
         {
+          //Bug 2460: CcaMode1Threshold default should be set to -62 dBm when using Spectrum
+          Config::SetDefault ("ns3::WifiPhy::CcaMode1Threshold", DoubleValue (-62.0));
+
           Ptr<SingleModelSpectrumChannel> spectrumChannel
             = CreateObject<SingleModelSpectrumChannel> ();
           Ptr<FriisPropagationLossModel> lossModel
@@ -233,29 +237,33 @@ int main (int argc, char *argv[])
           else if (i > 31 && i <= 39)
             {
               spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));
-              spectrumPhy.Set ("RxAntennas", UintegerValue (2));
-              spectrumPhy.Set ("TxAntennas", UintegerValue (2));
+              spectrumPhy.Set ("Antennas", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 20;
             }
           else if (i > 39 && i <= 47)
             {
               spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (true));
-              spectrumPhy.Set ("RxAntennas", UintegerValue (2));
-              spectrumPhy.Set ("TxAntennas", UintegerValue (2));
+              spectrumPhy.Set ("Antennas", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 20;
             }
           else if (i > 47 && i <= 55)
             {
               spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (false));
-              spectrumPhy.Set ("RxAntennas", UintegerValue (2));
-              spectrumPhy.Set ("TxAntennas", UintegerValue (2));
+              spectrumPhy.Set ("Antennas", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 40;
             }
           else if (i > 55 && i <= 63)
             {
               spectrumPhy.Set ("ShortGuardEnabled", BooleanValue (true));
-              spectrumPhy.Set ("RxAntennas", UintegerValue (2));
-              spectrumPhy.Set ("TxAntennas", UintegerValue (2));
+              spectrumPhy.Set ("Antennas", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+              spectrumPhy.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
               channelWidth = 40;
             }
         }
@@ -683,7 +691,6 @@ int main (int argc, char *argv[])
 
       Simulator::Stop (Seconds (simulationTime + 1));
       Simulator::Run ();
-      Simulator::Destroy ();
 
       double throughput;
       uint32_t totalPacketsThrough;
@@ -696,6 +703,7 @@ int main (int argc, char *argv[])
         std::setw (12) << throughput <<
         std::setw (8) << totalPacketsThrough <<
         std::endl;
+      Simulator::Destroy ();
     }
   return 0;
 }

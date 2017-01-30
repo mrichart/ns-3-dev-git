@@ -22,11 +22,9 @@
  *
  * Adapted from ht-wifi-network.cc example
  */
-#include <sstream>
-#include <iomanip>
 
+#include <iomanip>
 #include "ns3/core-module.h"
-#include "ns3/config-store-module.h"
 #include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/wifi-module.h"
@@ -88,20 +86,17 @@ using namespace ns3;
 double g_signalDbmAvg;
 double g_noiseDbmAvg;
 uint32_t g_samples;
-uint16_t g_channelNumber;
-uint32_t g_rate;
 
-void MonitorSniffRx (Ptr<const Packet> packet, uint16_t channelFreqMhz,
-                     uint16_t channelNumber, uint32_t rate,
-                     WifiPreamble preamble, WifiTxVector txVector,
-                     struct mpduInfo aMpdu, struct signalNoiseDbm signalNoise)
+void MonitorSniffRx (Ptr<const Packet> packet,
+                     uint16_t channelFreqMhz,
+                     WifiTxVector txVector,
+                     MpduInfo aMpdu,
+                     SignalNoiseDbm signalNoise)
 
 {
   g_samples++;
   g_signalDbmAvg += ((signalNoise.signal - g_signalDbmAvg) / g_samples);
   g_noiseDbmAvg += ((signalNoise.noise - g_noiseDbmAvg) / g_samples);
-  g_rate = rate;
-  g_channelNumber = channelNumber;
 }
 
 NS_LOG_COMPONENT_DEFINE ("WifiSpectrumPerExample");
@@ -197,6 +192,9 @@ int main (int argc, char *argv[])
         }
       else if (wifiType == "ns3::SpectrumWifiPhy")
         {
+          //Bug 2460: CcaMode1Threshold default should be set to -62 dBm when using Spectrum
+          Config::SetDefault ("ns3::WifiPhy::CcaMode1Threshold", DoubleValue (-62.0));
+          
           Ptr<MultiModelSpectrumChannel> spectrumChannel
             = CreateObject<MultiModelSpectrumChannel> ();
           Ptr<FriisPropagationLossModel> lossModel
@@ -519,12 +517,9 @@ int main (int argc, char *argv[])
       g_signalDbmAvg = 0;
       g_noiseDbmAvg = 0;
       g_samples = 0;
-      g_channelNumber = 0;
-      g_rate = 0;
 
       Simulator::Stop (Seconds (simulationTime + 1));
       Simulator::Run ();
-      Simulator::Destroy ();
 
       double throughput = 0;
       uint32_t totalPacketsThrough = 0;
@@ -560,6 +555,7 @@ int main (int argc, char *argv[])
             std::setw (12) << "N/A" <<
             std::endl;
         }
+      Simulator::Destroy ();
     }
   return 0;
 }

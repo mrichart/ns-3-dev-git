@@ -19,13 +19,8 @@
  */
 
 #include "dsss-parameter-set.h"
-#include "ns3/assert.h"
-#include "ns3/log.h"
-#include <cmath>
 
 namespace ns3 {
-
-NS_LOG_COMPONENT_DEFINE ("DsssParameterSet");
 
 DsssParameterSet::DsssParameterSet ()
   : m_currentChannel (0),
@@ -36,7 +31,7 @@ DsssParameterSet::DsssParameterSet ()
 WifiInformationElementId
 DsssParameterSet::ElementId () const
 {
-  return IE_DS_PARAMETER_SET;
+  return IE_DSSS_PARAMETER_SET;
 }
 
 void

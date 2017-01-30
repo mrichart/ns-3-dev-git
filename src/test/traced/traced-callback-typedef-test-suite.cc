@@ -164,7 +164,6 @@ TYPENAME (LtePdcp::PduRxTracedCallback);
 TYPENAME (LtePdcp::PduTxTracedCallback);
 TYPENAME (LteUePhy::StateTracedCallback);
 TYPENAME (LteUePhy::RsrpSinrTracedCallback);  
-TYPENAME (LteUePhy::RsrpRsrqTracedCallback);
 TYPENAME (LteUeRrc::CellSelectionTracedCallback);
 TYPENAME (LteUeRrc::StateTracedCallback);  
 TYPENAME (Mac48Address::TracedCallback);
@@ -473,8 +472,8 @@ TracedCallbackTypedefTestCase::DoRun (void)
          uint32_t, uint32_t, uint16_t, uint8_t, uint16_t);
 
   CHECK (LteEnbPhy::ReportUeSinrTracedCallback,
-         uint16_t, uint16_t, double,
-         empty, empty);
+         uint16_t, uint16_t, double, uint8_t,
+         empty);
 
   CHECK (LteEnbPhy::ReportInterferenceTracedCallback,
          uint16_t, Ptr<SpectrumValue>,
@@ -509,17 +508,11 @@ TracedCallbackTypedefTestCase::DoRun (void)
   DUPE  (LteRlc::ReceiveTracedCallback, LtePdcp::PduRxTracedCallback);
 
   CHECK (LteUePhy::RsrpSinrTracedCallback,
-         uint16_t, uint16_t, double, double,
-         empty);
-         
-  CHECK (LteUePhy::RsrpRsrqTracedCallback,
-         uint16_t, uint16_t, double, double, bool);
-         
+         uint16_t, uint16_t, double, double, uint8_t);
+
   CHECK (LteUePhy::StateTracedCallback,
          uint16_t, uint16_t, LteUePhy::State, LteUePhy::State,
          empty);
-
-  DUPE   (LteUePowerControl::TxPowerTracedCallback, LteEnbPhy::ReportUeSinrTracedCallback);
 
   CHECK (LteUeRrc::CellSelectionTracedCallback,
          uint64_t, uint16_t,

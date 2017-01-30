@@ -475,13 +475,15 @@ congestive and non-congestive states.
 The backlog (the number of packets accumulated at the bottleneck queue) is
 calculated using Equation (1):
 
-.. math::  N &= Actual \cdot (RTT - BaseRTT) \\
-             &= Diff \cdot BaseRTT
+.. math::
+   N &= Actual \cdot (RTT - BaseRTT) \\
+     &= Diff \cdot BaseRTT
 
 where:
 
-.. math::  Diff &= Expected - Actual \\
-                &= \frac{cWnd}{BaseRTT} - \frac{cWnd}{RTT}
+.. math::
+   Diff &= Expected - Actual \\
+        &= \frac{cWnd}{BaseRTT} - \frac{cWnd}{RTT}
 
 Veno makes decision on cwnd modification based on the calculated N and its
 predefined threshold beta.
@@ -575,26 +577,30 @@ robustness against sudden fluctuations in its delay sampling,
 Illinois allows the increment of alpha to alphaMax
 only if da stays below d1 for a some (theta) amount of time.
 
-::
-
-                             / alphaMax          if da <= d1
-                     alpha =                                         (1)
-                             \ k1 / (k2 + da)    otherwise
-
-                             / betaMin            if da <= d2
-                     beta =    k3 + k4da          if d2 < da < d3      (2)
-                             \ betaMax            otherwise
-
+.. math::
+   alpha &=
+   \begin{cases}
+      \quad alphaMax              & \quad \text{if } da <= d1 \\
+      \quad k1 / (k2 + da)        & \quad \text{otherwise} \\
+   \end{cases} \\
+   \\
+   beta &=
+   \begin{cases}
+      \quad betaMin               & \quad \text{if } da <= d2 \\
+      \quad k3 + k4 \, da         & \quad \text{if } d2 < da < d3 \\
+      \quad betaMax               & \quad \text{otherwise}
+   \end{cases}
+			     
 where the calculations of k1, k2, k3, and k4 are shown in the following:
 
 .. math::
 
-   k1 &= \frac{(dm - d1) \cdot alphaMin \cdot alphaMax}{alphaMax - alphaMin}
-
-   k2 &= \frac{(dm - d1) \cdot alphaMin}{alphaMax - alphaMin} - d1
-
-   k3 &= \frac{alphaMin \cdot d3 - alphaMax \cdot d2}{d3 - d2}
-
+   k1 &= \frac{(dm - d1) \cdot alphaMin \cdot alphaMax}{alphaMax - alphaMin} \\
+   \\
+   k2 &= \frac{(dm - d1) \cdot alphaMin}{alphaMax - alphaMin} - d1 \\
+   \\
+   k3 &= \frac{alphaMin \cdot d3 - alphaMax \cdot d2}{d3 - d2} \\
+   \\
    k4 &= \frac{alphaMax - alphaMin}{d3 - d2}
 
 Other parameters include da (the current average queueing delay), and
@@ -630,6 +636,39 @@ default parameter settings:
 
 More information: http://www.doi.org/10.1145/1190095.1190166
 
+H-TCP
+^^^^^
+
+H-TCP has been designed for high BDP (Bandwidth-Delay Product) paths. It is 
+a dual mode protocol. In normal conditions, it works like traditional TCP 
+with the same rate of increment and decrement for the congestion window. 
+However, in high BDP networks, when it finds no congestion on the path 
+after ``deltal`` seconds, it increases the window size based on the alpha 
+function in the following:
+
+.. math::
+
+        alpha(delta)=1+10(delta-deltal)+0.5(delta-deltal)^2 
+
+where ``deltal`` is a threshold in seconds for switching between the modes and 
+``delta`` is the elapsed time from the last congestion. During congestion, 
+it reduces the window size by multiplying by beta function provided 
+in the reference paper.  The calculated throughput between the last two 
+consecutive congestion events is considered for beta calculation. 
+
+The transport ``TcpHtcp`` can be selected in the program 
+``examples/tcp/tcp-variants/comparison`` to perform an experiment with H-TCP,
+although it is useful to increase the bandwidth in this example (e.g.
+to 20 Mb/s) to create a higher BDP link, such as
+
+::
+
+  ./waf --run "tcp-variants-comparison --transport_prot=TcpHtcp --bandwidth=20Mbps --duration=10"
+
+More information (paper):  http://www.hamilton.ie/net/htcp3.pdf
+
+More information (Internet Draft):  https://tools.ietf.org/html/draft-leith-tcp-htcp-06
+
 Validation
 ++++++++++
 
@@ -647,6 +686,7 @@ section below on :ref:`Writing-tcp-tests`.
 * **tcp-fast-retr-test:** Fast Retransmit testing
 * **tcp-header:** Unit tests on the TCP header
 * **tcp-highspeed-test:** Unit tests on the Highspeed congestion control
+* **tcp-htcp-test:** Unit tests on the H-TCP congestion control
 * **tcp-hybla-test:** Unit tests on the Hybla congestion control
 * **tcp-vegas-test:** Unit tests on the Vegas congestion control
 * **tcp-veno-test:** Unit tests on the Veno congestion control
