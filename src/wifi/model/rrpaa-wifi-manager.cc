@@ -163,9 +163,10 @@ RrpaaWifiManager::SetupPhy (Ptr<WifiPhy> phy)
       WifiMode mode = phy->GetMode (i);
       WifiTxVector txVector;
       txVector.SetMode (mode);
+      txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
       /* Calculate the TX Time of the data and the corresponding ACK*/
-      Time dataTxTime = phy->CalculateTxDuration (m_frameLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ());
-      Time ackTxTime = phy->CalculateTxDuration (m_ackLength, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency ());
+      Time dataTxTime = phy->CalculateTxDuration (m_frameLength, txVector, phy->GetFrequency ());
+      Time ackTxTime = phy->CalculateTxDuration (m_ackLength, txVector, phy->GetFrequency ());
       NS_LOG_DEBUG ("Calculating TX times: Mode= " << mode << " DataTxTime= " << dataTxTime << " AckTxTime= " << ackTxTime);
       AddCalcTxTime (mode, dataTxTime + ackTxTime);
     }
@@ -394,7 +395,8 @@ RrpaaWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       m_powerChange (station->m_prevPowerLevel, station->m_powerLevel, station->m_state->m_address);
       station->m_prevPowerLevel = station->m_powerLevel;
     }
-  return WifiTxVector (GetSupported (station, station->m_rateIndex), station->m_powerLevel, GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+  WifiMode mode = GetSupported (station, station->m_rateIndex);
+  return WifiTxVector (mode, station->m_powerLevel, GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 WifiTxVector
 RrpaaWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
@@ -407,8 +409,18 @@ RrpaaWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
       //avoid to use legacy rate adaptation algorithms for IEEE 802.11n/ac
       channelWidth = 20;
     }
-  CheckInit (station);
-  return WifiTxVector (GetSupported (st, 0), GetDefaultTxPowerLevel (), GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+  WifiTxVector rtsTxVector;
+  WifiMode mode;
+  if (GetUseNonErpProtection () == false)
+    {
+      mode = GetSupported (station, 0);
+    }
+  else
+    {
+      mode = GetNonErpSupported (station, 0);
+    }
+  rtsTxVector = WifiTxVector (mode, GetDefaultTxPowerLevel (), GetShortRetryCount (station), GetPreambleForTransmission (mode, GetAddress (st)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
+  return rtsTxVector;
 }
 
 bool
@@ -587,6 +599,38 @@ RrpaaWifiManager::IsLowLatency (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;
+}
+
+
+
+void
+RrpaaWifiManager::SetHtSupported (bool enable)
+{
+  //HT is not supported by this algorithm.
+  if (enable)
+    {
+      NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support HT rates");
+    }
+}
+
+void
+RrpaaWifiManager::SetVhtSupported (bool enable)
+{
+  //VHT is not supported by this algorithm.
+  if (enable)
+    {
+      NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support VHT rates");
+    }
+}
+
+void
+RrpaaWifiManager::SetHeSupported (bool enable)
+{
+  //HE is not supported by this algorithm.
+  if (enable)
+    {
+      NS_FATAL_ERROR ("WifiRemoteStationManager selected does not support HE rates");
+    }
 }
 
 } // namespace ns3
