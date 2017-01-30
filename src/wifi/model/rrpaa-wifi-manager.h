@@ -79,6 +79,13 @@ public:
   RrpaaWifiManager ();
   virtual ~RrpaaWifiManager ();
 
+  // Inherited from WifiRemoteStationManager
+  virtual void SetupPhy (Ptr<WifiPhy> phy);
+  virtual void SetupMac (Ptr<WifiMac> mac);
+  virtual void SetHtSupported (bool enable);
+  virtual void SetVhtSupported (bool enable);
+  virtual void SetHeSupported (bool enable);
+
   /**
    * Assign a fixed random variable stream number to the random variables
    * used by this model.  Return the number of streams (possibly zero) that
@@ -89,9 +96,6 @@ public:
    * \return the number of stream indices assigned by this model
    */
   int64_t AssignStreams (int64_t stream);
-
-  virtual void SetupPhy (Ptr<WifiPhy> phy);
-  virtual void SetupMac (Ptr<WifiMac> mac);
 
 private:
   //overriden from base class

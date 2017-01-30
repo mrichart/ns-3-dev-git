@@ -334,7 +334,8 @@ AparfWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       m_rateChange (station->m_prevRateIndex, station->m_rateIndex, station->m_state->m_address);
       station->m_prevRateIndex = station->m_rateIndex;
     }
-  return WifiTxVector (GetSupported (station, station->m_rateIndex), station->m_powerLevel, GetLongRetryCount (station), false, 1, 0, channelWidth, GetAggregation (station), false);
+  WifiMode mode = GetSupported (station, station->m_rateIndex);
+  return WifiTxVector (mode, station->m_powerLevel, GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (st)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
 WifiTxVector
