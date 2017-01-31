@@ -517,6 +517,15 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
           Time delay = MicroSeconds (beacon.GetBeaconIntervalUs () * m_maxMissedBeacons);
           RestartBeaconWatchdog (delay);
           SetBssid (hdr->GetAddr3 ());
+          SupportedRates rates = beacon.GetSupportedRates ();
+          for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
+            {
+              WifiMode mode = m_phy->GetMode (i);
+              if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth ())))
+                {
+                  m_stationManager->AddSupportedMode (hdr->GetAddr2 (), mode);
+                }
+            }
           bool isShortPreambleEnabled = capabilities.IsShortPreamble ();
           if (m_erpSupported)
             {
@@ -566,6 +575,23 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               else
                 {
                   m_stationManager->AddStationHtCapabilities (hdr->GetAddr2 (), htCapabilities);
+                  HtOperation htOperation = beacon.GetHtOperation ();
+                  if (htOperation.GetNonGfHtStasPresent ())
+                    {
+                      m_stationManager->SetUseGreenfieldProtection (true);
+                    }
+                  else
+                    {
+                      m_stationManager->SetUseGreenfieldProtection (false);
+                    }
+                  for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+                    {
+                      WifiMode mcs = m_phy->GetMcs (i);
+                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HT && htCapabilities.IsSupportedMcs (mcs.GetMcsValue ()))
+                        {
+                          m_stationManager->AddSupportedMcs (hdr->GetAddr2 (), mcs);
+                        }
+                    }
                 }
             }
           if (m_vhtSupported)
@@ -575,13 +601,30 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               if (vhtCapabilities.GetRxHighestSupportedLgiDataRate () > 0)
                 {
                   m_stationManager->AddStationVhtCapabilities (hdr->GetAddr2 (), vhtCapabilities);
+                  VhtOperation vhtOperation = beacon.GetVhtOperation ();
+                  for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+                    {
+                      WifiMode mcs = m_phy->GetMcs (i);
+                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_VHT && vhtCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
+                        {
+                          m_stationManager->AddSupportedMcs (hdr->GetAddr2 (), mcs);
+                        }
+                    }
                 }
             }
           if (m_heSupported)
             {
-              HeCapabilities hecapabilities = beacon.GetHeCapabilities ();
+              HeCapabilities heCapabilities = beacon.GetHeCapabilities ();
               //todo: once we support non constant rate managers, we should add checks here whether HE is supported by the peer
-              m_stationManager->AddStationHeCapabilities (hdr->GetAddr2 (), hecapabilities);
+              m_stationManager->AddStationHeCapabilities (hdr->GetAddr2 (), heCapabilities);
+              for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+                {
+                  WifiMode mcs = m_phy->GetMcs (i);
+                  if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HE && heCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
+                    {
+                      m_stationManager->AddSupportedMcs (hdr->GetAddr2 (), mcs);
+                    }
+                }
             }
           m_stationManager->SetShortPreambleEnabled (isShortPreambleEnabled);
           m_stationManager->SetShortSlotTimeEnabled (capabilities.IsShortSlotTime ());
@@ -757,6 +800,14 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                     {
                       m_stationManager->AddStationHtCapabilities (hdr->GetAddr2 (), htCapabilities);
                       HtOperation htOperation = assocResp.GetHtOperation ();
+                      if (htOperation.GetNonGfHtStasPresent ())
+                        {
+                          m_stationManager->SetUseGreenfieldProtection (true);
+                        }
+                      else
+                        {
+                          m_stationManager->SetUseGreenfieldProtection (false);
+                        }
                     }
                 }
               if (m_vhtSupported)
@@ -789,11 +840,11 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                 }
               if (m_htSupported)
                 {
-                  HtCapabilities htcapabilities = assocResp.GetHtCapabilities ();
+                  HtCapabilities htCapabilities = assocResp.GetHtCapabilities ();
                   for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
                     {
                       WifiMode mcs = m_phy->GetMcs (i);
-                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HT && htcapabilities.IsSupportedMcs (mcs.GetMcsValue ()))
+                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HT && htCapabilities.IsSupportedMcs (mcs.GetMcsValue ()))
                         {
                           m_stationManager->AddSupportedMcs (hdr->GetAddr2 (), mcs);
                           //here should add a control to add basic MCS when it is implemented
@@ -806,7 +857,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                   for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
                     {
                       WifiMode mcs = m_phy->GetMcs (i);
-                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_VHT && vhtcapabilities.IsSupportedTxMcs (mcs.GetMcsValue ()))
+                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_VHT && vhtcapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
                         {
                           m_stationManager->AddSupportedMcs (hdr->GetAddr2 (), mcs);
                           //here should add a control to add basic MCS when it is implemented
@@ -815,11 +866,11 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                 }
               if (m_heSupported)
                 {
-                  HeCapabilities hecapabilities = assocResp.GetHeCapabilities ();
+                  HeCapabilities heCapabilities = assocResp.GetHeCapabilities ();
                   for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
                     {
                       WifiMode mcs = m_phy->GetMcs (i);
-                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HE && hecapabilities.IsSupportedTxMcs (mcs.GetMcsValue ()))
+                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HE && heCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
                         {
                           m_stationManager->AddSupportedMcs (hdr->GetAddr2 (), mcs);
                           //here should add a control to add basic MCS when it is implemented
