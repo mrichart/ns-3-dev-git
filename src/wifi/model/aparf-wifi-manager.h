@@ -116,11 +116,11 @@ private:
   /**
    * The trace source fired when the transmission power changes.
    */
-  TracedCallback<uint8_t, uint8_t, Mac48Address> m_powerChange;
+  TracedCallback<double, double, Mac48Address> m_powerChange;
   /**
    * The trace source fired when the transmission rate changes.
    */
-  TracedCallback<uint32_t, uint32_t, Mac48Address> m_rateChange;
+  TracedCallback<DataRate, DataRate, Mac48Address> m_rateChange;
 
 };
 

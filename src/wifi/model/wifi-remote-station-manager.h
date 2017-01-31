@@ -25,6 +25,7 @@
 #include "ns3/packet.h"
 #include "ns3/object.h"
 #include "ns3/nstime.h"
+#include "ns3/data-rate.h"
 #include "wifi-tx-vector.h"
 #include "ht-capabilities.h"
 #include "vht-capabilities.h"
@@ -808,20 +809,20 @@ public:
   /**
    * TracedCallback signature for power change events.
    *
-   * \param [in] oldPower The previous power level.
-   * \param [in] newPower The new power level.
+   * \param [in] oldPower The previous power (in dBm).
+   * \param [in] newPower The new power (in dBm).
    * \param [in] address The remote station MAC address.
    */
-  typedef void (*PowerChangeTracedCallback)(uint8_t oldPower, uint8_t newPower, Mac48Address remoteAddress);
+  typedef void (*PowerChangeTracedCallback)(double oldPower, double newPower, Mac48Address remoteAddress);
 
   /**
    * TracedCallback signature for rate change events.
    *
-   * \param [in] oldRate The previous rate index.
-   * \param [in] newRate The new rate index.
+   * \param [in] oldRate The previous data rate.
+   * \param [in] newRate The new data rate.
    * \param [in] address The remote station MAC address.
    */
-  typedef void (*RateChangeTracedCallback)(uint32_t oldRate, uint32_t newRate, Mac48Address remoteAddress);
+  typedef void (*RateChangeTracedCallback)(DataRate oldRate, DataRate newRate, Mac48Address remoteAddress);
 
 
 protected:

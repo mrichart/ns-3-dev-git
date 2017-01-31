@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2015 Universidad de la República - Uruguay
+ * Copyright (c) 2017 Universidad de la República - Uruguay
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -56,12 +56,12 @@ struct RrpaaWifiRemoteStation : public WifiRemoteStation
   uint32_t m_prevRateIndex;      //!< Rate index of the previous transmission.
   uint32_t m_rateIndex;          //!< Current rate index.
   uint8_t m_prevPowerLevel;      //!< Power level of the previous transmission.
-  uint8_t m_powerLevel;               //!< Current power level.
+  uint8_t m_powerLevel;          //!< Current power level.
   
 
   RrpaaThresholdsTable m_thresholds;  //!< Rrpaa thresholds for this station.
 
-  RrpaaProbabilitiesTable m_pdTable;            //!< Probability table for power and rate changes.
+  RrpaaProbabilitiesTable m_pdTable;  //!< Probability table for power and rate changes.
 };
 
 NS_OBJECT_ENSURE_REGISTERED (RrpaaWifiManager);
@@ -246,8 +246,12 @@ RrpaaWifiManager::CheckInit (RrpaaWifiRemoteStation *station)
       station->m_rateIndex = 0;
       station->m_prevPowerLevel = m_maxPower;
       station->m_powerLevel = m_maxPower;
-      m_rateChange (station->m_prevRateIndex, station->m_rateIndex, station->m_state->m_address);
-      m_powerChange (station->m_prevPowerLevel, station->m_powerLevel, station->m_state->m_address);
+      WifiMode mode = GetSupported (station, 0);
+      uint8_t channelWidth = GetChannelWidth(station);
+      DataRate rate = DataRate (mode.GetDataRate(channelWidth));
+      double power = GetPhy ()->GetPowerDbm (m_maxPower);
+      m_rateChange (rate, rate, station->m_state->m_address);
+      m_powerChange (power, power, station->m_state->m_address);
 
       station->m_pdTable = RrpaaProbabilitiesTable (station->m_nRate, std::vector<double> (m_nPower));
       NS_LOG_DEBUG("Initializing pdTable");
@@ -385,17 +389,21 @@ RrpaaWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       channelWidth = 20;
     }
   CheckInit (station);
+  WifiMode mode = GetSupported (station, station->m_rateIndex);
+  DataRate rate = DataRate (mode.GetDataRate(channelWidth));
+  DataRate prevRate = DataRate (GetSupported (station, station->m_prevRateIndex).GetDataRate(channelWidth));
+  double power = GetPhy ()->GetPowerDbm (station->m_powerLevel);
+  double prevPower = GetPhy ()->GetPowerDbm (station->m_prevPowerLevel);
   if (station->m_prevRateIndex != station->m_rateIndex)
     {
-      m_rateChange (station->m_prevRateIndex, station->m_rateIndex, station->m_state->m_address);
+      m_rateChange (prevRate, rate, station->m_state->m_address);
       station->m_prevRateIndex = station->m_rateIndex;
     }
   if (station->m_prevPowerLevel != station->m_powerLevel)
     {
-      m_powerChange (station->m_prevPowerLevel, station->m_powerLevel, station->m_state->m_address);
+      m_powerChange (prevPower, power, station->m_state->m_address);
       station->m_prevPowerLevel = station->m_powerLevel;
     }
-  WifiMode mode = GetSupported (station, station->m_rateIndex);
   return WifiTxVector (mode, station->m_powerLevel, GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 WifiTxVector

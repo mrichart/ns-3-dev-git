@@ -642,11 +642,11 @@ TracedCallbackTypedefTestCase::DoRun (void)
          empty);
 
   CHECK (WifiRemoteStationManager::PowerChangeTracedCallback,
-         uint8_t, uint8_t, Mac48Address,
+         double, double, Mac48Address,
          empty, empty);
 
   CHECK (WifiRemoteStationManager::RateChangeTracedCallback,
-         uint32_t,  uint32_t, Mac48Address,
+         DataRate, DataRate, Mac48Address,
          empty, empty);
 }
 

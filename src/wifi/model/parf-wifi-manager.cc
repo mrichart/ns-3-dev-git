@@ -130,8 +130,12 @@ ParfWifiManager::CheckInit (ParfWifiRemoteStation *station)
       station->m_prevRateIndex = station->m_nSupported - 1;
       station->m_powerLevel = m_maxPower;
       station->m_prevPowerLevel = m_maxPower;
-      m_powerChange (station->m_prevRateIndex, station->m_powerLevel, station->m_state->m_address);
-      m_rateChange (station->m_prevPowerLevel, station->m_rateIndex, station->m_state->m_address);
+      WifiMode mode = GetSupported (station, station->m_rateIndex);
+      uint8_t channelWidth = GetChannelWidth(station);
+      DataRate rate = DataRate (mode.GetDataRate(channelWidth));
+      double power = GetPhy ()->GetPowerDbm (m_maxPower);
+      m_powerChange (power, power, station->m_state->m_address);
+      m_rateChange (rate, rate, station->m_state->m_address);
       station->m_initialized = true;
     }
 }
@@ -297,17 +301,21 @@ ParfWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       channelWidth = 20;
     }
   CheckInit (station);
+  WifiMode mode = GetSupported (station, station->m_rateIndex);
+  DataRate rate = DataRate (mode.GetDataRate(channelWidth));
+  DataRate prevRate = DataRate (GetSupported (station, station->m_prevRateIndex).GetDataRate(channelWidth));
+  double power = GetPhy ()->GetPowerDbm (station->m_powerLevel);
+  double prevPower = GetPhy ()->GetPowerDbm (station->m_prevPowerLevel);
   if (station->m_prevPowerLevel != station->m_powerLevel)
     {
-      m_powerChange (station->m_prevRateIndex, station->m_powerLevel, station->m_state->m_address);
+      m_powerChange (prevPower, power, station->m_state->m_address);
       station->m_prevPowerLevel = station->m_powerLevel;
     }
   if (station->m_prevRateIndex != station->m_rateIndex)
     {
-      m_rateChange (station->m_prevPowerLevel, station->m_rateIndex, station->m_state->m_address);
+      m_rateChange (prevRate, rate, station->m_state->m_address);
       station->m_prevRateIndex = station->m_rateIndex;
     }
-  WifiMode mode = GetSupported (station, station->m_rateIndex);
   return WifiTxVector (mode, station->m_powerLevel, GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 
