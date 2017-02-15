@@ -53,9 +53,9 @@ struct RrpaaWifiRemoteStation;
  */
 struct Thresholds
 {
-  double m_ori;
-  double m_mtl;
-  uint32_t m_ewnd;
+  double m_ori;      //!< The Oportunistic Rate Increase threshold.
+  double m_mtl;      //!< The Maximum Tolerable Loss threshold.
+  uint32_t m_ewnd;   //!< The Estimation Window size.
 };
 
 /**
@@ -231,8 +231,7 @@ private:
    */
   TracedCallback<DataRate, DataRate, Mac48Address> m_rateChange;
 
-  //Provides uniform random variables.
-  Ptr<UniformRandomVariable> m_uniformRandomVariable;
+  Ptr<UniformRandomVariable> m_uniformRandomVariable;    //!< Provides uniform random variables for probabilistic changes.
 };
 
 } //namespace ns3
