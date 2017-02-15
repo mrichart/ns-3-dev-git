@@ -51,12 +51,16 @@ int main (int argc, char *argv[])
   double simulationTime = 10; //seconds
   double distance = 1.0; //meters
   int mcs = -1; // -1 indicates an unset value
+  double minExpectedThroughput = 0;
+  double maxExpectedThroughput = 0;
 
   CommandLine cmd;
   cmd.AddValue ("distance", "Distance in meters between the station and the access point", distance);
   cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
   cmd.AddValue ("udp", "UDP if set to 1, TCP otherwise", udp);
   cmd.AddValue ("mcs", "if set, limit testing to a specific MCS (0-7)", mcs);
+  cmd.AddValue ("minExpectedThroughput", "if set, simulation fails if the lowest throughput is below this value", minExpectedThroughput);
+  cmd.AddValue ("maxExpectedThroughput", "if set, simulation fails if the highest throughput is above this value", maxExpectedThroughput);
   cmd.Parse (argc,argv);
 
   double prevThroughput [8];
@@ -76,7 +80,7 @@ int main (int argc, char *argv[])
     {
       uint8_t index = 0;
       double previous = 0;
-      for (int channelWidth = 20; channelWidth <= 160;)
+      for (int channelWidth = 20; channelWidth <= 160; )
         {
           if (mcs == 9 && channelWidth == 20)
             {
@@ -111,12 +115,12 @@ int main (int argc, char *argv[])
               WifiHelper wifi;
               wifi.SetStandard (WIFI_PHY_STANDARD_80211ac);
               WifiMacHelper mac;
-                
+
               std::ostringstream oss;
               oss << "VhtMcs" << mcs;
               wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager","DataMode", StringValue (oss.str ()),
                                             "ControlMode", StringValue (oss.str ()));
-                
+
               Ssid ssid = Ssid ("ns3-80211ac");
 
               mac.SetType ("ns3::StaWifiMac",
@@ -153,7 +157,6 @@ int main (int argc, char *argv[])
               stack.Install (wifiStaNode);
 
               Ipv4AddressHelper address;
-
               address.SetBase ("192.168.1.0", "255.255.255.0");
               Ipv4InterfaceContainer staNodeInterface;
               Ipv4InterfaceContainer apNodeInterface;
@@ -162,45 +165,44 @@ int main (int argc, char *argv[])
               apNodeInterface = address.Assign (apDevice);
 
               /* Setting applications */
-              ApplicationContainer serverApp, sinkApp;
+              ApplicationContainer serverApp;
               if (udp)
                 {
-                  UdpServerHelper myServer (9);
-                  serverApp = myServer.Install (wifiStaNode.Get (0));
+                  //UDP flow
+                  uint16_t port = 9;
+                  UdpServerHelper server (port);
+                  serverApp = server.Install (wifiStaNode.Get (0));
                   serverApp.Start (Seconds (0.0));
                   serverApp.Stop (Seconds (simulationTime + 1));
 
-                  UdpClientHelper myClient (staNodeInterface.GetAddress (0), 9);
-                  myClient.SetAttribute ("MaxPackets", UintegerValue (4294967295u));
-                  myClient.SetAttribute ("Interval", TimeValue (Time ("0.00001"))); //packets/s
-                  myClient.SetAttribute ("PacketSize", UintegerValue (payloadSize));
-
-                  ApplicationContainer clientApp = myClient.Install (wifiApNode.Get (0));
+                  UdpClientHelper client (staNodeInterface.GetAddress (0), port);
+                  client.SetAttribute ("MaxPackets", UintegerValue (4294967295u));
+                  client.SetAttribute ("Interval", TimeValue (Time ("0.00001"))); //packets/s
+                  client.SetAttribute ("PacketSize", UintegerValue (payloadSize));
+                  ApplicationContainer clientApp = client.Install (wifiApNode.Get (0));
                   clientApp.Start (Seconds (1.0));
                   clientApp.Stop (Seconds (simulationTime + 1));
                 }
               else
                 {
+                  //TCP flow
                   uint16_t port = 50000;
-                  Address apLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
-                  PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory", apLocalAddress);
-                  sinkApp = packetSinkHelper.Install (wifiStaNode.Get (0));
+                  Address localAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
+                  PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory", localAddress);
+                  serverApp = packetSinkHelper.Install (wifiStaNode.Get (0));
+                  serverApp.Start (Seconds (0.0));
+                  serverApp.Stop (Seconds (simulationTime + 1));
 
-                  sinkApp.Start (Seconds (0.0));
-                  sinkApp.Stop (Seconds (simulationTime + 1));
-
-                  OnOffHelper onoff ("ns3::TcpSocketFactory",Ipv4Address::GetAny ());
+                  OnOffHelper onoff ("ns3::TcpSocketFactory", Ipv4Address::GetAny ());
                   onoff.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
                   onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
                   onoff.SetAttribute ("PacketSize", UintegerValue (payloadSize));
                   onoff.SetAttribute ("DataRate", DataRateValue (1000000000)); //bit/s
-                  ApplicationContainer apps;
-
                   AddressValue remoteAddress (InetSocketAddress (staNodeInterface.GetAddress (0), port));
                   onoff.SetAttribute ("Remote", remoteAddress);
-                  apps.Add (onoff.Install (wifiApNode.Get (0)));
-                  apps.Start (Seconds (1.0));
-                  apps.Stop (Seconds (simulationTime + 1));
+                  ApplicationContainer clientApp = onoff.Install (wifiApNode.Get (0));
+                  clientApp.Start (Seconds (1.0));
+                  clientApp.Stop (Seconds (simulationTime + 1));
                 }
 
               Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
@@ -216,23 +218,23 @@ int main (int argc, char *argv[])
                 }
               else
                 {
-                  rxBytes = payloadSize * DynamicCast<PacketSink> (sinkApp.Get (0))->GetTotalRx ();
+                  rxBytes = DynamicCast<PacketSink> (serverApp.Get (0))->GetTotalRx ();
                 }
               double throughput = (rxBytes * 8) / (simulationTime * 1000000.0); //Mbit/s
               std::cout << mcs << "\t\t\t" << channelWidth << " MHz\t\t\t" << sgi << "\t\t\t" << throughput << " Mbit/s" << std::endl;
               //test first element
-              if (udp && mcs == 0 && channelWidth == 20 && sgi == 0)
+              if (mcs == 0 && channelWidth == 20 && sgi == 0)
                 {
-                  if (throughput < 5.1 || throughput > 6.1)
+                  if (throughput < minExpectedThroughput)
                     {
                       NS_LOG_ERROR ("Obtained throughput " << throughput << " is not expected!");
                       exit (1);
                     }
                 }
               //test last element
-              if (udp && mcs == 9 && channelWidth == 160 && sgi == 1)
+              if (mcs == 9 && channelWidth == 160 && sgi == 1)
                 {
-                  if (throughput < 550 || throughput > 650)
+                  if (maxExpectedThroughput > 0 && throughput > maxExpectedThroughput)
                     {
                       NS_LOG_ERROR ("Obtained throughput " << throughput << " is not expected!");
                       exit (1);

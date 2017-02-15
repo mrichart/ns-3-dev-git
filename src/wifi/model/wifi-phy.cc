@@ -167,13 +167,13 @@ WifiPhy::GetTypeId (void)
                    UintegerValue (20),
                    MakeUintegerAccessor (&WifiPhy::GetChannelWidth,
                                          &WifiPhy::SetChannelWidth),
-                   MakeUintegerChecker<uint8_t> ())
+                   MakeUintegerChecker<uint8_t> (5, 160))
     .AddAttribute ("ChannelNumber",
                    "If set to non-zero defined value, will control Frequency and ChannelWidth assignment",
                    UintegerValue (0),
                    MakeUintegerAccessor (&WifiPhy::SetChannelNumber,
                                          &WifiPhy::GetChannelNumber),
-                   MakeUintegerChecker<uint8_t> ())
+                   MakeUintegerChecker<uint8_t> (0, 196))
     .AddAttribute ("EnergyDetectionThreshold",
                    "The energy of a received signal should be higher than "
                    "this threshold (dbm) to allow the PHY layer to detect the signal.",
@@ -286,7 +286,7 @@ WifiPhy::GetTypeId (void)
                    TimeValue (NanoSeconds (3200)),
                    MakeTimeAccessor (&WifiPhy::GetGuardInterval,
                                      &WifiPhy::SetGuardInterval),
-                   MakeTimeChecker ())
+                   MakeTimeChecker (NanoSeconds (400), NanoSeconds (3200)))
     .AddAttribute ("LdpcEnabled",
                    "Whether or not LDPC is enabled (not supported yet!).",
                    BooleanValue (false),
@@ -3792,6 +3792,9 @@ std::ostream& operator<< (std::ostream& os, WifiPhy::State state)
 
 namespace {
 
+/**
+ * Constructor class
+ */
 static class Constructor
 {
 public:
@@ -3875,7 +3878,6 @@ public:
     ns3::WifiPhy::GetVhtMcs7 ();
     ns3::WifiPhy::GetVhtMcs8 ();
     ns3::WifiPhy::GetVhtMcs9 ();
-
     ns3::WifiPhy::GetHeMcs0 ();
     ns3::WifiPhy::GetHeMcs1 ();
     ns3::WifiPhy::GetHeMcs2 ();
@@ -3889,6 +3891,6 @@ public:
     ns3::WifiPhy::GetHeMcs10 ();
     ns3::WifiPhy::GetHeMcs11 ();
   }
-} g_constructor;
+} g_constructor; ///< the constructor
 
 }

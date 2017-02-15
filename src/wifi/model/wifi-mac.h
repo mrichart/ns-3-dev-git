@@ -41,6 +41,10 @@ namespace ns3 {
 class WifiMac : public Object
 {
 public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId (void);
 
   /**
@@ -158,6 +162,10 @@ public:
    * \return whether the device supports short slot time capability.
    */
   virtual bool GetShortSlotTimeSupported (void) const = 0;
+  /**
+   * \return whether the device supports RIFS capability.
+   */
+  virtual bool GetRifsSupported (void) const = 0;
 
   /**
    * \param packet the packet to send.
@@ -400,7 +408,7 @@ private:
    */
   virtual void FinishConfigureStandard (WifiPhyStandard standard) = 0;
 
-  Time m_maxPropagationDelay;
+  Time m_maxPropagationDelay; ///< maximum propagation delay
 
   /**
    * This method sets 802.11a standards-compliant defaults for following attributes:

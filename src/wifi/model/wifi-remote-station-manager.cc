@@ -37,24 +37,37 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("WifiRemoteStationManager");
 
+/**
+ * HighLatencyDataTxVectorTag class
+ */
 class HighLatencyDataTxVectorTag : public Tag
 {
 public:
   HighLatencyDataTxVectorTag ();
+  /**
+   * Constructor
+   *
+   * \param dataTxVector TXVECTOR for data frames
+   */
   HighLatencyDataTxVectorTag (WifiTxVector dataTxVector);
   /**
    * \returns the transmission mode to use to send this packet
    */
   WifiTxVector GetDataTxVector (void) const;
 
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId (void);
   virtual TypeId GetInstanceTypeId (void) const;
   virtual uint32_t GetSerializedSize (void) const;
   virtual void Serialize (TagBuffer i) const;
   virtual void Deserialize (TagBuffer i);
   virtual void Print (std::ostream &os) const;
+
 private:
-  WifiTxVector m_dataTxVector;
+  WifiTxVector m_dataTxVector; ///< TXVECTOR for data frames
 };
 
 HighLatencyDataTxVectorTag::HighLatencyDataTxVectorTag ()
@@ -113,10 +126,18 @@ HighLatencyDataTxVectorTag::Print (std::ostream &os) const
   os << "Data=" << m_dataTxVector;
 }
 
+/**
+ * HighLatencyRtsTxVectorTag class
+ */
 class HighLatencyRtsTxVectorTag : public Tag
 {
 public:
   HighLatencyRtsTxVectorTag ();
+  /**
+   * Constructor
+   *
+   * \param rtsTxVector TXVECTOR for RTS frames
+   */
   HighLatencyRtsTxVectorTag (WifiTxVector rtsTxVector);
   /**
    * \returns the transmission mode to use to send the RTS prior to the
@@ -124,14 +145,19 @@ public:
    */
   WifiTxVector GetRtsTxVector (void) const;
 
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId (void);
   virtual TypeId GetInstanceTypeId (void) const;
   virtual uint32_t GetSerializedSize (void) const;
   virtual void Serialize (TagBuffer i) const;
   virtual void Deserialize (TagBuffer i);
   virtual void Print (std::ostream &os) const;
+
 private:
-  WifiTxVector m_rtsTxVector;
+  WifiTxVector m_rtsTxVector; ///< TXVECTOR for data frames
 };
 
 HighLatencyRtsTxVectorTag::HighLatencyRtsTxVectorTag ()
@@ -190,24 +216,37 @@ HighLatencyRtsTxVectorTag::Print (std::ostream &os) const
   os << "Rts=" << m_rtsTxVector;
 }
 
+/**
+ * HighLatencyCtsToSelfTxVectorTag class
+ */
 class HighLatencyCtsToSelfTxVectorTag : public Tag
 {
 public:
   HighLatencyCtsToSelfTxVectorTag ();
+  /**
+   * Constructor
+   *
+   * \param ctsToSelfTxVector TXVECTOR for CTS-to-self frames
+   */
   HighLatencyCtsToSelfTxVectorTag (WifiTxVector ctsToSelfTxVector);
   /**
    * \returns the transmission mode to use for the CTS-to-self.
    */
   WifiTxVector GetCtsToSelfTxVector (void) const;
 
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId (void);
   virtual TypeId GetInstanceTypeId (void) const;
   virtual uint32_t GetSerializedSize (void) const;
   virtual void Serialize (TagBuffer i) const;
   virtual void Deserialize (TagBuffer i);
   virtual void Print (std::ostream &os) const;
+
 private:
-  WifiTxVector m_ctsToSelfTxVector;
+  WifiTxVector m_ctsToSelfTxVector; ///< TXVECTOR for CTS-to-self frames
 };
 
 HighLatencyCtsToSelfTxVectorTag::HighLatencyCtsToSelfTxVectorTag ()
@@ -325,11 +364,18 @@ WifiRemoteStationManager::GetTypeId (void)
                    UintegerValue (0),
                    MakeUintegerAccessor (&WifiRemoteStationManager::m_defaultTxPowerLevel),
                    MakeUintegerChecker<uint8_t> ())
-    .AddAttribute ("ProtectionMode",
+    .AddAttribute ("ErpProtectionMode",
                    "Protection mode used when non-ERP STAs are connected to an ERP AP: Rts-Cts or Cts-To-Self",
                    EnumValue (WifiRemoteStationManager::CTS_TO_SELF),
-                   MakeEnumAccessor (&WifiRemoteStationManager::SetProtectionMode,
-                                     &WifiRemoteStationManager::GetProtectionMode),
+                   MakeEnumAccessor (&WifiRemoteStationManager::SetErpProtectionMode,
+                                     &WifiRemoteStationManager::GetErpProtectionMode),
+                   MakeEnumChecker (WifiRemoteStationManager::RTS_CTS, "Rts-Cts",
+                                    WifiRemoteStationManager::CTS_TO_SELF, "Cts-To-Self"))
+    .AddAttribute ("HtProtectionMode",
+                   "Protection mode used when non-HT STAs are connected to a HT AP: Rts-Cts or Cts-To-Self",
+                   EnumValue (WifiRemoteStationManager::CTS_TO_SELF),
+                   MakeEnumAccessor (&WifiRemoteStationManager::SetHtProtectionMode,
+                                     &WifiRemoteStationManager::GetHtProtectionMode),
                    MakeEnumChecker (WifiRemoteStationManager::RTS_CTS, "Rts-Cts",
                                     WifiRemoteStationManager::CTS_TO_SELF, "Cts-To-Self"))
     .AddTraceSource ("MacTxRtsFailed",
@@ -358,9 +404,11 @@ WifiRemoteStationManager::WifiRemoteStationManager ()
     m_vhtSupported (false),
     m_heSupported (false),
     m_useNonErpProtection (false),
+    m_useNonHtProtection (false),
     m_useGreenfieldProtection (false),
     m_shortPreambleEnabled (false),
-    m_shortSlotTimeEnabled (false)
+    m_shortSlotTimeEnabled (false),
+    m_rifsPermitted (false)
 {
 }
 
@@ -446,21 +494,38 @@ WifiRemoteStationManager::SetFragmentationThreshold (uint32_t threshold)
 }
 
 void
-WifiRemoteStationManager::SetProtectionMode (WifiRemoteStationManager::ProtectionMode mode)
+WifiRemoteStationManager::SetErpProtectionMode (WifiRemoteStationManager::ProtectionMode mode)
 {
-  m_protectionMode = mode;
+  NS_LOG_FUNCTION (this << mode);
+  m_erpProtectionMode = mode;
+}
+
+void
+WifiRemoteStationManager::SetHtProtectionMode (WifiRemoteStationManager::ProtectionMode mode)
+{
+  NS_LOG_FUNCTION (this << mode);
+  m_htProtectionMode = mode;
 }
 
 void
 WifiRemoteStationManager::SetShortPreambleEnabled (bool enable)
 {
+  NS_LOG_FUNCTION (this << enable);
   m_shortPreambleEnabled = enable;
 }
 
 void
 WifiRemoteStationManager::SetShortSlotTimeEnabled (bool enable)
 {
+  NS_LOG_FUNCTION (this << enable);
   m_shortSlotTimeEnabled = enable;
+}
+
+void
+WifiRemoteStationManager::SetRifsPermitted (bool allow)
+{
+  NS_LOG_FUNCTION (this << allow);
+  m_rifsPermitted = allow;
 }
 
 bool
@@ -475,10 +540,22 @@ WifiRemoteStationManager::GetShortPreambleEnabled (void) const
   return m_shortPreambleEnabled;
 }
 
-WifiRemoteStationManager::ProtectionMode
-WifiRemoteStationManager::GetProtectionMode (void) const
+bool
+WifiRemoteStationManager::GetRifsPermitted (void) const
 {
-  return m_protectionMode;
+  return m_rifsPermitted;
+}
+
+WifiRemoteStationManager::ProtectionMode
+WifiRemoteStationManager::GetErpProtectionMode (void) const
+{
+  return m_erpProtectionMode;
+}
+
+WifiRemoteStationManager::ProtectionMode
+WifiRemoteStationManager::GetHtProtectionMode (void) const
+{
+  return m_htProtectionMode;
 }
 
 bool
@@ -962,7 +1039,7 @@ WifiRemoteStationManager::NeedRts (Mac48Address address, const WifiMacHeader *he
     {
       return false;
     }
-  if (m_protectionMode == RTS_CTS
+  if (m_erpProtectionMode == RTS_CTS
       && ((mode.GetModulationClass () == WIFI_MOD_CLASS_ERP_OFDM)
           || (mode.GetModulationClass () == WIFI_MOD_CLASS_HT)
           || (mode.GetModulationClass () == WIFI_MOD_CLASS_VHT)
@@ -970,6 +1047,15 @@ WifiRemoteStationManager::NeedRts (Mac48Address address, const WifiMacHeader *he
       && m_useNonErpProtection)
     {
       NS_LOG_DEBUG ("WifiRemoteStationManager::NeedRTS returning true to protect non-ERP stations");
+      return true;
+    }
+  else if (m_htProtectionMode == RTS_CTS
+           && ((mode.GetModulationClass () == WIFI_MOD_CLASS_HT)
+               || (mode.GetModulationClass () == WIFI_MOD_CLASS_VHT))
+           && m_useNonHtProtection
+           && !(m_erpProtectionMode != RTS_CTS && m_useNonErpProtection))
+    {
+      NS_LOG_DEBUG ("WifiRemoteStationManager::NeedRTS returning true to protect non-HT stations");
       return true;
     }
   bool normally = (packet->GetSize () + header->GetSize () + WIFI_MAC_FCS_LENGTH) > GetRtsCtsThreshold ();
@@ -981,7 +1067,7 @@ WifiRemoteStationManager::NeedCtsToSelf (WifiTxVector txVector)
 {
   WifiMode mode = txVector.GetMode ();
   NS_LOG_FUNCTION (this << mode);
-  if (m_protectionMode == CTS_TO_SELF
+  if (m_erpProtectionMode == CTS_TO_SELF
       && ((mode.GetModulationClass () == WIFI_MOD_CLASS_ERP_OFDM)
           || (mode.GetModulationClass () == WIFI_MOD_CLASS_HT)
           || (mode.GetModulationClass () == WIFI_MOD_CLASS_VHT)
@@ -989,6 +1075,15 @@ WifiRemoteStationManager::NeedCtsToSelf (WifiTxVector txVector)
       && m_useNonErpProtection)
     {
       NS_LOG_DEBUG ("WifiRemoteStationManager::NeedCtsToSelf returning true to protect non-ERP stations");
+      return true;
+    }
+  else if (m_htProtectionMode == CTS_TO_SELF
+           && ((mode.GetModulationClass () == WIFI_MOD_CLASS_HT)
+               || (mode.GetModulationClass () == WIFI_MOD_CLASS_VHT))
+           && m_useNonHtProtection
+           && !(m_erpProtectionMode != CTS_TO_SELF && m_useNonErpProtection))
+    {
+      NS_LOG_DEBUG ("WifiRemoteStationManager::NeedCtsToSelf returning true to protect non-HT stations");
       return true;
     }
   else if (!m_useNonErpProtection)
@@ -1023,6 +1118,7 @@ WifiRemoteStationManager::NeedCtsToSelf (WifiTxVector txVector)
 void
 WifiRemoteStationManager::SetUseNonErpProtection (bool enable)
 {
+  NS_LOG_FUNCTION (this << enable);
   m_useNonErpProtection = enable;
 }
 
@@ -1033,8 +1129,22 @@ WifiRemoteStationManager::GetUseNonErpProtection (void) const
 }
 
 void
+WifiRemoteStationManager::SetUseNonHtProtection (bool enable)
+{
+  NS_LOG_FUNCTION (this << enable);
+  m_useNonHtProtection = enable;
+}
+
+bool
+WifiRemoteStationManager::GetUseNonHtProtection (void) const
+{
+  return m_useNonHtProtection;
+}
+
+void
 WifiRemoteStationManager::SetUseGreenfieldProtection (bool enable)
 {
+  NS_LOG_FUNCTION (this << enable);
   m_useGreenfieldProtection = enable;
 }
 
@@ -2089,7 +2199,7 @@ WifiRemoteStationManager::GetPreambleForTransmission (WifiMode mode, Mac48Addres
     {
       preamble = WIFI_PREAMBLE_LONG;
     }
-  NS_LOG_FUNCTION ("selected preamble=" << preamble);
+  NS_LOG_DEBUG ("selected preamble=" << preamble);
   return preamble;
 }
 

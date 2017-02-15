@@ -39,19 +39,19 @@ NS_LOG_COMPONENT_DEFINE ("AarfcdWifiManager");
  */
 struct AarfcdWifiRemoteStation : public WifiRemoteStation
 {
-  uint32_t m_timer;
-  uint32_t m_success;
-  uint32_t m_failed;
-  bool m_recovery;
-  bool m_justModifyRate;
-  uint32_t m_retry;
-  uint32_t m_successThreshold;
-  uint32_t m_timerTimeout;
-  uint32_t m_rate;
-  bool m_rtsOn;
-  uint32_t m_rtsWnd;
-  uint32_t m_rtsCounter;
-  bool m_haveASuccess;
+  uint32_t m_timer; ///< timer
+  uint32_t m_success; ///< success
+  uint32_t m_failed; ///< failed
+  bool m_recovery; ///< recovery
+  bool m_justModifyRate; ///< just modify rate
+  uint32_t m_retry; ///< retry
+  uint32_t m_successThreshold; ///< success threshold
+  uint32_t m_timerTimeout; ///< timer timeout
+  uint32_t m_rate; ///< rate
+  bool m_rtsOn; ///< RTS on
+  uint32_t m_rtsWnd; ///< RTS window
+  uint32_t m_rtsCounter; ///< RTS counter
+  bool m_haveASuccess; ///< have a success
 };
 
 NS_OBJECT_ENSURE_REGISTERED (AarfcdWifiManager);
@@ -107,12 +107,18 @@ AarfcdWifiManager::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&AarfcdWifiManager::m_turnOnRtsAfterRateIncrease),
                    MakeBooleanChecker ())
+    .AddTraceSource ("Rate",
+                     "Traced value for rate changes (b/s)",
+                     MakeTraceSourceAccessor (&AarfcdWifiManager::m_currentRate),
+                     "ns3::TracedValueCallback::Uint64")
   ;
   return tid;
 }
 
 AarfcdWifiManager::AarfcdWifiManager ()
-  : WifiRemoteStationManager ()
+  : WifiRemoteStationManager (),
+    m_currentRate (0)
+
 {
   NS_LOG_FUNCTION (this);
 }
@@ -308,6 +314,11 @@ AarfcdWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       channelWidth = 20;
     }
   WifiMode mode = GetSupported (station, station->m_rate);
+  if (m_currentRate != mode.GetDataRate (channelWidth))
+    {
+      NS_LOG_DEBUG ("New datarate: " << mode.GetDataRate (channelWidth));
+      m_currentRate = mode.GetDataRate (channelWidth);
+    }
   return WifiTxVector (mode, GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 

@@ -8,7 +8,7 @@
 #
 # See test.py for more information.
 cpp_examples = [
-    ("mixed-wireless", "True", "True"),
+    ("mixed-wired-wireless", "True", "True"),
     ("multirate --totalTime=0.3s --rateManager=ns3::AarfcdWifiManager", "True", "True"), 
     ("multirate --totalTime=0.3s --rateManager=ns3::AmrrWifiManager", "True", "True"), 
     ("multirate --totalTime=0.3s --rateManager=ns3::CaraWifiManager", "True", "True"), 
@@ -31,13 +31,13 @@ cpp_examples = [
     ("ofdm-validation", "True", "True"),
     ("ofdm-vht-validation", "True", "True"),
     ("ofdm-he-validation", "True", "True"),
-    ("ht-wifi-network --simulationTime=0.1", "True", "True"),
-    ("vht-wifi-network --simulationTime=0.1", "True", "True"),
-    ("he-wifi-network --simulationTime=0.25", "True", "True"),
-    ("simple-ht-hidden-stations --simulationTime=1", "True", "True"),
-    ("mixed-bg-network --simulationTime=1", "True", "True"),
-    ("wifi-aggregation --simulationTime=1", "True", "True"),
-    ("80211e-txop --simulationTime=1", "True", "True"),
+    ("ht-wifi-network --simulationTime=0.1 --minExpectedThroughput=5 --maxExpectedThroughput=134", "True", "True"),
+    ("vht-wifi-network --simulationTime=0.1 --minExpectedThroughput=5 --maxExpectedThroughput=555", "True", "True"),
+    ("he-wifi-network --simulationTime=0.25 --minExpectedThroughput=6.5 --maxExpectedThroughput=754", "True", "True"),
+    ("simple-ht-hidden-stations --simulationTime=1 --minExpectedThroughput=16.7 --maxExpectedThroughput=16.8", "True", "True"),
+    ("mixed-network --simulationTime=1", "True", "True"),
+    ("wifi-aggregation --simulationTime=1 --verifyResults=1", "True", "True"),
+    ("80211e-txop --simulationTime=1 --verifyResults=1", "True", "True"),
     ("wifi-multi-tos --simulationTime=1 --nWifi=16 --useRts=1 --useShortGuardInterval=1", "True", "True"),
     ("wifi-tcp", "True", "True"),
     ("wifi-spectrum-per-example --distance=52 --index=3 --wifiType=ns3::SpectrumWifiPhy --simulationTime=1", "True", "True"),
@@ -45,7 +45,9 @@ cpp_examples = [
     ("wifi-spectrum-per-interference --distance=24 --index=31 --simulationTime=1 --waveformPower=0.1", "True", "True"),
     ("wifi-spectrum-saturation-example --simulationTime=1 --index=63", "True", "True"),
     ("wifi-backward-compatibility --apVersion=80211a --staVersion=80211n_5GHZ --simulationTime=1", "True", "True"),
+    ("wifi-backward-compatibility --apVersion=80211a --staVersion=80211n_5GHZ --apRaa=Ideal --staRaa=Ideal --simulationTime=1", "True", "True"),
     ("wifi-backward-compatibility --apVersion=80211a --staVersion=80211ac --simulationTime=1", "True", "True"),
+    ("wifi-backward-compatibility --apVersion=80211a --staVersion=80211ac --apRaa=Ideal --staRaa=Ideal --simulationTime=1", "True", "True"),
 ]
 
 # A list of Python examples to run in order to ensure that they remain
@@ -56,5 +58,5 @@ cpp_examples = [
 # See test.py for more information.
 python_examples = [
     ("wifi-ap.py", "True"),
-    ("mixed-wireless.py", "True"),
+    ("mixed-wired-wireless.py", "True"),
 ]

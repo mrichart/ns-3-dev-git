@@ -86,11 +86,16 @@ private:
 class WifiRemoteStationManager : public Object
 {
 public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId (void);
 
   WifiRemoteStationManager ();
   virtual ~WifiRemoteStationManager ();
 
+  /// ProtectionMode enumeration
   enum ProtectionMode
   {
     RTS_CTS,
@@ -108,7 +113,7 @@ public:
    * Set up MAC associated with this device since it is the object that
    * knows the full set of timing parameters (e.g. IFS).
    *
-   * \param phy the PHY of this device
+   * \param mac the MAC of this device
    */
   virtual void SetupMac (Ptr<WifiMac> mac);
 
@@ -193,7 +198,7 @@ public:
    * \param from the address of the station being recorded
    * \param hecapabilities the HE capabilities of the station
    */
-  void AddStationHeCapabilities (Mac48Address from, HeCapabilities vhtcapabilities);
+  void AddStationHeCapabilities (Mac48Address from, HeCapabilities hecapabilities);
   /**
    * Enable or disable QoS support.
    *
@@ -243,17 +248,29 @@ public:
    */
   bool HasHeSupported (void) const;
   /**
-   * Sets the protection mode.
+   * Sets the ERP protection mode.
    *
-   * \param mode the protection mode
+   * \param mode the ERP protection mode
    */
-  void SetProtectionMode (ProtectionMode mode);
+  void SetErpProtectionMode (ProtectionMode mode);
   /**
-   * Return the protection mode.
+   * Return the ERP protection mode.
    *
-   * \return the protection mode
+   * \return the ERP protection mode
    */
-  ProtectionMode GetProtectionMode (void) const;
+  ProtectionMode GetErpProtectionMode (void) const;
+  /**
+   * Sets the HT protection mode.
+   *
+   * \param mode the HT protection mode
+   */
+  void SetHtProtectionMode (ProtectionMode mode);
+  /**
+   * Return the HT protection mode.
+   *
+   * \return the HT protection mode
+   */
+  ProtectionMode GetHtProtectionMode (void) const;
   /**
    * Enable or disable protection for non-ERP stations.
    *
@@ -267,6 +284,19 @@ public:
    *         false otherwise
    */
   bool GetUseNonErpProtection (void) const;
+  /**
+   * Enable or disable protection for non-HT stations.
+   *
+   * \param enable enable or disable protection for non-HT stations
+   */
+  void SetUseNonHtProtection (bool enable);
+  /**
+   * Return whether the device supports protection of non-HT stations.
+   *
+   * \return true if protection for non-HT stations is enabled,
+   *         false otherwise
+   */
+  bool GetUseNonHtProtection (void) const;
   /**
    * Enable or disable protection for stations that do not support HT greenfield format.
    *
@@ -306,6 +336,19 @@ public:
    *         false otherwise
    */
   bool GetShortSlotTimeEnabled (void) const;
+  /**
+   * Permit or prohibit RIFS.
+   *
+   * \param allow permit or prohibit RIFS
+   */
+  void SetRifsPermitted (bool allow);
+  /**
+   * Return whether the device can use RIFS.
+   *
+   * \return true if RIFS is permitted,
+   *         false otherwise
+   */
+  bool GetRifsPermitted (void) const;
 
   /**
    * Reset the station, invoked in a STA upon dis-association or in an AP upon reboot.
@@ -1150,20 +1193,110 @@ private:
    */
   virtual uint8_t DoGetBlockAckTxPowerLevel (Mac48Address address, WifiMode blockAckMode);
 
+  /**
+   * \param address the address of the recipient
+   * \param ctsMode the mode to be used
+   *
+   * \return the CTS transmit channel width
+   */
   virtual uint8_t DoGetCtsTxChannelWidth (Mac48Address address, WifiMode ctsMode);
+  /**
+   * \param address the address of the recipient
+   * \param ctsMode the mode to be used
+   *
+   * \return the CTS transmit guard interval
+   */
   virtual uint16_t DoGetCtsTxGuardInterval (Mac48Address address, WifiMode ctsMode);
+  /**
+   * \param address the address of the recipient
+   * \param ctsMode the mode to be used
+   *
+   * \return the CTS transmit NSS
+   */
   virtual uint8_t DoGetCtsTxNss (Mac48Address address, WifiMode ctsMode);
+  /**
+   * \param address the address of the recipient
+   * \param ctsMode the mode to be used
+   *
+   * \return the CTS transmit NESS
+   */
   virtual uint8_t DoGetCtsTxNess (Mac48Address address, WifiMode ctsMode);
+  /**
+   * \param address the address of the recipient
+   * \param ctsMode the mode to be used
+   *
+   * \return the CTS transmit STBC
+   */
   virtual bool  DoGetCtsTxStbc (Mac48Address address, WifiMode ctsMode);
+  /**
+   * \param address the address of the recipient
+   * \param ctsMode the mode to be used
+   *
+   * \return the ack transmit channel width
+   */
   virtual uint8_t DoGetAckTxChannelWidth (Mac48Address address, WifiMode ctsMode);
+  /**
+   * \param address the address of the recipient
+   * \param ackMode the mode to be used
+   *
+   * \return the ack transmit guard interval
+   */
   virtual uint16_t DoGetAckTxGuardInterval (Mac48Address address, WifiMode ackMode);
+  /**
+   * \param address the address of the recipient
+   * \param ackMode the mode to be used
+   *
+   * \return the ack transmit NSS
+   */
   virtual uint8_t DoGetAckTxNss (Mac48Address address, WifiMode ackMode);
+  /**
+   * \param address the address of the recipient
+   * \param ackMode the mode to be used
+   *
+   * \return the ack transmit NESS
+   */
   virtual uint8_t DoGetAckTxNess (Mac48Address address, WifiMode ackMode);
+  /**
+   * \param address the address of the recipient
+   * \param ackMode the mode to be used
+   *
+   * \return the ack transmit STBC
+   */
   virtual bool DoGetAckTxStbc (Mac48Address address, WifiMode ackMode);
+  /**
+   * \param address the address of the recipient
+   * \param ctsMode the mode to be used
+   *
+   * \return the block ack transmit channel width
+   */
   virtual uint8_t DoGetBlockAckTxChannelWidth (Mac48Address address, WifiMode ctsMode);
+  /**
+   * \param address the address of the recipient
+   * \param blockAckMode the mode to be used
+   *
+   * \return the block ack transmit guard interval
+   */
   virtual uint16_t DoGetBlockAckTxGuardInterval (Mac48Address address, WifiMode blockAckMode);
+  /**
+   * \param address the address of the recipient
+   * \param blockAckMode the mode to be used
+   *
+   * \return the block ack transmit NSS
+   */
   virtual uint8_t DoGetBlockAckTxNss (Mac48Address address, WifiMode blockAckMode);
+  /**
+   * \param address the address of the recipient
+   * \param blockAckMode the mode to be used
+   *
+   * \return the block ack transmit NESS
+   */
   virtual uint8_t DoGetBlockAckTxNess (Mac48Address address, WifiMode blockAckMode);
+  /**
+   * \param address the address of the recipient
+   * \param blockAckMode the mode to be used
+   *
+   * \return the block ack transmit STBC
+   */
   virtual bool DoGetBlockAckTxStbc (Mac48Address address, WifiMode blockAckMode);
 
   /**
@@ -1281,6 +1414,14 @@ private:
    */
   bool IsAllowedControlAnswerModulationClass (WifiModulationClass modClassReq, WifiModulationClass modClassAnswer) const;
 
+  /**
+   * Get control answer mode function.
+   *
+   * \param address the address of the station
+   * \param reqMode request mode
+   *
+   * \return control answer mode
+   */
   WifiMode GetControlAnswerMode (Mac48Address address, WifiMode reqMode);
 
   /**
@@ -1341,8 +1482,8 @@ private:
    * WifiRemoteStationManager::GetNBasicModes() and
    * WifiRemoteStationManager::GetBasicMode().
    */
-  WifiModeList m_bssBasicRateSet;
-  WifiModeList m_bssBasicMcsSet;
+  WifiModeList m_bssBasicRateSet; //!< basic rate set
+  WifiModeList m_bssBasicMcsSet; //!< basic MCS set
 
   StationStates m_states;  //!< States of known stations
   Stations m_stations;     //!< Information for each known stations
@@ -1362,10 +1503,13 @@ private:
   uint8_t m_defaultTxPowerLevel;  //!< Default tranmission power level
   WifiMode m_nonUnicastMode;  //!< Transmission mode for non-unicast DATA frames
   bool m_useNonErpProtection; //!< flag if protection for non-ERP stations against ERP transmissions is enabled
+  bool m_useNonHtProtection;  //!< flag if protection for non-HT stations against HT transmissions is enabled
   bool m_useGreenfieldProtection; //!< flag if protection for stations that do not support HT greenfield format is enabled
   bool m_shortPreambleEnabled; //!< flag if short PLCP preamble is enabled
   bool m_shortSlotTimeEnabled; //!< flag if short slot time is enabled
-  ProtectionMode m_protectionMode; //!< Protection mode for ERP stations when non-ERP stations are detected
+  bool m_rifsPermitted;        //!< flag if RIFS is enabled
+  ProtectionMode m_erpProtectionMode; //!< Protection mode for ERP stations when non-ERP stations are detected
+  ProtectionMode m_htProtectionMode;  //!< Protection mode for HT stations when non-HT stations are detected
 
   /**
    * The trace source fired when the transmission of a single RTS has failed
@@ -1412,12 +1556,12 @@ struct WifiRemoteStationState
    * WifiRemoteStationManager::GetNSupported() and
    * WifiRemoteStationManager::GetSupported().
    */
-  WifiModeList m_operationalRateSet;
-  WifiModeList m_operationalMcsSet;
+  WifiModeList m_operationalRateSet; //!< opertional rate set
+  WifiModeList m_operationalMcsSet; //!< operational MCS set
   Mac48Address m_address;  //!< Mac48Address of the remote station
-  WifiRemoteStationInfo m_info;
+  WifiRemoteStationInfo m_info; //!< remote station info
 
-  uint8_t m_channelWidth;    //!< Channel width (in MHz) supported by the remote station
+  uint8_t m_channelWidth;     //!< Channel width (in MHz) supported by the remote station
   bool m_shortGuardInterval;  //!< Flag if HT/VHT short guard interval is supported by the remote station
   uint16_t m_guardInterval;   //!< HE Guard interval duration (in nanoseconds) supported by the remote station
   uint8_t m_streams;          //!< Number of supported streams by the remote station

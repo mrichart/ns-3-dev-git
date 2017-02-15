@@ -39,16 +39,15 @@ NS_LOG_COMPONENT_DEFINE ("RraaWifiManager");
  */
 struct RraaWifiRemoteStation : public WifiRemoteStation
 {
-  uint32_t m_counter;
-  uint32_t m_failed;
-  uint32_t m_rtsWnd;
-  uint32_t m_rtsCounter;
-  Time m_lastReset;
-  bool m_rtsOn;
-  bool m_lastFrameFail;
-  bool m_initialized;
-
-  uint32_t m_rate;
+  uint32_t m_counter; ///< counter
+  uint32_t m_failed; ///< failed
+  uint32_t m_rtsWnd; ///< RTS windows
+  uint32_t m_rtsCounter; ///< RTS counter
+  Time m_lastReset; ///< last reset
+  bool m_rtsOn; ///< RTS on
+  bool m_lastFrameFail; ///< last frame fail
+  bool m_initialized; ///< initialized
+  uint32_t m_rate; ///< rate
 };
 
 NS_OBJECT_ENSURE_REGISTERED (RraaWifiManager);
@@ -180,12 +179,18 @@ RraaWifiManager::GetTypeId (void)
                    DoubleValue (0.3932),
                    MakeDoubleAccessor (&RraaWifiManager::m_pmtlfor9),
                    MakeDoubleChecker<double> ())
+    .AddTraceSource ("Rate",
+                     "Traced value for rate changes (b/s)",
+                     MakeTraceSourceAccessor (&RraaWifiManager::m_currentRate),
+                     "ns3::TracedValueCallback::Uint64")
   ;
   return tid;
 }
 
 
 RraaWifiManager::RraaWifiManager ()
+  : WifiRemoteStationManager (),
+    m_currentRate (0)
 {
 }
 
@@ -295,6 +300,11 @@ RraaWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
       ResetCountersBasic (station);
     }
   WifiMode mode = GetSupported (station, station->m_rate);
+  if (m_currentRate != mode.GetDataRate (channelWidth))
+    {
+      NS_LOG_DEBUG ("New datarate: " << mode.GetDataRate (channelWidth));
+      m_currentRate = mode.GetDataRate (channelWidth);
+    }
   return WifiTxVector (mode, GetDefaultTxPowerLevel (), GetLongRetryCount (station), GetPreambleForTransmission (mode, GetAddress (station)), 800, 1, 1, 0, channelWidth, GetAggregation (station), false);
 }
 

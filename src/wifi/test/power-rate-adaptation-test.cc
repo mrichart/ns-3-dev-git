@@ -28,6 +28,12 @@
 
 using namespace ns3;
 
+/**
+ * \ingroup wifi-test
+ * \ingroup tests
+ *
+ * \brief Power Rate Adaptation Test
+ */
 class PowerRateAdaptationTest : public TestCase
 {
 public:
@@ -35,12 +41,18 @@ public:
 
   virtual void DoRun (void);
 private:
+  /// Test parf function
   void TestParf ();
+  /// Test aparf function
   void TestAparf ();
+  /// Test rrpaa function
   void TestRrpaa ();
+   * Configure nde function
+   * \returns the node
+   */
   Ptr<Node> ConfigureNode ();
 
-  ObjectFactory m_manager;
+  ObjectFactory m_manager; ///< manager
 };
 
 PowerRateAdaptationTest::PowerRateAdaptationTest ()
@@ -999,7 +1011,12 @@ PowerRateAdaptationTest::DoRun (void)
   TestRrpaa ();
 }
 
-//-----------------------------------------------------------------------------
+/**
+ * \ingroup wifi-test
+ * \ingroup tests
+ *
+ * \brief Power Rate Adaptation Test Suite
+ */
 class PowerRateAdaptationTestSuite : public TestSuite
 {
 public:
@@ -1012,4 +1029,4 @@ PowerRateAdaptationTestSuite::PowerRateAdaptationTestSuite ()
   AddTestCase (new PowerRateAdaptationTest, TestCase::QUICK);
 }
 
-static PowerRateAdaptationTestSuite g_powerRateAdaptationTestSuite;
+static PowerRateAdaptationTestSuite g_powerRateAdaptationTestSuite; ///< the test suite

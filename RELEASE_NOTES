@@ -22,11 +22,16 @@ Supported platforms
 New user-visible features
 -------------------------
 - (wifi) 802.11ax High Efficiency (HE) physical layer modes are now supported.
+- (tcp) The SACK option and the RFC 6675 loss recovery algorithm are now supported.
+- (lte) LTE carrier aggregation feature according to 3GPP Release 10 is now supported.
 
 Bugs fixed
 ----------
 - Bug 2007 - uan: Remove deprecation on SetRxThresholdDb
+- Bug 2214 - tcp: Use of ScheduleNow only in selected part of the code
 - Bug 2221 - network: Remove constraint on size of ns3::Packet Tag objects
+- Bug 2248 - tcp: TCP SACK added after reviews
+- Bug 2256 - tcp: bytes in flight now updated in TcpTxBuffer
 - Bug 2263 - Support processing of multiple TCP options
 - Bug 2450 - LogDistancePropagationLossModel is not continuous
 - Bug 2463 - create trace source to trace the TXOP time that is actually used
@@ -41,6 +46,7 @@ Bugs fixed
 - Bug 2518 - Suppress printing of list of modules for Python programs
 - Bug 2521 - Include ipv6-option.h in wscript
 - Bug 2527 - PrintRoutingTable extended to add an optional Time::Units parameter
+- Bug 2528 - 802.11n RIFS cannot be enabled
 - Bug 2529 - Missing trace when Block ACK timeout is triggered or when missing MPDUs are announced by a Block ACK response
 - Bug 2530 - Rename aodv::SetBalckListTimeout to aodv::SetBlackListTimeout
 - Bug 2532 - Inconsistencies between 802.11n MCS and NSS value reported in TXVECTOR
@@ -56,24 +62,32 @@ Bugs fixed
 - Bug 2547 - dead assignments on various tcp congestion controls
 - Bug 2551 - wifi preamble should be part of TXVECTOR
 - Bug 2552 - Remove code duplication between Yans and Spectrum
+- Bug 2559 - TCP advertised window still incorrect
 - Bug 2561 - TCP can not use Connect after a BindToNetDevice
 - Bug 2563 - Modify pybindgen version check to >= minimum version required
 - Bug 2564 - Simulation crashes when CtsTimeout is triggered for A-MPDU transmissions
 - Bug 2566 - BlockAckManager::GetNRetryNeededPackets missing some packets in the queue
+- Bug 2573 - Added TCP Ledbat
 - Bug 2577 - simulation crashes when A-MPDU and multiple TOS are used with RTS-CTS enabled
 - Bug 2578 - Assert "Internal collision but no packet in queue" unexpectedly triggered
 - Bug 2584 - MacLow triggers StartNext even if there is no TXOP
+- Bug 2587 - Avoid overflow in htcp.cc
 - Bug 2590 - Minor enhancements in red-queue-disc{.h, .cc}
 - Bug 2591 - 802.11e Block Ack mechanism cannot be enabled on HT/VHT stations
 - Bug 2594 - vht-wifi-network provides very low throughtput at MCS 6, 160 MHz, SGI
 - Bug 2601 - HT stations should use 40 MHz channel width if the configured channel width is set to 80 or 160 MHz
 - Bug 2604 - QosData frames with Block Ack policy should be separated by SIFS as long as they belong to the same TXOP
 - Bug 2605 - A HT/VHT station transmitting to a legacy access point results in a null throughput
+- Bug 2606 - Ideal rate manager does not work correctly when a HT/VHT station is transmitting to a legacy access point
+- Bug 2613 - MaxRxSequence () is sometimes too large
 - Bug 2607 - Minstrel HT manager results in an endless loop when a 802.11ac station is transmitting to a 802.11a access point
 - Bug 2614 - RIP header version should be set to 2
+- Bug 2615 - When the TXOP limit is nonzero, packets should be fragmented so that the TXOP limit is not exceeded
 - Bug 2627 - Ipv6RawSocket does not honor the bound interface when sending packets
 - Bug 2628 - Simulation crashes because of an out of range TID
 - Bug 2629 - Assert failure in MinstrelHtWifiManager::GetLowestIndex
+- Bug 2647 - ideal-wifi-manager-example crashes when NSS > 1
+- Bug 2655 - A-MPDU simulation using TCP sometimes fails with message "Packet has no Traffic ID"
 
 Known issues
 ------------
