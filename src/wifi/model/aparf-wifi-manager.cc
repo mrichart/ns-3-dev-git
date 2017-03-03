@@ -24,7 +24,7 @@
 #include "ns3/uinteger.h"
 #include "ns3/trace-source-accessor.h"
 #define Min(a,b) ((a < b) ? a : b)
-NS_LOG_COMPONENT_DEFINE ("ns3::AparfWifiManager");
+NS_LOG_COMPONENT_DEFINE ("AparfWifiManager");
 
 namespace ns3 {
 
@@ -80,7 +80,7 @@ AparfWifiManager::GetTypeId (void)
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("PowerThreshold",
                    "The maximum number of power changes.",
-                   UintegerValue (10),
+                   UintegerValue (3),
                    MakeUintegerAccessor (&AparfWifiManager::m_powerMax),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("Power decrement step",
@@ -197,7 +197,7 @@ void AparfWifiManager::DoReportDataFailed (WifiRemoteStation *st)
     {
       station->m_nFailed = 0;
       station->m_nSuccess = 0;
-      station->m_pCount = 0;
+      station->m_pCount--;
       if (station->m_power == m_maxPower)
         {
           station->m_rateCrit = station->m_rate;
@@ -237,7 +237,9 @@ AparfWifiManager::DoReportDataOk (WifiRemoteStation *st, double ackSnr,
   CheckInit (station);
   station->m_nSuccess++;
   station->m_nFailed = 0;
-  NS_LOG_DEBUG ("station=" << station << " data ok success=" << station->m_nSuccess << ", rate=" << station->m_rate << ", power=" << (int)station->m_power);
+  NS_LOG_DEBUG ("station=" << station << " data ok success=" << station->m_nSuccess << ", rate="
+		<< station->m_rate << ", power=" << (int)station->m_power
+		<< ", rateCrit=" << station->m_rateCrit << ", state=" << station->m_aparfState);
 
   if ((station->m_aparfState == AparfWifiManager::High) && (station->m_nSuccess >= station->m_successThreshold))
     {

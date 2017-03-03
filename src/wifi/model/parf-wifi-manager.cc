@@ -27,7 +27,7 @@
 
 #define Min(a,b) ((a < b) ? a : b)
 
-NS_LOG_COMPONENT_DEFINE ("ns3::ParfWifiManager");
+NS_LOG_COMPONENT_DEFINE ("ParfWifiManager");
 
 
 namespace ns3 {
