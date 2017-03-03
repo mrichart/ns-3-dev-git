@@ -218,10 +218,10 @@ int main (int argc, char *argv[])
   dataName += "-";
   plotName += standard;
   dataName += standard;
-  plotName += "-server=";
-  dataName += "-server=";
   if (standard == "802.11n-5GHz" || standard == "802.11n-2.4GHz" || standard == "802.11ac")
     {
+      plotName += "-server=";
+      dataName += "-server=";
       std::ostringstream oss;
       std::string gi;
       if (serverShortGuardInterval)
@@ -235,13 +235,9 @@ int main (int argc, char *argv[])
       oss << serverChannelWidth << "MHz_" << gi << "_" << serverNss << "SS";
       plotName += oss.str ();
       dataName += oss.str ();
-    }
-  plotName += "-client=";
-  dataName += "-client=";
-  if (standard == "802.11n-5GHz" || standard == "802.11n-2.4GHz" || standard == "802.11ac")
-    {
-      std::ostringstream oss;
-      std::string gi;
+      plotName += "-client=";
+      dataName += "-client=";
+      oss.flush ();
       if (clientShortGuardInterval)
         {
           gi = "SGI";
@@ -263,7 +259,7 @@ int main (int argc, char *argv[])
   uint32_t channelRateFactor = std::max (clientChannelWidth, serverChannelWidth) / 20;
   channelRateFactor = channelRateFactor * std::max (clientNss, serverNss);
 
-    // The first number is channel width, second is minimum SNR, third is maximum
+  // The first number is channel width, second is minimum SNR, third is maximum
   // SNR, fourth and fifth provide xrange axis limits, and sixth the yaxis
   // maximum
   serverStandards.push_back (StandardInfo ("802.11a", WIFI_PHY_STANDARD_80211a, 20, 3, 27, 0, 30, 60));
@@ -336,7 +332,7 @@ int main (int argc, char *argv[])
 
   serverDevice = wifi.Install (wifiPhy, wifiMac, serverNode);
   clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
-  
+
   if (wifiManager == "MinstrelHt")
     {
       Config::ConnectWithoutContext ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::MinstrelHtWifiManager/RateChange", MakeCallback (&RateChangeMinstrelHt));

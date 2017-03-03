@@ -57,7 +57,7 @@ struct RrpaaWifiRemoteStation : public WifiRemoteStation
   uint32_t m_rateIndex;          //!< Current rate index.
   uint8_t m_prevPowerLevel;      //!< Power level of the previous transmission.
   uint8_t m_powerLevel;          //!< Current power level.
-  
+
 
   RrpaaThresholdsTable m_thresholds;  //!< Rrpaa thresholds for this station.
 
@@ -204,10 +204,11 @@ RrpaaWifiManager::AddCalcTxTime (WifiMode mode, Time t)
   m_calcTxTime.push_back (std::make_pair (t, mode));
 }
 
-Thresholds
+WifiRrpaaThresholds
 RrpaaWifiManager::GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const
 {
   NS_LOG_FUNCTION (this << station << mode);
+  struct WifiRrpaaThresholds threshold;
   for (RrpaaThresholdsTable::const_iterator i = station->m_thresholds.begin (); i != station->m_thresholds.end (); i++)
     {
       if (mode == i->second)
@@ -215,7 +216,8 @@ RrpaaWifiManager::GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode)
           return i->first;
         }
     }
-  NS_ASSERT (false);
+  NS_ABORT_MSG ("No thresholds for mode " << mode << " found");
+  return threshold; // Silence compiler warning
 }
 
 WifiRemoteStation *
@@ -247,14 +249,14 @@ RrpaaWifiManager::CheckInit (RrpaaWifiRemoteStation *station)
       station->m_prevPowerLevel = m_maxPower;
       station->m_powerLevel = m_maxPower;
       WifiMode mode = GetSupported (station, 0);
-      uint8_t channelWidth = GetChannelWidth(station);
-      DataRate rate = DataRate (mode.GetDataRate(channelWidth));
+      uint8_t channelWidth = GetChannelWidth (station);
+      DataRate rate = DataRate (mode.GetDataRate (channelWidth));
       double power = GetPhy ()->GetPowerDbm (m_maxPower);
       m_rateChange (rate, rate, station->m_state->m_address);
       m_powerChange (power, power, station->m_state->m_address);
 
       station->m_pdTable = RrpaaProbabilitiesTable (station->m_nRate, std::vector<double> (m_nPower));
-      NS_LOG_DEBUG("Initializing pdTable");
+      NS_LOG_DEBUG ("Initializing pdTable");
       for (uint32_t i = 0; i < station->m_nRate; i++)
         {
           for (uint8_t j = 0; j < m_nPower; j++)
@@ -301,7 +303,7 @@ RrpaaWifiManager::InitThresholds (RrpaaWifiRemoteStation *station)
         {
           mtl = nextMtl;
         }
-      Thresholds th;
+      WifiRrpaaThresholds th;
       th.m_ewnd = ceil (m_tau / totalTxTime.GetSeconds ());
       th.m_ori = ori;
       th.m_mtl = mtl;
@@ -390,8 +392,8 @@ RrpaaWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
     }
   CheckInit (station);
   WifiMode mode = GetSupported (station, station->m_rateIndex);
-  DataRate rate = DataRate (mode.GetDataRate(channelWidth));
-  DataRate prevRate = DataRate (GetSupported (station, station->m_prevRateIndex).GetDataRate(channelWidth));
+  DataRate rate = DataRate (mode.GetDataRate (channelWidth));
+  DataRate prevRate = DataRate (GetSupported (station, station->m_prevRateIndex).GetDataRate (channelWidth));
   double power = GetPhy ()->GetPowerDbm (station->m_powerLevel);
   double prevPower = GetPhy ()->GetPowerDbm (station->m_prevPowerLevel);
   if (station->m_prevRateIndex != station->m_rateIndex)
@@ -461,7 +463,7 @@ void
 RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
-  Thresholds thresholds = GetThresholds (station, station->m_rateIndex);
+  WifiRrpaaThresholds thresholds = GetThresholds (station, station->m_rateIndex);
   double bploss = (double) station->m_nFailed / (double) thresholds.m_ewnd;
   double wploss = (double) (station->m_counter + station->m_nFailed) / (double) thresholds.m_ewnd;
   NS_LOG_DEBUG ("Best loss prob= " << bploss);
@@ -472,7 +474,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
         {
           NS_LOG_DEBUG ("bploss >= MTL and power < maxPower => Increase Power");
           station->m_pdTable[station->m_rateIndex][station->m_powerLevel] /= m_gamma;
-          NS_LOG_DEBUG("pdTable[" << station->m_rateIndex << "][" << station->m_powerLevel << "] = " << station->m_pdTable[station->m_rateIndex][station->m_powerLevel]);
+          NS_LOG_DEBUG ("pdTable[" << station->m_rateIndex << "][" << station->m_powerLevel << "] = " << station->m_pdTable[station->m_rateIndex][station->m_powerLevel]);
           station->m_powerLevel++;
           ResetCountersBasic (station);
         }
@@ -480,7 +482,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
         {
           NS_LOG_DEBUG ("bploss >= MTL and power = maxPower => Decrease Rate");
           station->m_pdTable[station->m_rateIndex][station->m_powerLevel] /= m_gamma;
-          NS_LOG_DEBUG("pdTable[" << station->m_rateIndex << "][" << station->m_powerLevel << "] = " << station->m_pdTable[station->m_rateIndex][station->m_powerLevel]);
+          NS_LOG_DEBUG ("pdTable[" << station->m_rateIndex << "][" << station->m_powerLevel << "] = " << station->m_pdTable[station->m_rateIndex][station->m_powerLevel]);
           station->m_rateIndex--;
           ResetCountersBasic (station);
         }
@@ -503,7 +505,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
                 {
                   station->m_pdTable[i][station->m_powerLevel] = 1;
                 }
-              NS_LOG_DEBUG("pdTable[" << i << "][" << station->m_powerLevel << "] = " << station->m_pdTable[i][station->m_powerLevel]);
+              NS_LOG_DEBUG ("pdTable[" << i << "][" << station->m_powerLevel << "] = " << station->m_pdTable[i][station->m_powerLevel]);
             }
           double rand = m_uniformRandomVariable->GetValue (0,1);
           if (rand < station->m_pdTable[station->m_rateIndex + 1][station->m_powerLevel])
@@ -524,7 +526,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
                 {
                   station->m_pdTable[station->m_rateIndex][i] = 1;
                 }
-              NS_LOG_DEBUG("pdTable[" << station->m_rateIndex << "][" << i << "] = " << station->m_pdTable[station->m_rateIndex][i]);
+              NS_LOG_DEBUG ("pdTable[" << station->m_rateIndex << "][" << i << "] = " << station->m_pdTable[station->m_rateIndex][i]);
             }
           double rand = m_uniformRandomVariable->GetValue (0,1);
           if (rand < station->m_pdTable[station->m_rateIndex][station->m_powerLevel - 1])
@@ -549,7 +551,7 @@ RrpaaWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
                 {
                   station->m_pdTable[station->m_rateIndex][i] = 1;
                 }
-              NS_LOG_DEBUG("pdTable[" << station->m_rateIndex << "][" << i << "] = " << station->m_pdTable[station->m_rateIndex][i]);
+              NS_LOG_DEBUG ("pdTable[" << station->m_rateIndex << "][" << i << "] = " << station->m_pdTable[station->m_rateIndex][i]);
             }
           double rand = m_uniformRandomVariable->GetValue (0,1);
           if (rand < station->m_pdTable[station->m_rateIndex][station->m_powerLevel - 1])
@@ -593,7 +595,7 @@ RrpaaWifiManager::RunAdaptiveRtsAlgorithm (RrpaaWifiRemoteStation *station)
     }
 }
 
-Thresholds
+WifiRrpaaThresholds
 RrpaaWifiManager::GetThresholds (RrpaaWifiRemoteStation *station,
                                  uint32_t rate) const
 {

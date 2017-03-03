@@ -33,7 +33,7 @@ struct RrpaaWifiRemoteStation;
  * \ingroup wifi
  * Robust Rate and Power Adaptation Algorithm
  *
- * This class implements the RRPAA algorithm as described in <i>Rate, Power and Carrier-Sense 
+ * This class implements the RRPAA algorithm as described in <i>Rate, Power and Carrier-Sense
  * Threshold Coordinated Management for High-Density IEEE 802.11 Networks</i>
  * by Matías Richart; Jorge Visca and Javier Baliosian in Integrated Network Management (IM),
  * 2015 IFIP/IEEE International Symposium on (pp. 139-146). IEEE.
@@ -51,17 +51,17 @@ struct RrpaaWifiRemoteStation;
  * For each rate there is a Opportunistic Rate Increase threshold,
  * a Maximum Tolerable Loss threshold and an Evaluation Window.
  */
-struct Thresholds
+struct WifiRrpaaThresholds
 {
-  double m_ori;      //!< The Oportunistic Rate Increase threshold.
-  double m_mtl;      //!< The Maximum Tolerable Loss threshold.
-  uint32_t m_ewnd;   //!< The Estimation Window size.
+  double m_ori; //!< The Oportunistic Rate Increase threshold.
+  double m_mtl; //!< The Maximum Tolerable Loss threshold.
+  uint32_t m_ewnd; //!< The Estimation Window size.
 };
 
 /**
  * List of thresholds for each mode.
  */
-typedef std::vector<std::pair<Thresholds,WifiMode> > RrpaaThresholdsTable;
+typedef std::vector<std::pair<WifiRrpaaThresholds,WifiMode> > RrpaaThresholdsTable;
 
 /**
  * List of probabilities.
@@ -164,7 +164,7 @@ private:
    *
    * \return threshold
    */
-  Thresholds GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const;
+  WifiRrpaaThresholds GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const;
 
   /**
    * Get the thresholds for the given station and mode index.
@@ -174,7 +174,7 @@ private:
    *
    * \return threshold
    */
-  Thresholds GetThresholds (RrpaaWifiRemoteStation *station, uint32_t rate) const;
+  WifiRrpaaThresholds GetThresholds (RrpaaWifiRemoteStation *station, uint32_t rate) const;
 
   /**
    * Get the estimated TxTime of a packet with a given mode.
@@ -231,7 +231,7 @@ private:
    */
   TracedCallback<DataRate, DataRate, Mac48Address> m_rateChange;
 
-  Ptr<UniformRandomVariable> m_uniformRandomVariable;    //!< Provides uniform random variables for probabilistic changes.
+  Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables for probabilistic changes.
 };
 
 } //namespace ns3

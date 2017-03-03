@@ -263,8 +263,6 @@ WifiMode::GetDataRate (uint8_t channelWidth, uint16_t guardInterval, uint8_t nss
     }
   else if (item->modClass == WIFI_MOD_CLASS_HE)
     {
-      //todo: check forbidden combinations
-
       NS_ASSERT (guardInterval == 800 || guardInterval == 1600 || guardInterval == 3200);
       symbolRate = (1 / (12.8 + ((double)guardInterval / 1000))) * 1e6;
 
@@ -710,7 +708,7 @@ WifiModeFactory::CreateWifiMode (std::string uniqueName,
   item->constellationSize = constellationSize;
   item->isMandatory = isMandatory;
 
-  NS_ASSERT (modClass != WIFI_MOD_CLASS_HT && modClass != WIFI_MOD_CLASS_VHT);
+  NS_ASSERT (modClass != WIFI_MOD_CLASS_HT && modClass != WIFI_MOD_CLASS_VHT && modClass != WIFI_MOD_CLASS_HE);
   //fill unused mcs item with a dummy value
   item->mcsValue = 0;
 

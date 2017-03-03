@@ -128,8 +128,8 @@ NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas)
   Ptr<WifiPhy> phy = wifiDevice->GetPhy ();
   myPhy = phy;
   SetupPhy (phy);
-  DataRate dataRate = DataRate (phy->GetMode (0).GetDataRate(phy->GetChannelWidth()));
-  double power = phy->GetTxPowerEnd();
+  DataRate dataRate = DataRate (phy->GetMode (0).GetDataRate (phy->GetChannelWidth ()));
+  double power = phy->GetTxPowerEnd ();
   for (uint32_t j = 0; j < stas.GetN (); j++)
     {
       Ptr<NetDevice> staDevice = stas.Get (j);
@@ -167,10 +167,10 @@ NodeStatistics::SetupPhy (Ptr<WifiPhy> phy)
       WifiTxVector txVector;
       txVector.SetMode (mode);
       txVector.SetPreambleType (WIFI_PREAMBLE_LONG);
-      txVector.SetChannelWidth(phy->GetChannelWidth());
-      DataRate dataRate = DataRate (mode.GetDataRate(phy->GetChannelWidth()));
+      txVector.SetChannelWidth (phy->GetChannelWidth ());
+      DataRate dataRate = DataRate (mode.GetDataRate (phy->GetChannelWidth ()));
       Time time = phy->CalculateTxDuration (packetSize, txVector, phy->GetFrequency ());
-      NS_LOG_DEBUG (i << " " << time.GetSeconds() << " " << dataRate);
+      NS_LOG_DEBUG (i << " " << time.GetSeconds () << " " << dataRate);
       timeTable.push_back (std::make_pair (time, dataRate));
     }
 }
@@ -556,8 +556,8 @@ int main (int argc, char *argv[])
   gnuplot.GenerateOutput (outfileTh0);
 
   if (manager.compare ("ns3::ParfWifiManager") == 0
-      || manager.compare ("ns3::AparfWifiManager") == 0)
-      manager.compare ("ns3::RrpaaWifiManager") == 0)
+      || manager.compare ("ns3::AparfWifiManager") == 0
+      || manager.compare ("ns3::RrpaaWifiManager") == 0)
     {
       std::ofstream outfilePower0 (("power-" + outputFileName + "-0.plt").c_str ());
       gnuplot = Gnuplot (("power-" + outputFileName + "-0.eps").c_str (), "Average Transmit Power");

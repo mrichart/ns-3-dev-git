@@ -131,8 +131,8 @@ ParfWifiManager::CheckInit (ParfWifiRemoteStation *station)
       station->m_powerLevel = m_maxPower;
       station->m_prevPowerLevel = m_maxPower;
       WifiMode mode = GetSupported (station, station->m_rateIndex);
-      uint8_t channelWidth = GetChannelWidth(station);
-      DataRate rate = DataRate (mode.GetDataRate(channelWidth));
+      uint8_t channelWidth = GetChannelWidth (station);
+      DataRate rate = DataRate (mode.GetDataRate (channelWidth));
       double power = GetPhy ()->GetPowerDbm (m_maxPower);
       m_powerChange (power, power, station->m_state->m_address);
       m_rateChange (rate, rate, station->m_state->m_address);
@@ -301,8 +301,8 @@ ParfWifiManager::DoGetDataTxVector (WifiRemoteStation *st)
     }
   CheckInit (station);
   WifiMode mode = GetSupported (station, station->m_rateIndex);
-  DataRate rate = DataRate (mode.GetDataRate(channelWidth));
-  DataRate prevRate = DataRate (GetSupported (station, station->m_prevRateIndex).GetDataRate(channelWidth));
+  DataRate rate = DataRate (mode.GetDataRate (channelWidth));
+  DataRate prevRate = DataRate (GetSupported (station, station->m_prevRateIndex).GetDataRate (channelWidth));
   double power = GetPhy ()->GetPowerDbm (station->m_powerLevel);
   double prevPower = GetPhy ()->GetPowerDbm (station->m_prevPowerLevel);
   if (station->m_prevPowerLevel != station->m_powerLevel)
