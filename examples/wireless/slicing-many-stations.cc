@@ -262,17 +262,17 @@ int main (int argc, char *argv[])
   apps_sink.Add(sink9_3.Install (wifiStaNodes.Get (9)));
 
   InetSocketAddress remote0_1 = InetSocketAddress (i.GetAddress (0), port);
-  remote0_1.SetTos(0); //Set the TOS field to select the TID in the wifi queues. TID = TOS >> 5 (done in qos-utils)
+  remote0_1.SetTos(96); //Set the TOS field to select the TID in the wifi queues. TID = TOS >> 5 (done in qos-utils)
   OnOffHelper onoff0 ("ns3::UdpSocketFactory", remote0_1);
-  onoff0.SetConstantRate (DataRate ("7Mb/s"), 1420);
+  onoff0.SetConstantRate (DataRate ("10Mb/s"), 1420);
   onoff0.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff0.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   ApplicationContainer apps_source = onoff0.Install (wifiApNodes.Get (0));
 
   InetSocketAddress remote1_1 = InetSocketAddress (i.GetAddress (1), port);
-  remote1_1.SetTos(0);
+  remote1_1.SetTos(96);
   OnOffHelper onoff1 ("ns3::UdpSocketFactory",  remote1_1);
-  onoff1.SetConstantRate (DataRate ("7Mb/s"), 1420);
+  onoff1.SetConstantRate (DataRate ("10Mb/s"), 1420);
   onoff1.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff1.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   apps_source.Add(onoff1.Install (wifiApNodes.Get (0)));
@@ -286,17 +286,17 @@ int main (int argc, char *argv[])
   apps_source.Add(onoff1_3.Install (wifiApNodes.Get (0)));
 
   InetSocketAddress remote2_1 = InetSocketAddress (i.GetAddress (2), port);
-  remote2_1.SetTos(0);
+  remote2_1.SetTos(96);
   OnOffHelper onoff2 ("ns3::UdpSocketFactory",  remote2_1);
-  onoff2.SetConstantRate (DataRate ("7Mb/s"), 1420);
+  onoff2.SetConstantRate (DataRate ("10Mb/s"), 1420);
   onoff2.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff2.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   apps_source.Add(onoff2.Install (wifiApNodes.Get (0)));
 
   InetSocketAddress remote3_1 = InetSocketAddress (i.GetAddress (3), port);
-  remote3_1.SetTos(0);
+  remote3_1.SetTos(96);
   OnOffHelper onoff3 ("ns3::UdpSocketFactory",  remote3_1);
-  onoff3.SetConstantRate (DataRate ("7Mb/s"), 1420);
+  onoff3.SetConstantRate (DataRate ("10Mb/s"), 1420);
   onoff3.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff3.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   apps_source.Add(onoff3.Install (wifiApNodes.Get (0)));
