@@ -2077,6 +2077,7 @@ MacLow::SendDataPacket (void)
       Time txDuration = m_phy->CalculateTxDuration (GetSize (m_currentPacket, &m_currentHdr), m_currentTxVector, preamble, m_phy->GetFrequency ());
       m_stationManager->DecreaseAirtimeDeficit(m_currentHdr.GetAddr1(), m_currentHdr.GetQosTid(), txDuration);
       NS_LOG_DEBUG ("TX duration: " << txDuration.GetMicroSeconds());
+      NS_LOG_UNCOND(Simulator::Now().GetSeconds() << " " << m_currentHdr.GetAddr1() << " " << (int) m_currentHdr.GetQosTid() << " " << txDuration.GetMicroSeconds() << " " << GetSize (m_currentPacket, &m_currentHdr));
       NS_LOG_DEBUG ("Decrease airtime deficit of sta: " << m_currentHdr.GetAddr1() << " new deficit: " << m_stationManager->GetAirtimeDeficit(m_currentHdr.GetAddr1(), m_currentHdr.GetQosTid()).GetMicroSeconds());
     }
 
