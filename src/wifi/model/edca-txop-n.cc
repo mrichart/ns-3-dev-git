@@ -1073,16 +1073,8 @@ EdcaTxopN::Queue (Ptr<WifiMacQueue> queue, uint8_t tid, Mac48Address recipient)
       queueInfo->sta = recipient;
       queueInfo->queue = queue;
       queueInfo->airtimeActive = !recipient.IsGroup();  //Don't use airtime scheduler for broadcast and multicast frames.
-      if (queueInfo->airtimeActive)
-        {
-          queueInfo->status = TxQueueStatus::NEW;
-          m_tidQueueNew.push_back(queueInfo);
-        }
-      else
-        {
-          queueInfo->status = TxQueueStatus::OLD;
-          m_tidQueueOld.push_back(queueInfo);
-        }
+      queueInfo->status = TxQueueStatus::NEW;
+      m_tidQueueNew.push_back(queueInfo);
     }
   StartAccessIfNeeded ();
 }
