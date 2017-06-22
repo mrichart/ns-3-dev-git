@@ -28,7 +28,7 @@ AcIndex
 QosUtilsMapTidToAc (uint8_t tid)
 {
   NS_ASSERT_MSG (tid < 8, "Tid " << (uint16_t) tid << " out of range");
-  switch (tid)
+  /*switch (tid)
     {
     case 0:
       return AC_BE;
@@ -54,8 +54,8 @@ QosUtilsMapTidToAc (uint8_t tid)
     case 7:
       return AC_VO;
       break;
-    }
-  return AC_UNDEF;
+    }*/
+  return AC_BE;
 }
 
 uint8_t
