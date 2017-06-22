@@ -389,6 +389,11 @@ WifiRemoteStationManager::DoDispose (void)
       delete (*i);
     }
   m_stations.clear ();
+  for (Slices::const_iterator i = m_slices.begin (); i != m_slices.end (); i++)
+    {
+      delete (i->second);
+    }
+  m_slices.clear ();
 }
 
 void
@@ -1507,6 +1512,7 @@ WifiRemoteStationManager::Lookup (Mac48Address address, uint8_t tid) const
           return (*i);
         }
     }
+
   WifiRemoteStationState *state = LookupState (address);
 
   WifiRemoteStation *station = DoCreateStation ();
@@ -1514,9 +1520,100 @@ WifiRemoteStationManager::Lookup (Mac48Address address, uint8_t tid) const
   station->m_tid = tid;
   station->m_ssrc = 0;
   station->m_slrc = 0;
-  station->m_airtimeDeficit = m_defaultAirtimeDeficit;
+  if (tid != 0)
+    {
+      RecordStationInSlice(address, tid);
+      station->m_airtimeDeficit = m_slices.at(tid)->m_quantum;
+    }
+  else
+    station->m_airtimeDeficit = m_defaultAirtimeDeficit;
   const_cast<WifiRemoteStationManager *> (this)->m_stations.push_back (station);
   return station;
+}
+
+void
+WifiRemoteStationManager::RecordStationInSlice (Mac48Address address, uint8_t tid) const
+{
+  if (m_slices.count(tid) == 0)
+    {
+      Slice* slice = new Slice;
+      slice->m_numClients = 1;
+      slice->m_id = tid;
+      slice->m_ratio = GetRatioSlice (tid);
+      const_cast<WifiRemoteStationManager *> (this)->m_slices.insert (std::make_pair(tid, slice));
+    }
+  else
+    {
+      m_slices.at(tid)->m_numClients++;
+    }
+  RecalculateQuantums ();
+}
+
+double
+WifiRemoteStationManager::GetRatioSlice (uint8_t tid) const
+{
+  NS_ASSERT_MSG (tid < 6, "Slice ID " << (uint16_t) tid << " out of range");
+  NS_ASSERT_MSG (tid > 0, "Slice ID " << (uint16_t) tid << " out of range");
+  switch (tid)
+  {
+  case 1:
+    return 0.2;
+    break;
+  case 2:
+    return 0.2;
+    break;
+  case 3:
+    return 0.6;
+    break;
+  case 4:
+    return 0.2;
+    break;
+  case 5:
+    return 0.05;
+    break;
+  case 6:
+    return 0.05;
+    break;
+  }
+  return 0;
+}
+
+void
+WifiRemoteStationManager::RecalculateQuantums (void) const
+{
+  double min = 1;
+  Slices::const_iterator maxSlice = m_slices.begin ();
+  for (Slices::const_iterator i = m_slices.begin (); i != m_slices.end (); i++)
+    {
+      i->second->m_quantum = MicroSeconds(0);
+      double current = i->second->m_ratio / i->second->m_numClients;
+      if (current < min)
+        {
+          min = current;
+          maxSlice = i;
+        }
+    }
+  maxSlice->second->m_quantum = MicroSeconds(500);
+  NS_LOG_UNCOND(this << " Max Slice " << (int)maxSlice->first << ": Q=" << maxSlice->second->m_quantum.GetMicroSeconds() << " C=" << maxSlice->second->m_numClients);
+  for (Slices::const_iterator i = m_slices.begin (); i != m_slices.end (); i++)
+    {
+      if (i != maxSlice)
+        {
+          int sumQuantums = 0;
+          double sumRatios = 0;
+          for (Slices::const_iterator j = m_slices.begin (); j != m_slices.end (); j++)
+            {
+              if (j != i && j->second->m_quantum != 0)
+                {
+                  sumQuantums += j->second->m_quantum.GetMicroSeconds()*j->second->m_numClients;
+                  sumRatios += j->second->m_ratio;
+                }
+            }
+          int newQuantum = ceil((i->second->m_ratio * sumQuantums) / (sumRatios * i->second->m_numClients));
+          i->second->m_quantum = MicroSeconds (newQuantum);
+          NS_LOG_UNCOND  (this << " Slice " << (int)i->first << ": Q=" << i->second->m_quantum.GetMicroSeconds() << " C=" << i->second->m_numClients);
+        }
+    }
 }
 
 void
@@ -1591,6 +1688,11 @@ WifiRemoteStationManager::Reset (void)
       delete (*i);
     }
   m_stations.clear ();
+  for (Slices::const_iterator i = m_slices.begin (); i != m_slices.end (); i++)
+    {
+      delete (i->second);
+    }
+  m_slices.clear ();
   m_bssBasicRateSet.clear ();
   m_bssBasicRateSet.push_back (m_defaultTxMode);
   m_bssBasicMcsSet.clear ();
@@ -1919,11 +2021,11 @@ WifiRemoteStationManager::DecreaseAirtimeDeficit (Mac48Address address, uint8_t 
 }
 
 void
-WifiRemoteStationManager::IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid, Time increment)
+WifiRemoteStationManager::IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid)
 {
   NS_LOG_FUNCTION (this << address);
   WifiRemoteStation *station = Lookup (address, tid);
-  station->m_airtimeDeficit += increment;
+  station->m_airtimeDeficit += tid == 0 ? m_defaultAirtimeDeficit : m_slices.at(tid)->m_quantum;
 }
 
 WifiRemoteStationInfo::WifiRemoteStationInfo ()

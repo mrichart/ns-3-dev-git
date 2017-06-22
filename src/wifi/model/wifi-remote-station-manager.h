@@ -22,6 +22,7 @@
 #define WIFI_REMOTE_STATION_MANAGER_H
 
 #include <vector>
+#include <map>
 #include <utility>
 #include "ns3/mac48-address.h"
 #include "ns3/traced-callback.h"
@@ -36,6 +37,7 @@
 namespace ns3 {
 
 struct WifiRemoteStation;
+struct Slice;
 struct WifiRemoteStationState;
 class WifiPhy;
 class WifiMac;
@@ -753,7 +755,7 @@ public:
    * \param address the address of the station
    * \param increment the amount to increase the airtime deficit
    */
-  void IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid, Time increment);
+  void IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid);
 
   /**
    * TracedCallback signature for power change events.
@@ -1198,6 +1200,12 @@ private:
    */
   uint32_t GetNFragments (const WifiMacHeader *header, Ptr<const Packet> packet);
 
+  void RecalculateQuantums (void) const;
+
+  double GetRatioSlice (uint8_t tid) const;
+
+  void RecordStationInSlice (Mac48Address address, uint8_t tid) const;
+
   /**
    * A vector of WifiRemoteStations
    */
@@ -1206,6 +1214,11 @@ private:
    * A vector of WifiRemoteStationStates
    */
   typedef std::vector <WifiRemoteStationState *> StationStates;
+
+  /**
+   * A map of Slices
+   */
+  typedef std::map <uint8_t, Slice *> Slices;
 
   /**
    * This is a pointer to the WifiPhy associated with this
@@ -1238,6 +1251,7 @@ private:
 
   StationStates m_states;  //!< States of known stations
   Stations m_stations;     //!< Information for each known stations
+  Slices m_slices;         //!< Information for each known slice
 
   WifiMode m_defaultTxMode; //!< The default transmission mode
   WifiMode m_defaultTxMcs;   //!< The default transmission modulation-coding scheme (MCS)
@@ -1341,6 +1355,14 @@ struct WifiRemoteStation
   uint8_t m_tid;                    //!< traffic ID
 
   Time m_airtimeDeficit;            //!< Airtime available for this station to transmit.
+};
+
+struct Slice
+{
+  uint32_t m_id;                  //!< ID of the slice.
+  uint32_t m_numClients;          //!< Current number of clients in the slice.
+  double m_ratio;                //!< Ratio of airtime requested.
+  Time m_quantum;                   //!< Quantum of each client of the slice.
 };
 
 } //namespace ns3
