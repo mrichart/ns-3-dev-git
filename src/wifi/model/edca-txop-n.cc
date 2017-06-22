@@ -513,7 +513,7 @@ EdcaTxopN::ScheduleTransmission(void)
 
           if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid) <= Seconds (0.0))
             {
-              NS_LOG_DEBUG ("Found a new queue with negative deficit: " << queueInfo->sta);
+              NS_LOG_DEBUG ("Found a new queue with negative deficit. Station: " << queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
               m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, MicroSeconds(300));
               queueInfo->status = TxQueueStatus::OLD;
               m_tidQueueOld.push_back (queueInfo);
@@ -521,7 +521,7 @@ EdcaTxopN::ScheduleTransmission(void)
             }
           else
             {
-              NS_LOG_DEBUG ("Found a new queue with positive deficit: " <<  queueInfo->sta);
+              NS_LOG_DEBUG ("Found a new queue with positive deficit. Station: " <<  queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
               found = true;
             }
         }
@@ -532,7 +532,7 @@ EdcaTxopN::ScheduleTransmission(void)
 
           if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid) <= Seconds (0.0))
             {
-              NS_LOG_DEBUG ("Found an old queue with negative deficit: " << queueInfo->sta);
+              NS_LOG_DEBUG ("Found an old queue with negative deficit. Station: " << queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
               m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, MicroSeconds(300));
               queueInfo->status = TxQueueStatus::OLD;
               m_tidQueueOld.push_back (queueInfo);
@@ -540,7 +540,7 @@ EdcaTxopN::ScheduleTransmission(void)
             }
           else
             {
-              NS_LOG_DEBUG ("Found an old queue with positive deficit: " <<  queueInfo->sta);
+              NS_LOG_DEBUG ("Found an old queue with positive deficit. Station: " << queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
               found = true;
             }
         }
