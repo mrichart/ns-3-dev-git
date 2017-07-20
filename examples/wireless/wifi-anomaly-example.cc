@@ -262,7 +262,7 @@ int main (int argc, char *argv[])
   std::string outputFileName = "minstrelHT";
   uint32_t BE_MaxAmpduSize = 65535;
   bool shortGuardInterval = false;
-  uint8_t nStreams = 1;
+  uint32_t nStreams = 1;
   uint32_t chWidth = 20;
   int simuTime = 30;
   int interval = 1;
@@ -405,16 +405,13 @@ int main (int argc, char *argv[])
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (wifiApNodes.Get (0));
 
-  positionAlloc->Add (Vector (0.0, 400.0, 0.0));
-  mobility.SetPositionAllocator (positionAlloc);
-  mobility.Install (wifiStaNodes.Get (0));
+  Ptr<ListPositionAllocator> positionAllocStas = CreateObject<ListPositionAllocator> ();
+  positionAllocStas->Add (Vector (0.0, 114.0, 0.0));
+  positionAllocStas->Add (Vector (1.0, 0.0, 0.0));
+  positionAllocStas->Add (Vector (-1.0, 0.0, 0.0));
 
-  positionAlloc->Add (Vector (3.0, 0.0, 0.0));
-  mobility.SetPositionAllocator (positionAlloc);
-  mobility.Install (wifiStaNodes.Get(1));
-  positionAlloc->Add (Vector (-3.0, 0.0, 0.0));
-  mobility.SetPositionAllocator (positionAlloc);
-  mobility.Install (wifiStaNodes.Get(2));
+  mobility.SetPositionAllocator (positionAllocStas);
+  mobility.Install (wifiStaNodes);
 
   //Configure the IP stack
   InternetStackHelper stack;
@@ -438,7 +435,7 @@ int main (int argc, char *argv[])
   InetSocketAddress remote0 = InetSocketAddress (i.GetAddress (0), port);
   remote0.SetTos(0); //Set the TOS field to select the TID in the wifi queues. TID = TOS >> 5 (done in qos-utils)
   OnOffHelper onoff0 ("ns3::UdpSocketFactory", remote0);
-  onoff0.SetConstantRate (DataRate ("10Mb/s"), 1420);
+  onoff0.SetConstantRate (DataRate ("6Mb/s"), 1200);
   onoff0.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff0.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   ApplicationContainer apps_source = onoff0.Install (wifiApNodes.Get (0));
@@ -446,7 +443,7 @@ int main (int argc, char *argv[])
   InetSocketAddress remote1 = InetSocketAddress (i.GetAddress (1), port);
   remote1.SetTos(0);
   OnOffHelper onoff1 ("ns3::UdpSocketFactory",  remote1);
-  onoff1.SetConstantRate (DataRate ("50Mb/s"), 1420);
+  onoff1.SetConstantRate (DataRate ("70Mb/s"), 1200);
   onoff1.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff1.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   apps_source.Add(onoff1.Install (wifiApNodes.Get (0)));
@@ -454,7 +451,7 @@ int main (int argc, char *argv[])
   InetSocketAddress remote2 = InetSocketAddress (i.GetAddress (2), port);
   remote2.SetTos(0);
   OnOffHelper onoff2 ("ns3::UdpSocketFactory",  remote2);
-  onoff2.SetConstantRate (DataRate ("50Mb/s"), 1420);
+  onoff2.SetConstantRate (DataRate ("70Mb/s"), 1200);
   onoff2.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
   onoff2.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
   apps_source.Add(onoff2.Install (wifiApNodes.Get (0)));
