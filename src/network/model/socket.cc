@@ -444,13 +444,13 @@ Socket::SetIpTos (uint8_t tos)
 {
   Address address;
   GetSockName (address);
-  if (GetSocketType () == NS3_SOCK_STREAM)
-    {
-      // preserve the least two significant bits of the current TOS
-      // value, which are used for ECN
-      tos &= 0xfc;
-      tos |= m_ipTos & 0x3;
-    }
+//  if (GetSocketType () == NS3_SOCK_STREAM)
+//    {
+//      // preserve the least two significant bits of the current TOS
+//      // value, which are used for ECN
+//      tos &= 0xfc;
+//      tos |= m_ipTos & 0x3;
+//    }
   m_ipTos = tos;
   m_priority = IpTos2Priority (tos);
 }
