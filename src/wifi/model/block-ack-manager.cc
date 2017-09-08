@@ -376,6 +376,8 @@ BlockAckManager::GetNextPacketByTidAndAddress (Ptr<WifiMacQueue> queue, WifiMacH
                    * the use of Block Ack.
                    */
                   hdr.SetQosAckPolicy (WifiMacHeader::NORMAL_ACK);
+                  AgreementsI i = m_agreements.find (std::make_pair (recipient, tid));
+                  i->second.second.erase (*it);
                 }
               it = m_retryPackets.erase (it);
               NS_LOG_DEBUG ("Removed one packet, retry buffer size = " << m_retryPackets.size () );
