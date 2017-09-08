@@ -619,8 +619,12 @@ EdcaTxopN::NotifyAccessGranted (void)
       NS_LOG_DEBUG ("Access granted but no packet. Get packet from some queue.");
       if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)))
         {
-          NS_LOG_DEBUG ("All queues are empty.");
-          return;
+          ScheduleTransmission();
+          if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)))
+            {
+               NS_LOG_DEBUG ("All queues are empty.");
+               return;
+            }
         }
       if (m_baManager->HasBar (m_currentBar))
         {
