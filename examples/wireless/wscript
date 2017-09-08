@@ -108,3 +108,6 @@ def build(bld):
     
     obj = bld.create_ns3_program('slicing-many-stations-dynamic', ['core', 'mobility', 'wifi', 'applications', 'flow-monitor'])
     obj.source = 'slicing-many-stations-dynamic.cc'
+    
+    obj = bld.create_ns3_program('slicing-many-stations-dynamic-tcp', ['core', 'mobility', 'wifi', 'applications', 'flow-monitor'])
+    obj.source = 'slicing-many-stations-dynamic-tcp.cc'
