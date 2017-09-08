@@ -1182,6 +1182,7 @@ EdcaTxopN::MissedAck (void)
       //to reset the dcf.
       if (resetCurrentPacket == true)
         {
+          m_currentPacket = 0;
           UpdateTxQueue();
         }
       m_dcf->ResetCw ();
