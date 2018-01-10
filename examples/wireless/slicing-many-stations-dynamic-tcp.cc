@@ -210,10 +210,10 @@ int main (int argc, char *argv[])
   mobility.Install (wifiApNodes.Get (0));
 
   mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
-                                 "X", StringValue ("ns3::UniformRandomVariable[Min=-25|Max=25]"),
-                                 "Y", StringValue ("ns3::UniformRandomVariable[Min=-25|Max=25]"));
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=-20|Max=20]"),
+                                 "Y", StringValue ("ns3::UniformRandomVariable[Min=-20|Max=20]"));
   mobility.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-25, 25, -25, 25)),
+                             "Bounds", RectangleValue (Rectangle (-20, 20, -20, 20)),
                              "Speed", StringValue ("ns3::UniformRandomVariable[Min=1.0|Max=2.0]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=2.0]"));
   mobility.Install (wifiStaNodes);
