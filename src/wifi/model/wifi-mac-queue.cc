@@ -26,6 +26,7 @@
 #include "ns3/enum.h"
 #include "wifi-mac-queue.h"
 #include "qos-blocked-destinations.h"
+#include "ns3/log.h"
 
 namespace ns3 {
 
@@ -190,6 +191,7 @@ WifiMacQueue::DequeueByTidAndAddress (WifiMacHeader *hdr, uint8_t tid,
                 {
                   packet = it->packet;
                   *hdr = it->hdr;
+                  //NS_LOG_UNCOND (Simulator::Now().GetSeconds() << " delay " << dest << " " << (int) tid << " " << Simulator::Now().GetMilliSeconds() - it->tstamp.GetMilliSeconds());
                   m_queue.erase (it);
                   m_size--;
                   break;

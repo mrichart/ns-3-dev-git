@@ -590,6 +590,7 @@ private:
   TxQueueInfo *m_queueInfo;
   std::list<TxQueueInfo *> m_tidQueueNew;
   std::list<TxQueueInfo *> m_tidQueueOld;
+  std::map<TxQueueInfo *, Time> m_tidQueueInactive;
 
   /*
    * Assign to m_queue the TID queue to pull packets.

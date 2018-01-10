@@ -757,6 +757,10 @@ public:
    */
   void IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid);
 
+  void RecordStationInSlice (Mac48Address address, uint8_t tid);
+
+  void RemoveStationInSlice (Mac48Address address, uint8_t tid);
+
   /**
    * TracedCallback signature for power change events.
    *
@@ -1203,8 +1207,6 @@ private:
   void RecalculateQuantums (void) const;
 
   double GetRatioSlice (uint8_t tid) const;
-
-  void RecordStationInSlice (Mac48Address address, uint8_t tid) const;
 
   /**
    * A vector of WifiRemoteStations

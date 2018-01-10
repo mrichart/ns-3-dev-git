@@ -565,6 +565,7 @@ EdcaTxopN::ScheduleTransmission(void)
               else
                 {
                   queueInfo->status = TxQueueStatus::INACTIVE;
+                  m_tidQueueInactive.insert(std::make_pair (queueInfo, Simulator::Now()));
                   m_tidQueueNew.pop_front ();
                 }
             }
@@ -572,6 +573,7 @@ EdcaTxopN::ScheduleTransmission(void)
             {
               queueInfo->status = TxQueueStatus::INACTIVE;
               m_tidQueueOld.pop_front ();
+              m_tidQueueInactive.insert(std::make_pair (queueInfo, Simulator::Now()));
             }
         }
       else
@@ -597,6 +599,19 @@ EdcaTxopN::UpdateTxQueue(void)
       m_queueInfo->status = TxQueueStatus::OLD;
       m_tidQueueOld.push_back (m_queueInfo);
     }
+  // Remove queues inactive form more than 1 second
+  for (std::map<TxQueueInfo *, Time>::iterator i = m_tidQueueInactive.begin(); i != m_tidQueueInactive.end(); )
+    {
+      NS_LOG_DEBUG(i->first->sta << " " << (int)i->first->tid << " " << i->second.GetSeconds() << " " << Simulator::Now().GetSeconds());
+      if (Simulator::Now().GetSeconds() > i->second.GetSeconds() + 1)
+        {
+          m_stationManager->RemoveStationInSlice(i->first->sta, i->first->tid);
+          delete i->first;
+          i = m_tidQueueInactive.erase(i);
+        }
+      else
+        i++;
+    }
   m_queue = 0;
   m_queueInfo = 0;
 }
@@ -617,14 +632,12 @@ EdcaTxopN::NotifyAccessGranted (void)
   if (m_currentPacket == 0)
     {
       NS_LOG_DEBUG ("Access granted but no packet. Get packet from some queue.");
-      if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)))
+      if (m_queueInfo == 0)
+        ScheduleTransmission();
+      if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)) && !m_baManager->HasPackets ())
         {
-          ScheduleTransmission();
-          if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)))
-            {
-               NS_LOG_DEBUG ("All queues are empty.");
-               return;
-            }
+           NS_LOG_DEBUG ("All queues are empty.");
+           return;
         }
       if (m_baManager->HasBar (m_currentBar))
         {
@@ -1069,6 +1082,19 @@ EdcaTxopN::Queue (Ptr<WifiMacQueue> queue, uint8_t tid, Mac48Address recipient)
       }
     i++;
   }
+
+  std::map<TxQueueInfo *, Time>::iterator it = m_tidQueueInactive.begin();
+  while (!found && it != m_tidQueueInactive.end()) {
+    TxQueueInfo *queueInfo = it->first;
+    if (queueInfo->queue == queue)
+      {
+        found = true;
+        queueInfo->status = TxQueueStatus::NEW;
+        m_tidQueueNew.push_back(queueInfo);
+        m_tidQueueInactive.erase(it);
+      }
+    it++;
+  }
   if (!found)
     {
       NS_LOG_DEBUG ("Creating a new queue, TID: " << (int) tid << " Address: " << recipient);
@@ -1079,6 +1105,7 @@ EdcaTxopN::Queue (Ptr<WifiMacQueue> queue, uint8_t tid, Mac48Address recipient)
       queueInfo->airtimeActive = !recipient.IsGroup();  //Don't use airtime scheduler for broadcast and multicast frames.
       queueInfo->status = TxQueueStatus::NEW;
       m_tidQueueNew.push_back(queueInfo);
+      m_stationManager->RecordStationInSlice(recipient, tid);
     }
   StartAccessIfNeeded ();
 }
