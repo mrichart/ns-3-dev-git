@@ -335,8 +335,8 @@ int main (int argc, char *argv[])
   clientDevice = wifi.Install (wifiPhy, wifiMac, clientNode);
   RngSeedManager::SetSeed (1);
   RngSeedManager::SetRun (2);
-  wifi.AssignStreams(serverDevice,1);
-  wifi.AssignStreams(clientDevice,2);
+  wifi.AssignStreams(serverDevice, 100);
+  wifi.AssignStreams(clientDevice, 100);
 
   if (wifiManager == "MinstrelHt")
     {
