@@ -47,9 +47,15 @@ NS_LOG_COMPONENT_DEFINE ("LteUeRrc");
 // CMAC SAP forwarder
 /////////////////////////////
 
+/// UeMemberLteUeCmacSapUser class
 class UeMemberLteUeCmacSapUser : public LteUeCmacSapUser
 {
 public:
+  /**
+   * Constructor
+   *
+   * \param rrc the RRC class
+   */
   UeMemberLteUeCmacSapUser (LteUeRrc* rrc);
 
   virtual void SetTemporaryCellRnti (uint16_t rnti);
@@ -57,7 +63,7 @@ public:
   virtual void NotifyRandomAccessFailed ();
 
 private:
-  LteUeRrc* m_rrc;
+  LteUeRrc* m_rrc; ///< the RRC class
 };
 
 UeMemberLteUeCmacSapUser::UeMemberLteUeCmacSapUser (LteUeRrc* rrc)
@@ -1231,6 +1237,7 @@ LteUeRrc::ApplyRadioResourceConfigDedicatedSecondaryCarrier (LteRrcSap::NonCriti
       uint8_t ccId = scell.sCellIndex;
 
 
+      uint16_t physCellId = scell.cellIdentification.physCellId;
       uint8_t ulBand = scell.radioResourceConfigCommonSCell.ulConfiguration.ulFreqInfo.ulBandwidth;
       uint32_t ulEarfcn = scell.radioResourceConfigCommonSCell.ulConfiguration.ulFreqInfo.ulCarrierFreq;
       uint8_t dlBand = scell.radioResourceConfigCommonSCell.nonUlConfiguration.dlBandwidth;
@@ -1238,7 +1245,7 @@ LteUeRrc::ApplyRadioResourceConfigDedicatedSecondaryCarrier (LteRrcSap::NonCriti
       uint8_t txMode = scell.radioResourceConfigDedicateSCell.physicalConfigDedicatedSCell.antennaInfo.transmissionMode;
       uint8_t srsIndex = scell.radioResourceConfigDedicateSCell.physicalConfigDedicatedSCell.soundingRsUlConfigDedicated.srsConfigIndex;
 
-      m_cphySapProvider.at (ccId)->SynchronizeWithEnb (m_cellId, dlEarfcn);
+      m_cphySapProvider.at (ccId)->SynchronizeWithEnb (physCellId, dlEarfcn);
       m_cphySapProvider.at (ccId)->SetDlBandwidth (dlBand);
       m_cphySapProvider.at (ccId)->ConfigureUplink (ulEarfcn, ulBand);
       m_cphySapProvider.at (ccId)->ConfigureReferenceSignalPower (scell.radioResourceConfigCommonSCell.nonUlConfiguration.pdschConfigCommon.referenceSignalPower);

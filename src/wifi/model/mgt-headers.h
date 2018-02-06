@@ -28,6 +28,7 @@
 #include "supported-rates.h"
 #include "ssid.h"
 #include "dsss-parameter-set.h"
+#include "extended-capabilities.h"
 #include "ht-capabilities.h"
 #include "ht-operation.h"
 #include "vht-capabilities.h"
@@ -35,6 +36,7 @@
 #include "erp-information.h"
 #include "edca-parameter-set.h"
 #include "he-capabilities.h"
+#include "he-operation.h"
 
 namespace ns3 {
 
@@ -73,6 +75,12 @@ public:
    */
   void SetCapabilities (CapabilityInformation capabilities);
   /**
+   * Set the Extended Capabilities.
+   *
+   * \param extendedcapabilities the Extended Capabilities
+   */
+  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
+  /**
    * Set the HT capabilities.
    *
    * \param htcapabilities HT capabilities
@@ -96,6 +104,12 @@ public:
    * \return Capability information
    */
   CapabilityInformation GetCapabilities (void) const;
+  /**
+   * Return the extended capabilities.
+   *
+   * \return the extended capabilities
+   */
+  ExtendedCapabilities GetExtendedCapabilities (void) const;
   /**
    * Return the HT capabilities.
    *
@@ -149,6 +163,7 @@ private:
   Ssid m_ssid;                        //!< Service Set ID (SSID)
   SupportedRates m_rates;             //!< List of supported rates
   CapabilityInformation m_capability; //!< Capability information
+  ExtendedCapabilities m_extendedCapability; //!< Extended capabilities
   HtCapabilities m_htCapability;      //!< HT capabilities
   VhtCapabilities m_vhtCapability;    //!< VHT capabilities
   HeCapabilities m_heCapability;      //!< HE capabilities
@@ -185,6 +200,12 @@ public:
    */
   CapabilityInformation GetCapabilities (void) const;
   /**
+   * Return the extended capabilities.
+   *
+   * \return the extended capabilities
+   */
+  ExtendedCapabilities GetExtendedCapabilities (void) const;
+  /**
    * Return the HT capabilities.
    *
    * \return HT capabilities
@@ -215,6 +236,12 @@ public:
    */
   HeCapabilities GetHeCapabilities (void) const;
   /**
+   * Return the HE operation.
+   *
+   * \return HE operation
+   */
+  HeOperation GetHeOperation (void) const;
+  /**
    * Return the ERP information.
    *
    * \return the ERP information
@@ -232,6 +259,12 @@ public:
    * \param capabilities Capability information
    */
   void SetCapabilities (CapabilityInformation capabilities);
+  /**
+   * Set the extended capabilities.
+   *
+   * \param extendedcapabilities the extended capabilities
+   */
+  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
   /**
    * Set the VHT operation.
    *
@@ -269,6 +302,12 @@ public:
    */
   void SetStatusCode (StatusCode code);
   /**
+   * Set the association ID.
+   *
+   * \param aid the association ID
+   */
+  void SetAssociationId (uint16_t aid);
+  /**
    * Set the ERP information.
    *
    * \param erpInformation the ERP information
@@ -286,6 +325,12 @@ public:
    * \param hecapabilities HE capabilities
    */
   void SetHeCapabilities (HeCapabilities hecapabilities);
+  /**
+   * Set the HE operation.
+   *
+   * \param heoperation HE operation
+   */
+  void SetHeOperation (HeOperation heoperation);
 
   /**
    * Register this type.
@@ -304,6 +349,7 @@ private:
   CapabilityInformation m_capability; //!< Capability information
   StatusCode m_code; //!< Status code
   uint16_t m_aid; //!< aid
+  ExtendedCapabilities m_extendedCapability; //!< extended capabilities
   HtCapabilities m_htCapability; //!< HT capabilities
   HtOperation m_htOperation; //!< HT operation
   VhtCapabilities m_vhtCapability; //!< VHT capabilities
@@ -311,6 +357,7 @@ private:
   ErpInformation m_erpInformation; //!< ERP information
   EdcaParameterSet m_edcaParameterSet; //!< EDCA Parameter Set
   HeCapabilities m_heCapability; //!< HE capabilities
+  HeOperation m_heOperation; //!< HE operation
 };
 
 
@@ -335,6 +382,12 @@ public:
    * \param rates the supported rates
    */
   void SetSupportedRates (SupportedRates rates);
+  /**
+   * Set the extended capabilities.
+   *
+   * \param extendedcapabilities the extended capabilities
+   */
+  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
   /**
    * Set the HT capabilities.
    *
@@ -365,6 +418,12 @@ public:
    * \return the supported rates
    */
   SupportedRates GetSupportedRates (void) const;
+  /**
+   * Return the extended capabilities.
+   *
+   * \return the extended capabilities
+   */
+  ExtendedCapabilities GetExtendedCapabilities (void) const;
   /**
    * Return the HT capabilities.
    *
@@ -399,6 +458,7 @@ public:
 private:
   Ssid m_ssid;                     //!< Service Set ID (SSID)
   SupportedRates m_rates;          //!< List of supported rates
+  ExtendedCapabilities m_extendedCapability; //!< extended capabilities
   HtCapabilities m_htCapability;   //!< HT capabilities
   VhtCapabilities m_vhtCapability; //!< VHT capabilities
   HeCapabilities m_heCapability; //!< HE capabilities
@@ -446,6 +506,12 @@ public:
    */
   DsssParameterSet GetDsssParameterSet (void) const;
   /**
+   * Return the extended capabilities.
+   *
+   * \return the extended capabilities
+   */
+  ExtendedCapabilities GetExtendedCapabilities (void) const;
+  /**
    * Return the HT capabilities.
    *
    * \return HT capabilities
@@ -476,6 +542,12 @@ public:
    */
   HeCapabilities GetHeCapabilities (void) const;
   /**
+   * Return the HE operation.
+   *
+   * \return HE operation
+   */
+  HeOperation GetHeOperation (void) const;
+  /**
    * Return the ERP information.
    *
    * \return the ERP information
@@ -494,6 +566,12 @@ public:
    */
   void SetCapabilities (CapabilityInformation capabilities);
   /**
+   * Set the extended capabilities.
+   *
+   * \param extendedcapabilities the extended capabilities
+   */
+  void SetExtendedCapabilities (ExtendedCapabilities extendedcapabilities);
+  /*
    * Set the HT capabilities.
    *
    * \param htcapabilities HT capabilities
@@ -523,6 +601,12 @@ public:
    * \param hecapabilities HE capabilities
    */
   void SetHeCapabilities (HeCapabilities hecapabilities);
+  /**
+   * Set the HE operation.
+   *
+   * \param heoperation HE operation
+   */
+  void SetHeOperation (HeOperation heoperation);
   /**
    * Set the Service Set Identifier (SSID).
    *
@@ -585,11 +669,13 @@ private:
   SupportedRates m_rates;              //!< List of supported rates
   CapabilityInformation m_capability;  //!< Capability information
   DsssParameterSet m_dsssParameterSet; //!< DSSS Parameter Set
+  ExtendedCapabilities m_extendedCapability; //!< extended capabilities
   HtCapabilities m_htCapability;       //!< HT capabilities
   HtOperation m_htOperation;           //!< HT operation
   VhtCapabilities m_vhtCapability;     //!< VHT capabilities
   VhtOperation m_vhtOperation;         //!< VHT operation
-  HeCapabilities m_heCapability;     //!< HE capabilities
+  HeCapabilities m_heCapability;       //!< HE capabilities
+  HeOperation m_heOperation;         //!< HE operation
   ErpInformation m_erpInformation;     //!< ERP information
   EdcaParameterSet m_edcaParameterSet; //!< EDCA Parameter Set
 };

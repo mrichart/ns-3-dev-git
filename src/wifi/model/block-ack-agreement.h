@@ -31,11 +31,11 @@ namespace ns3 {
  */
 class BlockAckAgreement
 {
+  /// Provide access to MacLow class
   friend class MacLow;
 
 
 public:
-  BlockAckAgreement ();
   /**
    * Constructor for BlockAckAgreement with given peer and TID.
    *

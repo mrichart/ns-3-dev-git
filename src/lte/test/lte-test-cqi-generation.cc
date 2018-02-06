@@ -110,7 +110,7 @@ LteCqiGenerationTestCase::LteCqiGenerationTestCase (std::string name, bool usePd
     m_dlMcs (dlMcs),
     m_ulMcs (ulMcs)
 {
-  m_usePdcchForCqiGeneration = usePdcchForCqiGeneration;
+  m_usePdschForCqiGeneration = usePdcchForCqiGeneration;
   NS_LOG_INFO ("Creating LteCqiGenerationTestCase");
 }
 
@@ -148,7 +148,7 @@ LteCqiGenerationTestCase::DoRun (void)
 
   Config::Reset ();
   Config::SetDefault ("ns3::LteHelper::UseIdealRrc", BooleanValue (true));
-  Config::SetDefault ("ns3::LteHelper::UsePdschForCqiGeneration", BooleanValue (m_usePdcchForCqiGeneration));
+  Config::SetDefault ("ns3::LteHelper::UsePdschForCqiGeneration", BooleanValue (m_usePdschForCqiGeneration));
 
   Config::SetDefault ("ns3::LteSpectrumPhy::CtrlErrorModelEnabled", BooleanValue (true));
   Config::SetDefault ("ns3::LteSpectrumPhy::DataErrorModelEnabled", BooleanValue (true));
@@ -218,16 +218,16 @@ LteCqiGenerationTestCase::DoRun (void)
   lteHelper->ActivateDataRadioBearer (ueDevs1, bearer);
   lteHelper->ActivateDataRadioBearer (ueDevs2, bearer);
 
-  Config::Connect ("/NodeList/0/DeviceList/0/LteEnbMac/DlScheduling",
+  Config::Connect ("/NodeList/0/DeviceList/0/ComponentCarrierMap/*/LteEnbMac/DlScheduling",
                    MakeBoundCallback (&LteTestDlSchedulingCallback, this));
 
-  Config::Connect ("/NodeList/0/DeviceList/0/LteEnbMac/UlScheduling",
+  Config::Connect ("/NodeList/0/DeviceList/0/ComponentCarrierMap/*/LteEnbMac/UlScheduling",
                    MakeBoundCallback (&LteTestUlSchedulingCallback, this));
 
-  Config::Connect ("/NodeList/1/DeviceList/0/LteEnbMac/DlScheduling",
+  Config::Connect ("/NodeList/1/DeviceList/0/ComponentCarrierMap/*/LteEnbMac/DlScheduling",
                    MakeBoundCallback (&LteTestDlSchedulingCallback, this));
 
-  Config::Connect ("/NodeList/1/DeviceList/0/LteEnbMac/UlScheduling",
+  Config::Connect ("/NodeList/1/DeviceList/0/ComponentCarrierMap/*/LteEnbMac/UlScheduling",
                    MakeBoundCallback (&LteTestUlSchedulingCallback, this));
 
   Simulator::Stop (Seconds (1.100));
@@ -358,10 +358,10 @@ LteCqiGenerationDlPowerControlTestCase::DoRun (void)
   simpleFfrAlgorithmEnb1->SetPdschConfigDedicated (pdschConfigDedicatedEnb1);
 
 
-  Config::Connect ("/NodeList/0/DeviceList/0/LteEnbMac/DlScheduling",
+  Config::Connect ("/NodeList/0/DeviceList/0/ComponentCarrierMap/*/LteEnbMac/DlScheduling",
                    MakeBoundCallback (&LteTestDlSchedulingCallback2, this));
 
-  Config::Connect ("/NodeList/0/DeviceList/0/LteEnbMac/UlScheduling",
+  Config::Connect ("/NodeList/0/DeviceList/0/ComponentCarrierMap/*/LteEnbMac/UlScheduling",
                    MakeBoundCallback (&LteTestUlSchedulingCallback2, this));
 
   Simulator::Stop (Seconds (1.100));

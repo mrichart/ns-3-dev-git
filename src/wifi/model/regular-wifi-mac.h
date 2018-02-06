@@ -216,7 +216,7 @@ public:
   /**
    * \param phy the physical layer attached to this MAC.
    */
-  void SetWifiPhy (Ptr<WifiPhy> phy);
+  void SetWifiPhy (const Ptr<WifiPhy> phy);
   /**
    * \return the physical layer attached to this MAC.
    */
@@ -228,27 +228,33 @@ public:
   /**
    * \param stationManager the station manager attached to this MAC.
    */
-  virtual void SetWifiRemoteStationManager (Ptr<WifiRemoteStationManager> stationManager);
+  virtual void SetWifiRemoteStationManager (const Ptr<WifiRemoteStationManager> stationManager);
   /**
    * \return the station manager attached to this MAC.
    */
   Ptr<WifiRemoteStationManager> GetWifiRemoteStationManager (void) const;
   /**
-   * Return the HT capability of the device.
+   * Return the extended capabilities of the device.
    *
-   * \return the HT capability that we support
+   * \return the extended capabilities that we support
+   */
+  ExtendedCapabilities GetExtendedCapabilities (void) const;
+  /**
+   * Return the HT capabilities of the device.
+   *
+   * \return the HT capabilities that we support
    */
   HtCapabilities GetHtCapabilities (void) const;
   /**
-   * Return the VHT capability of the device.
+   * Return the VHT capabilities of the device.
    *
-   * \return the VHT capability that we support
+   * \return the VHT capabilities that we support
    */
   VhtCapabilities GetVhtCapabilities (void) const;
   /**
-   * Return the HE capability of the device.
+   * Return the HE capabilities of the device.
    *
-   * \return the HE capability that we support
+   * \return the HE capabilities that we support
    */
   HeCapabilities GetHeCapabilities (void) const;
 
@@ -288,10 +294,10 @@ protected:
   virtual void DoInitialize ();
   virtual void DoDispose ();
 
-  MacRxMiddle *m_rxMiddle;  //!< RX middle (de-fragmentation etc.)
-  MacTxMiddle *m_txMiddle;  //!< TX middle (aggregation etc.)
+  Ptr<MacRxMiddle> m_rxMiddle;  //!< RX middle (de-fragmentation etc.)
+  Ptr<MacTxMiddle> m_txMiddle;  //!< TX middle (aggregation etc.)
   Ptr<MacLow> m_low;        //!< MacLow (RTS, CTS, DATA, ACK etc.)
-  DcfManager *m_dcfManager; //!< DCF manager (access to channel)
+  Ptr<DcfManager> m_dcfManager; //!< DCF manager (access to channel)
   Ptr<WifiPhy> m_phy;       //!< Wifi PHY
 
   Ptr<WifiRemoteStationManager> m_stationManager; //!< Remote station manager (rate control, RTS/CTS/fragmentation thresholds etc.)
@@ -569,8 +575,13 @@ protected:
 private:
   /// type conversion operator
   RegularWifiMac (const RegularWifiMac &);
-  /// assignment operator
-  RegularWifiMac & operator= (const RegularWifiMac &);
+  /**
+   * assignment operator
+   *
+   * \param mac the RegularWifiMac to assign
+   * \returns the assigned value
+   */
+  RegularWifiMac & operator= (const RegularWifiMac & mac);
 
   /**
    * This method is a private utility invoked to configure the channel

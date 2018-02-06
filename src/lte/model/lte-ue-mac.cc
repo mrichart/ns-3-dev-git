@@ -48,10 +48,15 @@ NS_OBJECT_ENSURE_REGISTERED (LteUeMac);
 // SAP forwarders
 ///////////////////////////////////////////////////////////
 
-
+/// UeMemberLteUeCmacSapProvider class
 class UeMemberLteUeCmacSapProvider : public LteUeCmacSapProvider
 {
 public:
+  /**
+   * Constructor
+   *
+   * \param mac the UE MAC
+   */
   UeMemberLteUeCmacSapProvider (LteUeMac* mac);
 
   // inherited from LteUeCmacSapProvider
@@ -64,7 +69,7 @@ public:
   virtual void Reset ();
 
 private:
-  LteUeMac* m_mac;
+  LteUeMac* m_mac; ///< the UE MAC
 };
 
 
@@ -115,9 +120,15 @@ UeMemberLteUeCmacSapProvider::Reset ()
   m_mac->DoReset ();
 }
 
+/// UeMemberLteMacSapProvider class
 class UeMemberLteMacSapProvider : public LteMacSapProvider
 {
 public:
+  /**
+   * Constructor
+   *
+   * \param mac the UE MAC
+   */
   UeMemberLteMacSapProvider (LteUeMac* mac);
 
   // inherited from LteMacSapProvider
@@ -125,7 +136,7 @@ public:
   virtual void ReportBufferStatus (ReportBufferStatusParameters params);
 
 private:
-  LteUeMac* m_mac;
+  LteUeMac* m_mac; ///< the UE MAC
 };
 
 
@@ -149,10 +160,17 @@ UeMemberLteMacSapProvider::ReportBufferStatus (ReportBufferStatusParameters para
 
 
 
-
+/**
+ * UeMemberLteUePhySapUser
+ */
 class UeMemberLteUePhySapUser : public LteUePhySapUser
 {
 public:
+  /**
+   * Constructor
+   *
+   * \param mac the UE MAC
+   */
   UeMemberLteUePhySapUser (LteUeMac* mac);
 
   // inherited from LtePhySapUser
@@ -161,7 +179,7 @@ public:
   virtual void ReceiveLteControlMessage (Ptr<LteControlMessage> msg);
 
 private:
-  LteUeMac* m_mac;
+  LteUeMac* m_mac; ///< the UE MAC
 };
 
 UeMemberLteUePhySapUser::UeMemberLteUePhySapUser (LteUeMac* mac) : m_mac (mac)
@@ -808,8 +826,9 @@ LteUeMac::DoSubframeIndication (uint32_t frameNo, uint32_t subframeNo)
       SendReportBufferStatus ();
       m_bsrLast = Simulator::Now ();
       m_freshUlBsr = false;
-      m_harqProcessId = (m_harqProcessId + 1) % HARQ_PERIOD;
     }
+  m_harqProcessId = (m_harqProcessId + 1) % HARQ_PERIOD;
+
 }
 
 int64_t

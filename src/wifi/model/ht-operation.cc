@@ -51,7 +51,7 @@ HtOperation::HtOperation ()
     m_reservedMcsSet3 (0),
     m_htSupported (0)
 {
-  for (uint32_t k = 0; k < MAX_SUPPORTED_MCS; k++)
+  for (uint8_t k = 0; k < MAX_SUPPORTED_MCS; k++)
     {
       m_rxMcsBitmask[k] = 0;
     }
@@ -182,7 +182,7 @@ HtOperation::SetTxRxMcsSetUnequal (uint8_t txrxmcssetunequal)
 void
 HtOperation::SetTxMaxNSpatialStreams (uint8_t maxtxspatialstreams)
 {
-  m_txMaxNSpatialStreams = maxtxspatialstreams;
+  m_txMaxNSpatialStreams = maxtxspatialstreams - 1; //0 for 1 SS, 1 for 2 SSs, etc
 }
 
 void
@@ -489,13 +489,14 @@ HtOperation::DeserializeInformationField (Buffer::Iterator start,
   return length;
 }
 
+/// HtOperation
 ATTRIBUTE_HELPER_CPP (HtOperation);
 
 /**
  * output stream output operator
  *
  * \param os output stream
- * \param htOperation
+ * \param htOperation the HT operation
  *
  * \returns output stream
  */
@@ -513,7 +514,7 @@ operator << (std::ostream &os, const HtOperation &htOperation)
  * input stream input operator
  *
  * \param is input stream
- * \param htOperation
+ * \param htOperation the HT operation
  *
  * \returns input stream
  */

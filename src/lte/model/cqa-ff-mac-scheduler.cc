@@ -43,6 +43,7 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("CqaFfMacScheduler");
 
+/// CGA Type 0 Allocation
 static const int CqaType0AllocationRbg[4] = {
   10,       // RGB size 1
   26,       // RGB size 2
@@ -54,42 +55,72 @@ static const int CqaType0AllocationRbg[4] = {
 NS_OBJECT_ENSURE_REGISTERED (CqaFfMacScheduler);
 
 
+/// qos_rb_and_CQI_assigned_to_lc
 struct qos_rb_and_CQI_assigned_to_lc
 {
-  uint16_t resource_block_index;       //Resource block indexHOL_GROUP_index
-  uint8_t  cqi_value_for_lc;       // CQI indicator value
+  uint16_t resource_block_index;   ///< Resource block indexHOL_GROUP_index
+  uint8_t  cqi_value_for_lc;       ///< CQI indicator value
 };
 
 
+/**
+ * CQI value comparator function
+ * \param key1 the first item
+ * \param key2 the second item
+ * \returns true if the first item is > the second item
+ */
 bool CQIValueDescComparator (uint8_t key1, uint8_t key2)
 {
   return key1>key2;
 }
 
+/**
+ * CGA group comparator function
+ * \param key1 the first item
+ * \param key2 the second item
+ * \returns true if the first item is > the second item
+ */
 bool CqaGroupDescComparator (int key1, int key2)
 {
   return key1>key2;
 }
 
+/// CQI value typedef
 typedef uint8_t CQI_value;
+/// RBG index typedef
 typedef int RBG_index;
+/// HOL group typedef
 typedef int HOL_group;
 
+/// CQI value map typedef
 typedef std::map<CQI_value,LteFlowId_t,bool(*)(uint8_t,uint8_t)> t_map_CQIToUE; //sorted
+/// RBG index map typedef
 typedef std::map<RBG_index,t_map_CQIToUE> t_map_RBGToCQIsSorted;
+/// HOL group map typedef
 typedef std::map<HOL_group,t_map_RBGToCQIsSorted> t_map_HOLGroupToRBGs;
 
+/// CQI value map iterator typedef
 typedef std::map<CQI_value,LteFlowId_t,bool(*)(uint8_t,uint8_t)>::iterator t_it_CQIToUE; //sorted
+/// RBG index map iterator typedef
 typedef std::map<RBG_index,t_map_CQIToUE>::iterator t_it_RBGToCQIsSorted;
+/// HOL group map iterator typedef
 typedef std::map<HOL_group,t_map_RBGToCQIsSorted>::iterator t_it_HOLGroupToRBGs;
 
+/// HOL group map typedef
 typedef std::multimap<HOL_group,std::set<LteFlowId_t>,bool(*)(int,int)> t_map_HOLgroupToUEs;
+/// HOL group multi map iterator typedef
 typedef std::map<HOL_group,std::set<LteFlowId_t> >::iterator t_it_HOLgroupToUEs;
 
 //typedef std::map<RBG_index,CQI_value>  map_RBG_to_CQI;
 //typedef std::map<LteFlowId_t,map_RBG_to_CQI> map_flowId_to_CQI_map;
 
 
+/**
+ * CQA key comparator
+ * \param key1 the first item
+ * \param key2 the second item
+ * \returns true if the first item > the second item
+ */  
 bool CqaKeyDescComparator (uint16_t key1, uint16_t key2)
 {
   return key1>key2;
@@ -702,7 +733,7 @@ CqaFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
   std::vector <struct RachListElement_s>::iterator itRach;
   for (itRach = m_rachList.begin (); itRach != m_rachList.end (); itRach++)
     {
-      NS_ASSERT_MSG (m_amc->GetTbSizeFromMcs (m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize, " Default UL Grant MCS does not allow to send RACH messages");
+      NS_ASSERT_MSG (m_amc->GetUlTbSizeFromMcs (m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize, " Default UL Grant MCS does not allow to send RACH messages");
       BuildRarListElement_s newRar;
       newRar.m_rnti = (*itRach).m_rnti;
       // DL-RACH Allocation
@@ -716,7 +747,7 @@ CqaFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
       while ((tbSizeBits < (*itRach).m_estimatedSize) && (rbStart + rbLen < (ffrRbStartOffset + maxContinuousUlBandwidth)))
         {
           rbLen++;
-          tbSizeBits = m_amc->GetTbSizeFromMcs (m_ulGrantMcs, rbLen);
+          tbSizeBits = m_amc->GetUlTbSizeFromMcs (m_ulGrantMcs, rbLen);
         }
       if (tbSizeBits < (*itRach).m_estimatedSize)
         {
@@ -1368,13 +1399,13 @@ CqaFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
                 }
 
               int mcsForThisUser = m_amc->GetMcsFromCqi (worstCQIAmongRBGsAllocatedForThisUser);
-              int tbSize = m_amc->GetTbSizeFromMcs (mcsForThisUser, (numberOfRBGAllocatedForThisUser+1) * rbgSize)/8;                           // similar to calculation of TB size (size of TB in bytes according to table 7.1.7.2.1-1 of 36.213)
+              int tbSize = m_amc->GetDlTbSizeFromMcs (mcsForThisUser, (numberOfRBGAllocatedForThisUser+1) * rbgSize)/8;                           // similar to calculation of TB size (size of TB in bytes according to table 7.1.7.2.1-1 of 36.213)
 
 
-              double achievableRate = (( m_amc->GetTbSizeFromMcs (mcsForThisUser, rbgSize)/ 8) / 0.001);
+              double achievableRate = (( m_amc->GetDlTbSizeFromMcs (mcsForThisUser, rbgSize)/ 8) / 0.001);
               double pf_weight = achievableRate / (*itStats).second.secondLastAveragedThroughput;
 
-              UeToAmountOfAssignedResources.find (flowId)->second = tbSize;
+              UeToAmountOfAssignedResources.find (flowId)->second = 8*tbSize;
               FfMacSchedSapProvider::SchedDlRlcBufferReqParameters lcBufferInfo = m_rlcBufferReq.find (flowId)->second;
 
               if (UeToAmountOfDataToTransfer.find (flowId)->second - UeToAmountOfAssignedResources.find (flowId)->second < 0)
@@ -1512,7 +1543,7 @@ CqaFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
         }
 
       newDci.m_mcs.push_back (m_amc->GetMcsFromCqi (worstCqi));
-      int tbSize = (m_amc->GetTbSizeFromMcs (newDci.m_mcs.at (0), RgbPerRnti * rbgSize) / 8);           // (size of TB in bytes according to table 7.1.7.2.1-1 of 36.213)
+      int tbSize = (m_amc->GetDlTbSizeFromMcs (newDci.m_mcs.at (0), RgbPerRnti * rbgSize) / 8);           // (size of TB in bytes according to table 7.1.7.2.1-1 of 36.213)
       newDci.m_tbsSize.push_back (tbSize);
       newDci.m_resAlloc = 0;            // only allocation type 0 at this stage
       newDci.m_rbBitmap = 0;    // TBD (32 bit bitmap see 7.1.6 of 36.213)
@@ -2062,7 +2093,7 @@ CqaFfMacScheduler::DoSchedUlTriggerReq (const struct FfMacSchedSapProvider::Sche
           uldci.m_mcs = m_amc->GetMcsFromCqi (cqi);
         }
 
-      uldci.m_tbSize = (m_amc->GetTbSizeFromMcs (uldci.m_mcs, rbPerFlow) / 8);
+      uldci.m_tbSize = (m_amc->GetUlTbSizeFromMcs (uldci.m_mcs, rbPerFlow) / 8);
       UpdateUlRlcBufferInfo (uldci.m_rnti, uldci.m_tbSize);
       uldci.m_ndi = 1;
       uldci.m_cceIndex = 0;

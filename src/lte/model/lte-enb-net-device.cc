@@ -82,21 +82,6 @@ TypeId LteEnbNetDevice::GetTypeId (void)
                    PointerValue (),
                    MakePointerAccessor (&LteEnbNetDevice::m_ffrAlgorithm),
                    MakePointerChecker <LteFfrAlgorithm> ())
-    .AddAttribute ("LteEnbMac",
-                   "The MAC associated to this EnbNetDevice",
-                   PointerValue (),
-                   MakePointerAccessor (&LteEnbNetDevice::m_mac),
-                   MakePointerChecker <LteEnbMac> ())
-    .AddAttribute ("FfMacScheduler",
-                   "The scheduler associated to this EnbNetDevice",
-                   PointerValue (),
-                   MakePointerAccessor (&LteEnbNetDevice::m_scheduler),
-                   MakePointerChecker <FfMacScheduler> ())
-    .AddAttribute ("LteEnbPhy",
-                   "The PHY associated to this EnbNetDevice",
-                   PointerValue (),
-                   MakePointerAccessor (&LteEnbNetDevice::m_phy),
-                   MakePointerChecker <LteEnbPhy> ())
     .AddAttribute ("LteEnbComponentCarrierManager",
                    "The RRC associated to this EnbNetDevice",
                    PointerValue (),
@@ -240,6 +225,19 @@ LteEnbNetDevice::GetCellId () const
   return m_cellId;
 }
 
+bool
+LteEnbNetDevice::HasCellId (uint16_t cellId) const
+{
+  for (auto &it: m_ccMap)
+    {
+      if (it.second->GetCellId () == cellId)
+        {
+          return true;
+        }
+    }
+  return false;
+}
+
 uint8_t 
 LteEnbNetDevice::GetUlBandwidth () const
 {
@@ -357,6 +355,7 @@ LteEnbNetDevice::GetCcMap ()
 void
 LteEnbNetDevice::SetCcMap (std::map< uint8_t, Ptr<ComponentCarrierEnb> > ccm)
 {
+  NS_ASSERT_MSG (!m_isConfigured, "attempt to set CC map after configuration");
   m_ccMap = ccm;
 }
 
@@ -404,7 +403,8 @@ LteEnbNetDevice::UpdateConfig (void)
         {
           NS_LOG_LOGIC (this << " Configure cell " << m_cellId);
           // we have to make sure that this function is called only once
-          m_rrc->ConfigureCell (m_cellId);
+          NS_ASSERT (!m_ccMap.empty ());
+          m_rrc->ConfigureCell (m_ccMap);
           m_isConfigured = true;
         }
 

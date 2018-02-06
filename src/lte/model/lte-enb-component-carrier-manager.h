@@ -81,7 +81,10 @@ public:
 
   LteEnbComponentCarrierManager ();
   virtual ~LteEnbComponentCarrierManager ();
-  // inherited from Object
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId ();
 
   /**
@@ -99,11 +102,13 @@ public:
    */
   virtual LteCcmRrcSapProvider* GetLteCcmRrcSapProvider ();
 
-  /*
+  /**
    * \brief This function returns a pointer to the LteCcmMacSapUser interface, which
    * is used by MAC to communicate to CCM when e.g. UL buffer status report is
    * received, or to notify CCM about PRB occupancy, and similar. Functions that are
    * specific for the communication between MAC and CCM.
+   *
+   * \returns LteCcmMacSapUser* 
    */
   virtual LteCcmMacSapUser* GetLteCcmMacSapUser ();
 
@@ -114,29 +119,41 @@ public:
    * proxy, and will forward calls between to MAC objects of
    * component carriers based on the logic implemented in the
    * specific component carrier manager.
+   *
+   * \returns LteMacSapProvider* 
    */
   virtual LteMacSapProvider* GetLteMacSapProvider ();
 
-  /*
+  /**
    * \brief Set LteMacSapProvider interface for the MAC object of
    * the specified component carrier.
+   *
+   * \param componentCarrierId component carrier ID
+   * \param sap the MAC SAP provider
+   * \returns true if successful
    */
   virtual bool SetMacSapProvider (uint8_t componentCarrierId, LteMacSapProvider* sap);
 
-  /*
+  /**
    * \brief Set LteCcmMacSapProvider interface for the MAC object of
    * the specified component carrier. Through this interface CCM communicates with
    * MAC, e.g. it notifies MAC of the specific carrier when to scheduler UL BSR.
+   *
+   * \param componentCarrierId component carrier ID
+   * \param sap the MAC SAP provider
+   * \returns true if successful
    */
   virtual bool SetCcmMacSapProviders (uint8_t componentCarrierId, LteCcmMacSapProvider* sap);
 
-  /*
+  /**
    * \brief Sets the total number of component carriers.
+   * \param noOfComponentCarriers number of component carriers
    */
   virtual void SetNumberOfComponentCarriers (uint16_t noOfComponentCarriers);
 
-  /*
+  /**
    * \brief Sets a pointer to eNodeB RRC instance
+   * \param rrc the RRC
    */
   virtual void SetRrc (const Ptr<LteEnbRrc> rrc);
 
@@ -155,7 +172,7 @@ protected:
 
   std::map <uint16_t, std::map<uint8_t, LteMacSapUser*> > m_ueAttached;//!< The map that contains the rnti, lcid, SAP of the RLC instance
   std::map <uint16_t, std::map<uint8_t, LteEnbCmacSapProvider::LcInfo> > m_rlcLcInstantiated; //!< This map contains logical channel configuration per flow Id (rnti, lcid).
-  std::map <uint16_t, uint8_t> m_enabledComponentCarrier; //!< This map tells for each rnti the number of enabled component carrier.s
+  std::map <uint16_t, uint8_t> m_enabledComponentCarrier; //!< This map tells for each RNTI the number of enabled component carriers.
   std::map <uint16_t, uint8_t> m_ueState; //!< Map of RRC states per UE (rnti, state), e.g. CONNECTED_NORMALLY
   uint16_t m_noOfComponentCarriers; //!< The number component of carriers that are supported by this eNb.
   // pointer to RRC object for direct function calls, e.g. when CCM needs to obtain
@@ -170,7 +187,7 @@ protected:
    * So, LteEnbComponentCarrierManager class will receive function calls that are meant for MAC, and
    * will forward them to the MAC of the component carriers based on the logic implemented
    * in LteComponentCarrierManager. This attribute will be initialized by using class that implements
-   * LteMacSapProvider interface and class that implements LteEnbComponetnCarrierManager base class
+   * LteMacSapProvider interface and class that implements LteEnbComponentCarrierManager base class
    * e.g.:EnbMacMemberLteMacSapProvider <LteEnbComponentCarrierManagerImpl>
    */
   LteMacSapProvider* m_macSapProvider;//!< A pointer to main SAP interface of the MAC instance, which is in this case handled by CCM.

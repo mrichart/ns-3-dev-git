@@ -46,18 +46,21 @@ namespace ns3 {
 class LteCcmRrcSapProvider
 {
 
+/// allow UeManager class friend access
 friend class UeManager;
+/// allow LteMacSapUser class friend access
 friend class LteMacSapUser;
  
 public:
   
   virtual ~LteCcmRrcSapProvider ();
   
+  /// LcsConfig sructure
   struct LcsConfig
   {
-    uint16_t componentCarrierId;
-    LteEnbCmacSapProvider::LcInfo lc;
-    LteMacSapUser *msu;
+    uint16_t componentCarrierId; ///< component carrier ID
+    LteEnbCmacSapProvider::LcInfo lc; ///< LC info
+    LteMacSapUser *msu; ///< MSU
   };
 
   /**
@@ -103,7 +106,7 @@ public:
    *             where the report originates from
    * \param lcid the Logical Channel id
    * \param lcGroup the Logical Channel group
-   * \param msu a pointer to the LteMacSapUSer, the LteEnbComponentCarrierManager
+   * \param msu a pointer to the LteMacSapUser, the LteEnbComponentCarrierManager
    *             has to store a LteMacSapUser for each Rlc istance, in order to 
    *             properly redirect the packet
    * \return vector of LcsConfig contains the lc configuration for each Mac
@@ -147,6 +150,7 @@ public:
  */
 class LteCcmRrcSapUser
 {
+  /// allow LteEnbRrc class friend access
   friend class LteEnbRrc;
 public:
   virtual ~LteCcmRrcSapUser ();
@@ -194,17 +198,31 @@ public:
   /** 
    * remove an existing LC
    * 
-   * \param lcId
    * \param rnti 
+   * \param lcid
    */
   virtual void ReleaseLcs (uint16_t rnti, uint8_t lcid) = 0;
 
+  /**
+   * Get UE manager by RNTI
+   *
+   * \param rnti RNTI
+   * \return UE manager
+   */
+  virtual Ptr<UeManager> GetUeManager (uint16_t rnti) = 0;
+
 }; // end of class LteCcmRrcSapUser
 
+/// MemberLteCcmRrcSapProvider class
 template <class C>
 class MemberLteCcmRrcSapProvider : public LteCcmRrcSapProvider
 {
 public:
+  /**
+   * Constructor
+   * 
+   * \param owner the owner class
+   */
   MemberLteCcmRrcSapProvider (C* owner);
 
   // inherited from LteCcmRrcSapProvider
@@ -217,7 +235,7 @@ public:
   virtual LteMacSapUser* ConfigureSignalBearer(LteEnbCmacSapProvider::LcInfo lcInfo,  LteMacSapUser* rlcMacSapUser);
 
 private:
-  C* m_owner;
+  C* m_owner; ///< the owner class
 };
 
 template <class C>
@@ -269,11 +287,16 @@ LteMacSapUser* MemberLteCcmRrcSapProvider<C>::ConfigureSignalBearer(LteEnbCmacSa
 }
 
 
-
+/// MemberLteCcmRrcSapUser class
 template <class C>
 class MemberLteCcmRrcSapUser : public LteCcmRrcSapUser
 {
 public:
+  /**
+   * Constructor
+   * 
+   * \param owner the owner class
+   */
   MemberLteCcmRrcSapUser (C* owner);
 
   // inherited from LteCcmRrcSapUser
@@ -281,9 +304,10 @@ public:
   virtual void ReleaseLcs (uint16_t rnti, uint8_t lcid);
   virtual uint8_t AddUeMeasReportConfigForComponentCarrier (LteRrcSap::ReportConfigEutra reportConfig);
   virtual void TriggerComponentCarrier (uint16_t rnti, uint16_t targetCellId);
+  virtual Ptr<UeManager> GetUeManager (uint16_t rnti);
 
 private:
-  C* m_owner;
+  C* m_owner; ///< the owner class
 };
 
 template <class C>
@@ -320,6 +344,13 @@ void
 MemberLteCcmRrcSapUser<C>::TriggerComponentCarrier (uint16_t rnti, uint16_t targetCellId)
 {
   NS_FATAL_ERROR ("Function should not be called because it is not implemented.");
+}
+
+template <class C>
+Ptr<UeManager>
+MemberLteCcmRrcSapUser<C>::GetUeManager (uint16_t rnti)
+{
+  return m_owner->GetUeManager (rnti);
 }
 
 } // end of namespace ns3

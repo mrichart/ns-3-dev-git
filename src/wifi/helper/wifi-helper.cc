@@ -201,16 +201,12 @@ WifiPhyHelper::PcapSniffTxEvent (
 
         header.SetFrameFlags (frameFlags);
 
-        uint32_t rate;
-        if (txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_HT || txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_VHT || txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_HE)
-          {
-            rate = 128 + txVector.GetMode ().GetMcsValue ();
-          }
-        else
+        uint32_t rate = 0;
+        if (txVector.GetMode ().GetModulationClass () != WIFI_MOD_CLASS_HT && txVector.GetMode ().GetModulationClass () != WIFI_MOD_CLASS_VHT && txVector.GetMode ().GetModulationClass () != WIFI_MOD_CLASS_HE)
           {
             rate = txVector.GetMode ().GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (), 1) * txVector.GetNss () / 500000;
+            header.SetRate (rate);
           }
-        header.SetRate (rate);
 
         uint16_t channelFlags = 0;
         switch (rate)
@@ -221,7 +217,6 @@ WifiPhyHelper::PcapSniffTxEvent (
           case 22: //11Mbps
             channelFlags |= RadiotapHeader::CHANNEL_FLAG_CCK;
             break;
-
           default:
             channelFlags |= RadiotapHeader::CHANNEL_FLAG_OFDM;
             break;
@@ -238,14 +233,12 @@ WifiPhyHelper::PcapSniffTxEvent (
 
         header.SetChannelFrequencyAndFlags (channelFreqMhz, channelFlags);
 
-        if (preamble == WIFI_PREAMBLE_HT_MF || preamble == WIFI_PREAMBLE_HT_GF || preamble == WIFI_PREAMBLE_NONE)
+        if (txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_HT)
           {
-            uint8_t mcsRate = 0;
             uint8_t mcsKnown = RadiotapHeader::MCS_KNOWN_NONE;
             uint8_t mcsFlags = RadiotapHeader::MCS_FLAGS_NONE;
 
             mcsKnown |= RadiotapHeader::MCS_KNOWN_INDEX;
-            mcsRate = rate - 128;
 
             mcsKnown |= RadiotapHeader::MCS_KNOWN_BANDWIDTH;
             if (txVector.GetChannelWidth () == 40)
@@ -283,7 +276,7 @@ WifiPhyHelper::PcapSniffTxEvent (
                 mcsFlags |= RadiotapHeader::MCS_FLAGS_STBC_STREAMS;
               }
 
-            header.SetMcsFields (mcsKnown, mcsFlags, mcsRate);
+            header.SetMcsFields (mcsKnown, mcsFlags, txVector.GetMode ().GetMcsValue ());
           }
 
         if (txVector.IsAggregation ())
@@ -303,7 +296,7 @@ WifiPhyHelper::PcapSniffTxEvent (
             header.SetAmpduStatus (aMpdu.mpduRefNumber, ampduStatusFlags, hdr.GetCrc ());
           }
 
-        if (preamble == WIFI_PREAMBLE_VHT)
+        if (txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_VHT)
           {
             uint16_t vhtKnown = RadiotapHeader::VHT_KNOWN_NONE;
             uint8_t vhtFlags = RadiotapHeader::VHT_FLAGS_NONE;
@@ -344,7 +337,7 @@ WifiPhyHelper::PcapSniffTxEvent (
 
             //only SU PPDUs are currently supported
             vhtMcsNss[0] |= (txVector.GetNss () & 0x0f);
-            vhtMcsNss[0] |= (((rate - 128) << 4) & 0xf0);
+            vhtMcsNss[0] |= ((txVector.GetMode ().GetMcsValue () << 4) & 0xf0);
 
             header.SetVhtFields (vhtKnown, vhtFlags, vhtBandwidth, vhtMcsNss, vhtCoding, vhtGroupId, vhtPartialAid);
           }
@@ -402,16 +395,12 @@ WifiPhyHelper::PcapSniffRxEvent (
 
         header.SetFrameFlags (frameFlags);
 
-        uint32_t rate;
-        if (txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_HT || txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_VHT || txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_HE)
-          {
-            rate = 128 + txVector.GetMode ().GetMcsValue ();
-          }
-        else
+        uint32_t rate = 0;
+        if (txVector.GetMode ().GetModulationClass () != WIFI_MOD_CLASS_HT && txVector.GetMode ().GetModulationClass () != WIFI_MOD_CLASS_VHT && txVector.GetMode ().GetModulationClass () != WIFI_MOD_CLASS_HE)
           {
             rate = txVector.GetMode ().GetDataRate (txVector.GetChannelWidth (), txVector.GetGuardInterval (), 1) * txVector.GetNss () / 500000;
+            header.SetRate (rate);
           }
-        header.SetRate (rate);
 
         uint16_t channelFlags = 0;
         switch (rate)
@@ -422,7 +411,6 @@ WifiPhyHelper::PcapSniffRxEvent (
           case 22: //11Mbps
             channelFlags |= RadiotapHeader::CHANNEL_FLAG_CCK;
             break;
-
           default:
             channelFlags |= RadiotapHeader::CHANNEL_FLAG_OFDM;
             break;
@@ -442,14 +430,12 @@ WifiPhyHelper::PcapSniffRxEvent (
         header.SetAntennaSignalPower (signalNoise.signal);
         header.SetAntennaNoisePower (signalNoise.noise);
 
-        if (preamble == WIFI_PREAMBLE_HT_MF || preamble == WIFI_PREAMBLE_HT_GF || preamble == WIFI_PREAMBLE_NONE)
+        if (txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_HT)
           {
-            uint8_t mcsRate = 0;
             uint8_t mcsKnown = RadiotapHeader::MCS_KNOWN_NONE;
             uint8_t mcsFlags = RadiotapHeader::MCS_FLAGS_NONE;
 
             mcsKnown |= RadiotapHeader::MCS_KNOWN_INDEX;
-            mcsRate = rate - 128;
 
             mcsKnown |= RadiotapHeader::MCS_KNOWN_BANDWIDTH;
             if (txVector.GetChannelWidth () == 40)
@@ -487,7 +473,7 @@ WifiPhyHelper::PcapSniffRxEvent (
                 mcsFlags |= RadiotapHeader::MCS_FLAGS_STBC_STREAMS;
               }
 
-            header.SetMcsFields (mcsKnown, mcsFlags, mcsRate);
+            header.SetMcsFields (mcsKnown, mcsFlags, txVector.GetMode ().GetMcsValue ());
           }
 
         if (txVector.IsAggregation ())
@@ -508,7 +494,7 @@ WifiPhyHelper::PcapSniffRxEvent (
             header.SetAmpduStatus (aMpdu.mpduRefNumber, ampduStatusFlags, hdr.GetCrc ());
           }
 
-        if (preamble == WIFI_PREAMBLE_VHT)
+        if (txVector.GetMode ().GetModulationClass () == WIFI_MOD_CLASS_VHT)
           {
             uint16_t vhtKnown = RadiotapHeader::VHT_KNOWN_NONE;
             uint8_t vhtFlags = RadiotapHeader::VHT_FLAGS_NONE;
@@ -549,7 +535,7 @@ WifiPhyHelper::PcapSniffRxEvent (
 
             //only SU PPDUs are currently supported
             vhtMcsNss[0] |= (txVector.GetNss () & 0x0f);
-            vhtMcsNss[0] |= (((rate - 128) << 4) & 0xf0);
+            vhtMcsNss[0] |= ((txVector.GetMode ().GetMcsValue () << 4) & 0xf0);
 
             header.SetVhtFields (vhtKnown, vhtFlags, vhtBandwidth, vhtMcsNss, vhtCoding, vhtGroupId, vhtPartialAid);
           }
@@ -747,10 +733,12 @@ WifiHelper::SetStandard (enum WifiPhyStandard standard)
 
 NetDeviceContainer
 WifiHelper::Install (const WifiPhyHelper &phyHelper,
-                     const WifiMacHelper &macHelper, NodeContainer c) const
+                     const WifiMacHelper &macHelper,
+                     NodeContainer::Iterator first,
+                     NodeContainer::Iterator last) const
 {
   NetDeviceContainer devices;
-  for (NodeContainer::Iterator i = c.Begin (); i != c.End (); ++i)
+  for (NodeContainer::Iterator i = first; i != last; ++i)
     {
       Ptr<Node> node = *i;
       Ptr<WifiNetDevice> device = CreateObject<WifiNetDevice> ();
@@ -768,6 +756,13 @@ WifiHelper::Install (const WifiPhyHelper &phyHelper,
       NS_LOG_DEBUG ("node=" << node << ", mob=" << node->GetObject<MobilityModel> ());
     }
   return devices;
+}
+
+NetDeviceContainer
+WifiHelper::Install (const WifiPhyHelper &phyHelper,
+                     const WifiMacHelper &macHelper, NodeContainer c) const
+{
+  return Install (phyHelper, macHelper, c.Begin (), c.End ());
 }
 
 NetDeviceContainer
@@ -802,6 +797,7 @@ WifiHelper::EnableLogComponents (void)
   LogComponentEnable ("ConstantRateWifiManager", LOG_LEVEL_ALL);
   LogComponentEnable ("DcaTxop", LOG_LEVEL_ALL);
   LogComponentEnable ("DcfManager", LOG_LEVEL_ALL);
+  LogComponentEnable ("DcfState", LOG_LEVEL_ALL);
   LogComponentEnable ("DsssErrorRateModel", LOG_LEVEL_ALL);
   LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
   LogComponentEnable ("IdealWifiManager", LOG_LEVEL_ALL);
@@ -812,14 +808,13 @@ WifiHelper::EnableLogComponents (void)
   LogComponentEnable ("MinstrelHtWifiManager", LOG_LEVEL_ALL);
   LogComponentEnable ("MinstrelWifiManager", LOG_LEVEL_ALL);
   LogComponentEnable ("MpduAggregator", LOG_LEVEL_ALL);
-  LogComponentEnable ("MpduStandardAggregator", LOG_LEVEL_ALL);
   LogComponentEnable ("MsduAggregator", LOG_LEVEL_ALL);
-  LogComponentEnable ("MsduStandardAggregator", LOG_LEVEL_ALL);
   LogComponentEnable ("NistErrorRateModel", LOG_LEVEL_ALL);
   LogComponentEnable ("OnoeWifiManager", LOG_LEVEL_ALL);
   LogComponentEnable ("ParfWifiManager", LOG_LEVEL_ALL);
   LogComponentEnable ("RegularWifiMac", LOG_LEVEL_ALL);
   LogComponentEnable ("RraaWifiManager", LOG_LEVEL_ALL);
+  LogComponentEnable ("RrpaaWifiManager", LOG_LEVEL_ALL);
   LogComponentEnable ("SpectrumWifiPhy", LOG_LEVEL_ALL);
   LogComponentEnable ("StaWifiMac", LOG_LEVEL_ALL);
   LogComponentEnable ("SupportedRates", LOG_LEVEL_ALL);

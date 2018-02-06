@@ -23,6 +23,7 @@
 
 #include "ns3/test.h"
 #include "ns3/pie-queue-disc.h"
+#include "ns3/packet.h"
 #include "ns3/uinteger.h"
 #include "ns3/string.h"
 #include "ns3/double.h"
@@ -54,9 +55,16 @@ public:
 
 private:
   PieQueueDiscTestItem ();
-  /// copy constructor
+  /**
+   * \brief Copy constructor
+   * Disable default implementation to avoid misuse
+   */
   PieQueueDiscTestItem (const PieQueueDiscTestItem &);
-  /// assignment operator
+  /**
+   * \brief Assignment operator
+   * \return this object
+   * Disable default implementation to avoid misuse
+   */
   PieQueueDiscTestItem &operator = (const PieQueueDiscTestItem &);
 };
 
@@ -149,7 +157,7 @@ PieQueueDiscTestCase::RunPieTest (StringValue mode)
 
   Address dest;
 
-  if (queue->GetMode () == Queue::QUEUE_MODE_BYTES)
+  if (queue->GetMode () == PieQueueDisc::QUEUE_DISC_MODE_BYTES)
     {
       // pktSize should be same as MeanPktSize to avoid performance gap between byte and packet mode
       pktSize = 1000;
@@ -237,10 +245,10 @@ PieQueueDiscTestCase::RunPieTest (StringValue mode)
   DequeueWithDelay (queue, 0.012, 400);
   Simulator::Stop (Seconds (8.0));
   Simulator::Run ();
-  PieQueueDisc::Stats st = StaticCast<PieQueueDisc> (queue)->GetStats ();
-  uint32_t test2 = st.unforcedDrop;
+  QueueDisc::Stats st = queue->GetStats ();
+  uint32_t test2 = st.GetNDroppedPackets (PieQueueDisc::UNFORCED_DROP);
   NS_TEST_EXPECT_MSG_NE (test2, 0, "There should be some unforced drops");
-  NS_TEST_EXPECT_MSG_EQ (st.forcedDrop, 0, "There should be zero forced drops");
+  NS_TEST_EXPECT_MSG_EQ (st.GetNDroppedPackets (PieQueueDisc::FORCED_DROP), 0, "There should be zero forced drops");
 
 
   // test 3: same as test 2, but with higher QueueDelayReference
@@ -268,10 +276,10 @@ PieQueueDiscTestCase::RunPieTest (StringValue mode)
   DequeueWithDelay (queue, 0.012, 400);
   Simulator::Stop (Seconds (8.0));
   Simulator::Run ();
-  st = StaticCast<PieQueueDisc> (queue)->GetStats ();
-  uint32_t test3 = st.unforcedDrop;
+  st = queue->GetStats ();
+  uint32_t test3 = st.GetNDroppedPackets (PieQueueDisc::UNFORCED_DROP);
   NS_TEST_EXPECT_MSG_LT (test3, test2, "Test 3 should have less unforced drops than test 2");
-  NS_TEST_EXPECT_MSG_EQ (st.forcedDrop, 0, "There should be zero forced drops");
+  NS_TEST_EXPECT_MSG_EQ (st.GetNDroppedPackets (PieQueueDisc::FORCED_DROP), 0, "There should be zero forced drops");
 
 
   // test 4: same as test 2, but with reduced dequeue rate
@@ -299,10 +307,10 @@ PieQueueDiscTestCase::RunPieTest (StringValue mode)
   DequeueWithDelay (queue, 0.015, 400); // delay between two successive dequeue events is increased
   Simulator::Stop (Seconds (8.0));
   Simulator::Run ();
-  st = StaticCast<PieQueueDisc> (queue)->GetStats ();
-  uint32_t test4 = st.unforcedDrop;
+  st = queue->GetStats ();
+  uint32_t test4 = st.GetNDroppedPackets (PieQueueDisc::UNFORCED_DROP);
   NS_TEST_EXPECT_MSG_GT (test4, test2, "Test 4 should have more unforced drops than test 2");
-  NS_TEST_EXPECT_MSG_EQ (st.forcedDrop, 0, "There should be zero forced drops");
+  NS_TEST_EXPECT_MSG_EQ (st.GetNDroppedPackets (PieQueueDisc::FORCED_DROP), 0, "There should be zero forced drops");
 
 
   // test 5: same dequeue rate as test 4, but with higher Tupdate
@@ -330,10 +338,10 @@ PieQueueDiscTestCase::RunPieTest (StringValue mode)
   DequeueWithDelay (queue, 0.015, 400);
   Simulator::Stop (Seconds (8.0));
   Simulator::Run ();
-  st = StaticCast<PieQueueDisc> (queue)->GetStats ();
-  uint32_t test5 = st.unforcedDrop;
+  st = queue->GetStats ();
+  uint32_t test5 = st.GetNDroppedPackets (PieQueueDisc::UNFORCED_DROP);
   NS_TEST_EXPECT_MSG_LT (test5, test4, "Test 5 should have less unforced drops than test 4");
-  NS_TEST_EXPECT_MSG_EQ (st.forcedDrop, 0, "There should be zero forced drops");
+  NS_TEST_EXPECT_MSG_EQ (st.GetNDroppedPackets (PieQueueDisc::FORCED_DROP), 0, "There should be zero forced drops");
 }
 
 void
@@ -378,8 +386,8 @@ PieQueueDiscTestCase::DequeueWithDelay (Ptr<PieQueueDisc> queue, double delay, u
 void
 PieQueueDiscTestCase::DoRun (void)
 {
-  RunPieTest (StringValue ("QUEUE_MODE_PACKETS"));
-  RunPieTest (StringValue ("QUEUE_MODE_BYTES"));
+  RunPieTest (StringValue ("QUEUE_DISC_MODE_PACKETS"));
+  RunPieTest (StringValue ("QUEUE_DISC_MODE_BYTES"));
   Simulator::Destroy ();
 }
 

@@ -73,7 +73,7 @@ public:
   virtual void AddUe (uint16_t rnti) = 0;
 
   /** 
-   * Remove an UE from the the cell
+   * Remove an UE from the cell
    * 
    * \param rnti the UE id relative to this cell
    */
@@ -146,6 +146,11 @@ template <class C>
 class MemberLteEnbCphySapProvider : public LteEnbCphySapProvider
 {
 public:
+  /**
+   * Constructor
+   *
+   * \param owner the owner class
+   */
   MemberLteEnbCphySapProvider (C* owner);
 
   // inherited from LteEnbCphySapProvider
@@ -163,7 +168,7 @@ public:
   
 private:
   MemberLteEnbCphySapProvider ();
-  C* m_owner;
+  C* m_owner; ///< the owner class
 };
 
 template <class C>
@@ -264,13 +269,18 @@ template <class C>
 class MemberLteEnbCphySapUser : public LteEnbCphySapUser
 {
 public:
+  /**
+   * Constructor
+   *
+   * \param owner the owner class
+   */
   MemberLteEnbCphySapUser (C* owner);
 
   // methods inherited from LteEnbCphySapUser go here
 
 private:
   MemberLteEnbCphySapUser ();
-  C* m_owner;
+  C* m_owner; ///< the owner class
 };
 
 template <class C>

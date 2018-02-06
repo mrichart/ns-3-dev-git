@@ -65,11 +65,11 @@ public:
   /**
    * \param loss the new propagation loss model.
    */
-  void SetPropagationLossModel (Ptr<PropagationLossModel> loss);
+  void SetPropagationLossModel (const Ptr<PropagationLossModel> loss);
   /**
    * \param delay the new propagation delay model.
    */
-  void SetPropagationDelayModel (Ptr<PropagationDelayModel> delay);
+  void SetPropagationDelayModel (const Ptr<PropagationDelayModel> delay);
 
   /**
    * \param sender the phy object from which the packet is originating.
@@ -112,7 +112,7 @@ private:
    * \param txPowerDbm the tx power associated to the packet being sent (dBm)
    * \param duration the transmission duration associated with the packet being sent
    */
-  void Receive (Ptr<YansWifiPhy> receiver, Ptr<Packet> packet, double txPowerDbm, Time duration) const;
+  static void Receive (Ptr<YansWifiPhy> receiver, Ptr<Packet> packet, double txPowerDbm, Time duration);
 
   PhyList m_phyList;                   //!< List of YansWifiPhys connected to this YansWifiChannel
   Ptr<PropagationLossModel> m_loss;    //!< Propagation loss model

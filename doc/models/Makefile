@@ -58,6 +58,7 @@ SOURCES = \
 	$(SRC)/network/doc/simple.rst \
 	$(SRC)/network/doc/queue.rst \
 	$(SRC)/network/doc/queue-limits.rst \
+	$(SRC)/nix-vector-routing/doc/nix-vector-routing.rst \
 	$(SRC)/internet/doc/internet-stack.rst \
 	$(SRC)/internet/doc/ipv4.rst \
 	$(SRC)/internet/doc/ipv6.rst \
@@ -83,15 +84,8 @@ SOURCES = \
 	$(SRC)/traffic-control/doc/codel.rst \
 	$(SRC)/traffic-control/doc/fq-codel.rst \
 	$(SRC)/traffic-control/doc/pie.rst \
+	$(SRC)/traffic-control/doc/mq.rst \
 	$(SRC)/spectrum/doc/spectrum.rst \
-	$(SRC)/stats/doc/adaptor.rst \
-	$(SRC)/stats/doc/aggregator.rst \
-	$(SRC)/stats/doc/collector.rst \
-	$(SRC)/stats/doc/data-collection-helpers.rst \
-	$(SRC)/stats/doc/data-collection-overview.rst \
-	$(SRC)/stats/doc/data-collection.rst \
-	$(SRC)/stats/doc/probe.rst \
-	$(SRC)/stats/doc/scope-and-limitations.rst \
 	$(SRC)/netanim/doc/animation.rst \
 	$(SRC)/flow-monitor/doc/flow-monitor.rst \
 	$(SRC)/wave/doc/wave.rst \
@@ -171,6 +165,13 @@ SOURCEFIGS = \
 	$(SRC)/lte/doc/source/figures/lte-rlc-data-txon-ul.dia \
 	$(SRC)/lte/doc/source/figures/lte-rlc-data-retx-ul.dia \
 	$(SRC)/lte/doc/source/figures/lte-epc-x2-entity-saps.dia \
+	$(SRC)/lte/doc/source/figures/ca-rrc-reconf.dia \
+	$(SRC)/lte/doc/source/figures/ca-lte-enb-net-device-changes.dia \
+	$(SRC)/lte/doc/source/figures/ca-lte-ue-net-device-changes.dia \
+	$(SRC)/lte/doc/source/figures/ca-enb-data-plane.dia \
+	$(SRC)/lte/doc/source/figures/ca-enb-ctrl-plane.dia \
+	$(SRC)/lte/doc/source/figures/ca-ue-data-plane.dia \
+	$(SRC)/lte/doc/source/figures/ca-ue-ctrl-plane.dia \
 	$(SRC)/lte/doc/source/figures/lte-strongest-cell-handover-algorithm.eps \
 	$(SRC)/lte/doc/source/figures/lte-phy-interference.pdf \
 	$(SRC)/lte/doc/source/figures/lte-phy-interference.png \
@@ -188,6 +189,10 @@ SOURCEFIGS = \
 	$(SRC)/lte/doc/source/figures/rrc-connection-reconfiguration-handover.png \
 	$(SRC)/lte/doc/source/figures/nas-attach.pdf \
 	$(SRC)/lte/doc/source/figures/nas-attach.png \
+	$(SRC)/lte/doc/source/figures/ca-downlink-bsr.pdf \
+	$(SRC)/lte/doc/source/figures/ca-downlink-bsr.png \
+	$(SRC)/lte/doc/source/figures/ca-setup-radio-bearer.pdf \
+	$(SRC)/lte/doc/source/figures/ca-setup-radio-bearer.png \
 	$(SRC)/lte/doc/source/figures/lte-enb-rrc-states.pdf \
 	$(SRC)/lte/doc/source/figures/lte-enb-rrc-states.png \
 	$(SRC)/lte/doc/source/figures/lte-ue-rrc-states.pdf \
@@ -240,6 +245,16 @@ SOURCEFIGS = \
 	$(SRC)/lte/doc/source/figures/MCS_16_test.pdf \
 	$(SRC)/lte/doc/source/figures/miesm_scheme.pdf \
 	$(SRC)/lte/doc/source/figures/miesm_scheme.png \
+	$(SRC)/lte/doc/source/figures/carrier-aggregation-impact.pdf \
+	$(SRC)/lte/doc/source/figures/carrier-aggregation-impact.png \
+	$(SRC)/lte/doc/source/figures/carrier-aggregation-mac-impact.pdf \
+	$(SRC)/lte/doc/source/figures/carrier-aggregation-mac-impact.png \
+	$(SRC)/lte/doc/source/figures/ca-uplink-bsr.pdf \
+	$(SRC)/lte/doc/source/figures/ca-uplink-bsr.png \
+	$(SRC)/lte/doc/source/figures/ca-test-example-ul.pdf \
+	$(SRC)/lte/doc/source/figures/ca-test-example-ul.png \
+	$(SRC)/lte/doc/source/figures/ca-test-example-dl.pdf \
+	$(SRC)/lte/doc/source/figures/ca-test-example-dl.png \
 	$(SRC)/lte/doc/source/figures/lte-dl-power-control.dia \
 	$(SRC)/lte/doc/source/figures/lte-ffr-scheduling.dia \
 	$(SRC)/lte/doc/source/figures/lte-handover-campaign-rem.pdf \
@@ -247,15 +262,6 @@ SOURCEFIGS = \
 	$(SRC)/lte/doc/source/figures/lte-legacy-handover-algorithm.pdf \
 	$(SRC)/lte/doc/source/figures/lte-legacy-handover-algorithm.png \
 	$(SRC)/uan/doc/auvmobility-classes.dia \
-	$(SRC)/stats/doc/Stat-framework-arch.png \
-	$(SRC)/stats/doc/Wifi-default.png \
-	$(SRC)/stats/doc/dcf-overview.dia \
-	$(SRC)/stats/doc/dcf-overview-with-aggregation.dia \
-	$(SRC)/stats/doc/file-example.png \
-	$(SRC)/stats/doc/gnuplot-aggregator.png \
-	$(SRC)/stats/doc/gnuplot-example.png \
-	$(SRC)/stats/doc/gnuplot-helper-example.png \
-	$(SRC)/stats/doc/seventh-packet-byte-count.png \
 	$(SRC)/netanim/doc/figures/PacketStatistics.png \
 	$(SRC)/netanim/doc/figures/PacketStatistics.pdf \
 	$(SRC)/netanim/doc/figures/NetAnim_3_105.png \
@@ -302,8 +308,6 @@ IMAGES_EPS = \
 	$(FIGURES)/WifiArchitecture.eps \
 	$(FIGURES)/snir.eps \
 	$(FIGURES)/WimaxArchitecture.eps \
-	$(FIGURES)/dcf-overview.eps \
-	$(FIGURES)/dcf-overview-with-aggregation.eps \
 	$(FIGURES)/epc-ctrl-arch.eps \
 	$(FIGURES)/epc-data-flow-dl.eps \
 	$(FIGURES)/epc-data-flow-ul.eps \
@@ -377,6 +381,13 @@ IMAGES_EPS = \
 	$(FIGURES)/nist-frame-success-rate-n.eps \
 	$(FIGURES)/nist-frame-success-rate-ac.eps \
 	$(FIGURES)/nist-frame-success-rate-ax.eps \
+	$(FIGURES)/ca-rrc-reconf.eps \
+	$(FIGURES)/ca-lte-enb-net-device-changes.eps \
+	$(FIGURES)/ca-lte-ue-net-device-changes.eps \
+	$(FIGURES)/ca-enb-data-plane.eps \
+	$(FIGURES)/ca-enb-ctrl-plane.eps \
+	$(FIGURES)/ca-ue-data-plane.eps \
+	$(FIGURES)/ca-ue-ctrl-plane.eps \
 
 # rescale pdf figures as necessary
 $(FIGURES)/testbed.pdf_width = 5in

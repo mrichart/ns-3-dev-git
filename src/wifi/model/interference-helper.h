@@ -22,6 +22,7 @@
 #define INTERFERENCE_HELPER_H
 
 #include "ns3/nstime.h"
+#include "ns3/packet.h"
 #include "wifi-tx-vector.h"
 #include "error-rate-model.h"
 
@@ -43,20 +44,19 @@ public:
     /**
      * Create an Event with the given parameters.
      *
-     * \param size packet size
+     * \param packet the packet
      * \param txVector TXVECTOR of the packet
      * \param duration duration of the signal
      * \param rxPower the receive power (w)
      */
-    Event (uint32_t size, WifiTxVector txVector, Time duration, double rxPower);
+    Event (Ptr<const Packet> packet, WifiTxVector txVector, Time duration, double rxPower);
     ~Event ();
 
-    /**
-     * Return the duration of the signal.
+    /** Return the packet.
      *
-     * \return the duration of the signal
+     * \return the packet
      */
-    Time GetDuration (void) const;
+    Ptr<const Packet> GetPacket (void) const;
     /**
      * Return the start time of the signal.
      *
@@ -76,12 +76,6 @@ public:
      */
     double GetRxPowerW (void) const;
     /**
-     * Return the size of the packet (bytes).
-     *
-     * \return the size of the packet (bytes)
-     */
-    uint32_t GetSize (void) const;
-    /**
      * Return the TXVECTOR of the packet.
      *
      * \return the TXVECTOR of the packet
@@ -96,7 +90,7 @@ public:
 
 
 private:
-    uint32_t m_size; ///< size
+    Ptr<const Packet> m_packet; ///< packet
     WifiTxVector m_txVector; ///< TXVECTOR
     Time m_startTime; ///< start time
     Time m_endTime; ///< end time
@@ -126,7 +120,7 @@ private:
    *
    * \param rate Error rate model
    */
-  void SetErrorRateModel (Ptr<ErrorRateModel> rate);
+  void SetErrorRateModel (const Ptr<ErrorRateModel> rate);
 
   /**
    * Return the noise figure.
@@ -155,19 +149,19 @@ private:
    *          energy on the medium will be higher than
    *          the requested threshold.
    */
-  Time GetEnergyDuration (double energyW);
+  Time GetEnergyDuration (double energyW) const;
 
   /**
    * Add the packet-related signal to interference helper.
    *
-   * \param size packet size
+   * \param packet the packet
    * \param txVector TXVECTOR of the packet
    * \param duration the duration of the signal
    * \param rxPower receive power (W)
    *
    * \return InterferenceHelper::Event
    */
-  Ptr<InterferenceHelper::Event> Add (uint32_t size, WifiTxVector txVector, Time duration, double rxPower);
+  Ptr<InterferenceHelper::Event> Add (Ptr<const Packet> packet, WifiTxVector txVector, Time duration, double rxPower);
 
   /**
    * Add a non-Wifi signal to interference helper.
@@ -220,8 +214,9 @@ public:
      *
      * \param time time of the event
      * \param delta the power
+     * \param event causes this NI change
      */
-    NiChange (Time time, double delta);
+    NiChange (Time time, double delta, Ptr<InterferenceHelper::Event> event);
     /**
      * Return the event time.
      *
@@ -235,6 +230,12 @@ public:
      */
     double GetDelta (void) const;
     /**
+     * Return the event causes the corresponding NI change
+     *
+     * \return the event
+     */
+    Ptr<InterferenceHelper::Event> GetEvent (void) const;
+    /**
      * Compare the event time of two NiChange objects (a < o).
      *
      * \param o
@@ -246,15 +247,12 @@ public:
 private:
     Time m_time; ///< time
     double m_delta; ///< delta
+    Ptr<InterferenceHelper::Event> m_event; ///< event
   };
   /**
    * typedef for a vector of NiChanges
    */
   typedef std::vector <NiChange> NiChanges;
-  /**
-   * typedef for a list of Events
-   */
-  typedef std::list<Ptr<Event> > Events;
 
   /**
    * Append the given Event.
@@ -322,8 +320,14 @@ private:
   NiChanges m_niChanges;
   double m_firstPower; ///< first power
   bool m_rxing; ///< flag whether it is in receiving state
-  /// Returns an iterator to the first nichange, which is later than moment
-  NiChanges::iterator GetPosition (Time moment);
+
+  /**
+   * Returns a const iterator to the first nichange, which is later than moment
+   *
+   * \param moment time to check from
+   * \returns an iterator to the list of NiChanges
+   */
+  NiChanges::const_iterator GetPosition (Time moment);
   /**
    * Add NiChange to the list at the appropriate position.
    *

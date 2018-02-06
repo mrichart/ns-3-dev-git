@@ -63,13 +63,13 @@ YansWifiChannel::~YansWifiChannel ()
 }
 
 void
-YansWifiChannel::SetPropagationLossModel (Ptr<PropagationLossModel> loss)
+YansWifiChannel::SetPropagationLossModel (const Ptr<PropagationLossModel> loss)
 {
   m_loss = loss;
 }
 
 void
-YansWifiChannel::SetPropagationDelayModel (Ptr<PropagationDelayModel> delay)
+YansWifiChannel::SetPropagationDelayModel (const Ptr<PropagationDelayModel> delay)
 {
   m_delay = delay;
 }
@@ -108,16 +108,16 @@ YansWifiChannel::Send (Ptr<YansWifiPhy> sender, Ptr<const Packet> packet, double
             }
 
           Simulator::ScheduleWithContext (dstNode,
-                                          delay, &YansWifiChannel::Receive, this,
+                                          delay, &YansWifiChannel::Receive,
                                           (*i), copy, rxPowerDbm, duration);
         }
     }
 }
 
 void
-YansWifiChannel::Receive (Ptr<YansWifiPhy> phy, Ptr<Packet> packet, double rxPowerDbm, Time duration) const
+YansWifiChannel::Receive (Ptr<YansWifiPhy> phy, Ptr<Packet> packet, double rxPowerDbm, Time duration)
 {
-  NS_LOG_FUNCTION (this << phy << packet << rxPowerDbm << duration.GetSeconds ());
+  NS_LOG_FUNCTION (phy << packet << rxPowerDbm << duration.GetSeconds ());
   phy->StartReceivePreambleAndHeader (packet, DbmToW (rxPowerDbm + phy->GetRxGain ()), duration);
 }
 

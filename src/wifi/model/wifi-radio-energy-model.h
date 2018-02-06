@@ -123,6 +123,11 @@ public:
   /**
    * Defined in ns3::WifiPhyListener
    */
+  void NotifyOff (void);
+
+  /**
+   * Defined in ns3::WifiPhyListener
+   */
   void NotifyWakeup (void);
 
 
@@ -225,7 +230,7 @@ public:
    *
    * Implements DeviceEnergyModel::SetEnergySource.
    */
-  void SetEnergySource (Ptr<EnergySource> source);
+  void SetEnergySource (const Ptr<EnergySource> source);
 
   /**
    * \returns Total energy consumption of the wifi device.
@@ -330,7 +335,7 @@ public:
   /**
    * \param model the model used to compute the wifi tx current.
    */
-  void SetTxCurrentModel (Ptr<WifiTxCurrentModel> model);
+  void SetTxCurrentModel (const Ptr<WifiTxCurrentModel> model);
 
   /**
    * \brief Calls the CalcTxCurrent method of the tx current model to
@@ -406,7 +411,6 @@ private:
   Time m_lastUpdateTime;          ///< time stamp of previous energy update
 
   uint8_t m_nPendingChangeState; ///< pending state change
-  bool m_isSupersededChangeState; ///< superseded change state
 
   /// Energy depletion callback
   WifiRadioEnergyDepletionCallback m_energyDepletionCallback;

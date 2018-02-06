@@ -49,6 +49,11 @@ VhtCapabilities::VhtCapabilities ()
 {
   m_rxMcsMap.resize (8,0);
   m_txMcsMap.resize (8,0);
+  for (uint8_t i = 0; i < 8; i++) //set to 3 by default, i.e. #spatial streams not supported. 0 means supported up to MCS 7, not what we want to imply at this stage.
+    {
+      m_rxMcsMap[i] = 3;
+      m_txMcsMap[i] = 3;
+    }
 }
 
 WifiInformationElementId
@@ -66,7 +71,7 @@ VhtCapabilities::SetVhtSupported (uint8_t vhtsupported)
 uint8_t
 VhtCapabilities::GetInformationFieldSize () const
 {
-  //we should not be here if ht is not supported
+  //we should not be here if vht is not supported
   NS_ASSERT (m_vhtSupported > 0);
   return 12;
 }
@@ -251,35 +256,11 @@ VhtCapabilities::SetMaxAmpduLengthExponent (uint8_t exponent)
 }
 
 void
-VhtCapabilities::SetRxMcsMap (uint16_t map)
-{
-  //Set each element in the map accoriding to the 2 bits representing it page 98 in the 11ac standard
-  uint8_t n;
-  for (uint8_t i = 0; i < 8; i++)
-    {
-      n = i * 2;
-      m_rxMcsMap[i] = (map >> n) & 0x03;
-    }
-}
-
-void
 VhtCapabilities::SetRxMcsMap (uint8_t mcs, uint8_t nss)
 {
   //MCS index should be at least 7 and should not exceed 9
   NS_ASSERT (mcs >= 7 && mcs <= 9);
   m_rxMcsMap[nss - 1] = mcs - 7; //1 = MCS 8; 2 = MCS 9
-}
-
-void
-VhtCapabilities::SetTxMcsMap (uint16_t map)
-{
-  //Set each element in the map accoriding to the 2 bits representing it page 98 in the 11ac standard
-  uint8_t n;
-  for (uint8_t i = 0; i < 8; i++)
-    {
-      n = i * 2;
-      m_txMcsMap[i] = (map >> n) & 0x03;
-    }
 }
 
 void
@@ -451,7 +432,7 @@ ATTRIBUTE_HELPER_CPP (VhtCapabilities);
  * output stream output operator
  *
  * \param os output stream
- * \param VhtCapabilities
+ * \param VhtCapabilities the VHT capabilities
  *
  * \returns output stream
  */
@@ -467,7 +448,7 @@ operator << (std::ostream &os, const VhtCapabilities &VhtCapabilities)
  * input stream input operator
  *
  * \param is input stream
- * \param VhtCapabilities
+ * \param VhtCapabilities the VHT capabilities
  *
  * \returns input stream
  */

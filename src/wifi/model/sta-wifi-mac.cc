@@ -106,34 +106,6 @@ StaWifiMac::~StaWifiMac ()
 }
 
 void
-StaWifiMac::SetMaxMissedBeacons (uint32_t missed)
-{
-  NS_LOG_FUNCTION (this << missed);
-  m_maxMissedBeacons = missed;
-}
-
-void
-StaWifiMac::SetProbeRequestTimeout (Time timeout)
-{
-  NS_LOG_FUNCTION (this << timeout);
-  m_probeRequestTimeout = timeout;
-}
-
-void
-StaWifiMac::SetAssocRequestTimeout (Time timeout)
-{
-  NS_LOG_FUNCTION (this << timeout);
-  m_assocRequestTimeout = timeout;
-}
-
-void
-StaWifiMac::StartActiveAssociation (void)
-{
-  NS_LOG_FUNCTION (this);
-  TryToEnsureAssociated ();
-}
-
-void
 StaWifiMac::SetActiveProbing (bool enable)
 {
   NS_LOG_FUNCTION (this << enable);
@@ -158,20 +130,21 @@ StaWifiMac::SendProbeRequest (void)
 {
   NS_LOG_FUNCTION (this);
   WifiMacHeader hdr;
-  hdr.SetProbeReq ();
+  hdr.SetType (WIFI_MAC_MGT_PROBE_REQUEST);
   hdr.SetAddr1 (Mac48Address::GetBroadcast ());
   hdr.SetAddr2 (GetAddress ());
   hdr.SetAddr3 (Mac48Address::GetBroadcast ());
   hdr.SetDsNotFrom ();
   hdr.SetDsNotTo ();
+  hdr.SetNoOrder ();
   Ptr<Packet> packet = Create<Packet> ();
   MgtProbeRequestHeader probe;
   probe.SetSsid (GetSsid ());
   probe.SetSupportedRates (GetSupportedRates ());
   if (m_htSupported || m_vhtSupported || m_heSupported)
     {
+      probe.SetExtendedCapabilities (GetExtendedCapabilities ());
       probe.SetHtCapabilities (GetHtCapabilities ());
-      hdr.SetNoOrder ();
     }
   if (m_vhtSupported || m_heSupported)
     {
@@ -202,12 +175,13 @@ StaWifiMac::SendAssociationRequest (void)
 {
   NS_LOG_FUNCTION (this << GetBssid ());
   WifiMacHeader hdr;
-  hdr.SetAssocReq ();
+  hdr.SetType (WIFI_MAC_MGT_ASSOCIATION_REQUEST);
   hdr.SetAddr1 (GetBssid ());
   hdr.SetAddr2 (GetAddress ());
   hdr.SetAddr3 (GetBssid ());
   hdr.SetDsNotFrom ();
   hdr.SetDsNotTo ();
+  hdr.SetNoOrder ();
   Ptr<Packet> packet = Create<Packet> ();
   MgtAssocRequestHeader assoc;
   assoc.SetSsid (GetSsid ());
@@ -215,8 +189,8 @@ StaWifiMac::SendAssociationRequest (void)
   assoc.SetCapabilities (GetCapabilities ());
   if (m_htSupported || m_vhtSupported || m_heSupported)
     {
+      assoc.SetExtendedCapabilities (GetExtendedCapabilities ());
       assoc.SetHtCapabilities (GetHtCapabilities ());
-      hdr.SetNoOrder ();
     }
   if (m_vhtSupported || m_heSupported)
     {
@@ -391,7 +365,7 @@ StaWifiMac::Enqueue (Ptr<const Packet> packet, Mac48Address to)
     }
   else
     {
-      hdr.SetTypeData ();
+      hdr.SetType (WIFI_MAC_DATA);
     }
   if (m_htSupported || m_vhtSupported || m_heSupported)
     {
@@ -484,6 +458,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
       MgtBeaconHeader beacon;
       packet->RemoveHeader (beacon);
       CapabilityInformation capabilities = beacon.GetCapabilities ();
+      NS_ASSERT (capabilities.IsEss ());
       bool goodBeacon = false;
       if (GetSsid ().IsBroadcast ()
           || beacon.GetSsid ().IsEqual (GetSsid ()))
@@ -493,9 +468,9 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
         }
       SupportedRates rates = beacon.GetSupportedRates ();
       bool bssMembershipSelectorMatch = false;
-      for (uint32_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
+      for (uint8_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
         {
-          uint32_t selector = m_phy->GetBssMembershipSelector (i);
+          uint8_t selector = m_phy->GetBssMembershipSelector (i);
           if (rates.IsBssMembershipSelectorRate (selector))
             {
               NS_LOG_LOGIC ("Beacon is matched to our BSS membership selector");
@@ -518,7 +493,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
           RestartBeaconWatchdog (delay);
           SetBssid (hdr->GetAddr3 ());
           SupportedRates rates = beacon.GetSupportedRates ();
-          for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
+          for (uint8_t i = 0; i < m_phy->GetNModes (); i++)
             {
               WifiMode mode = m_phy->GetMode (i);
               if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth ())))
@@ -592,14 +567,6 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                     {
                       m_stationManager->SetRifsPermitted (false);
                     }
-                  for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
-                    {
-                      WifiMode mcs = m_phy->GetMcs (i);
-                      if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HT && htCapabilities.IsSupportedMcs (mcs.GetMcsValue ()))
-                        {
-                          m_stationManager->AddSupportedMcs (hdr->GetAddr2 (), mcs);
-                        }
-                    }
                 }
             }
           if (m_vhtSupported)
@@ -610,7 +577,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                 {
                   m_stationManager->AddStationVhtCapabilities (hdr->GetAddr2 (), vhtCapabilities);
                   VhtOperation vhtOperation = beacon.GetVhtOperation ();
-                  for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+                  for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
                     {
                       WifiMode mcs = m_phy->GetMcs (i);
                       if (mcs.GetModulationClass () == WIFI_MOD_CLASS_VHT && vhtCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
@@ -625,7 +592,8 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               HeCapabilities heCapabilities = beacon.GetHeCapabilities ();
               //todo: once we support non constant rate managers, we should add checks here whether HE is supported by the peer
               m_stationManager->AddStationHeCapabilities (hdr->GetAddr2 (), heCapabilities);
-              for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+              HeOperation heOperation = beacon.GetHeOperation ();
+              for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
                 {
                   WifiMode mcs = m_phy->GetMcs (i);
                   if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HE && heCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
@@ -657,15 +625,15 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               return;
             }
           SupportedRates rates = probeResp.GetSupportedRates ();
-          for (uint32_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
+          for (uint8_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
             {
-              uint32_t selector = m_phy->GetBssMembershipSelector (i);
-              if (!rates.IsSupportedRate (selector))
+              uint8_t selector = m_phy->GetBssMembershipSelector (i);
+              if (!rates.IsBssMembershipSelectorRate (selector))
                 {
                   return;
                 }
             }
-          for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
+          for (uint8_t i = 0; i < m_phy->GetNModes (); i++)
             {
               WifiMode mode = m_phy->GetMode (i);
               if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth ())))
@@ -682,7 +650,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
           if (m_erpSupported)
             {
               bool isErpAllowed = false;
-              for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
+              for (uint8_t i = 0; i < m_phy->GetNModes (); i++)
                 {
                   WifiMode mode = m_phy->GetMode (i);
                   if (mode.GetModulationClass () == WIFI_MOD_CLASS_ERP_OFDM && rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth ())))
@@ -748,7 +716,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               if (m_erpSupported)
                 {
                   bool isErpAllowed = false;
-                  for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
+                  for (uint8_t i = 0; i < m_phy->GetNModes (); i++)
                     {
                       WifiMode mode = m_phy->GetMode (i);
                       if (mode.GetModulationClass () == WIFI_MOD_CLASS_ERP_OFDM && rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth ())))
@@ -841,8 +809,9 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                   HeCapabilities hecapabilities = assocResp.GetHeCapabilities ();
                   //todo: once we support non constant rate managers, we should add checks here whether HE is supported by the peer
                   m_stationManager->AddStationHeCapabilities (hdr->GetAddr2 (), hecapabilities);
+                  HeOperation heOperation = assocResp.GetHeOperation ();
                 }
-              for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
+              for (uint8_t i = 0; i < m_phy->GetNModes (); i++)
                 {
                   WifiMode mode = m_phy->GetMode (i);
                   if (rates.IsSupportedRate (mode.GetDataRate (m_phy->GetChannelWidth ())))
@@ -857,7 +826,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               if (m_htSupported)
                 {
                   HtCapabilities htCapabilities = assocResp.GetHtCapabilities ();
-                  for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+                  for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
                     {
                       WifiMode mcs = m_phy->GetMcs (i);
                       if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HT && htCapabilities.IsSupportedMcs (mcs.GetMcsValue ()))
@@ -870,7 +839,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               if (m_vhtSupported)
                 {
                   VhtCapabilities vhtcapabilities = assocResp.GetVhtCapabilities ();
-                  for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+                  for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
                     {
                       WifiMode mcs = m_phy->GetMcs (i);
                       if (mcs.GetModulationClass () == WIFI_MOD_CLASS_VHT && vhtcapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
@@ -883,7 +852,7 @@ StaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               if (m_heSupported)
                 {
                   HeCapabilities heCapabilities = assocResp.GetHeCapabilities ();
-                  for (uint32_t i = 0; i < m_phy->GetNMcs (); i++)
+                  for (uint8_t i = 0; i < m_phy->GetNMcs (); i++)
                     {
                       WifiMode mcs = m_phy->GetMcs (i);
                       if (mcs.GetModulationClass () == WIFI_MOD_CLASS_HE && heCapabilities.IsSupportedRxMcs (mcs.GetMcsValue ()))
@@ -919,12 +888,12 @@ StaWifiMac::GetSupportedRates (void) const
   SupportedRates rates;
   if (m_htSupported || m_vhtSupported || m_heSupported)
     {
-      for (uint32_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
+      for (uint8_t i = 0; i < m_phy->GetNBssMembershipSelectors (); i++)
         {
           rates.AddBssMembershipSelectorRate (m_phy->GetBssMembershipSelector (i));
         }
     }
-  for (uint32_t i = 0; i < m_phy->GetNModes (); i++)
+  for (uint8_t i = 0; i < m_phy->GetNModes (); i++)
     {
       WifiMode mode = m_phy->GetMode (i);
       uint64_t modeDataRate = mode.GetDataRate (m_phy->GetChannelWidth ());

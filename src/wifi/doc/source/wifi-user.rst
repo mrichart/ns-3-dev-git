@@ -36,7 +36,7 @@ To create a WifiNetDevice, users need to follow these steps:
 * Decide on which physical layer framework, the ``SpectrumWifiPhy`` or 
   ``YansWifiPhy``, to use.  This will affect which Channel and Phy type to use. 
 * Configure the Channel: Channel takes care of getting signal
-  from one device to other devices on the same wifi channel.
+  from one device to other devices on the same Wi-Fi channel.
   The main configurations of WifiChannel are propagation loss model and propagation delay model.
 * Configure the WifiPhy: WifiPhy takes care of actually sending and receiving wireless
   signal from Channel.  Here, WifiPhy decides whether each frame will be successfully
@@ -767,7 +767,7 @@ Finally, we manually place them by using the ``ns3::ListPositionAllocator``::
 
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
   // ns-3 supports RadioTap and Prism tracing extensions for 802.11
-  wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
+  wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
   YansWifiChannelHelper wifiChannel;
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
@@ -814,7 +814,7 @@ Each node is equipped with 802.11b Wi-Fi device::
 
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default (); 
   // ns-3 supports RadioTap and Prism tracing extensions for 802.11
-  wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
+  wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
   YansWifiChannelHelper wifiChannel;
   // reference loss must be changed since 802.11b is operating at 2.4GHz

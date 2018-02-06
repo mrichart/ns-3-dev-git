@@ -48,13 +48,23 @@ class LteFfrAlgorithm;
 class ComponentCarrierEnb : public ComponentCarrier
 {
 public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId (void);
 
   ComponentCarrierEnb ();
 
   virtual ~ComponentCarrierEnb (void);
   virtual void DoDispose (void);
-  
+
+  /**
+   * Get cell identifier
+   * \return cell identifer
+   */
+  uint16_t GetCellId ();
+
   /**
    * \return a pointer to the physical layer.
    */
@@ -74,26 +84,33 @@ public:
    * \return a pointer to the Mac Scheduler.
    */
   Ptr<FfMacScheduler> GetFfMacScheduler ();
+
+  /**
+   * Set physical cell identifier
+   * \param cellId cell identifier
+   */
+  void SetCellId (uint16_t cellId);
+
   /**
    * Set the LteEnbPhy
-   * \ param s a pointer to the LteEnbPhy
+   * \param s a pointer to the LteEnbPhy
    */
   void SetPhy (Ptr<LteEnbPhy> s);
   /**
    * Set the LteEnbMac
-   * \ param s a pointer to the LteEnbMac
+   * \param s a pointer to the LteEnbMac
    */
   void SetMac (Ptr<LteEnbMac> s);
 
   /**
    * Set the FfMacScheduler Algorithm
-   * \ param s a pointer to the FfMacScheduler
+   * \param s a pointer to the FfMacScheduler
    */
   void SetFfMacScheduler (Ptr<FfMacScheduler> s);
 
   /**
    * Set the LteFfrAlgorithm
-   * \ param s a pointer to the LteFfrAlgorithm
+   * \param s a pointer to the LteFfrAlgorithm
    */
   void SetFfrAlgorithm (Ptr<LteFfrAlgorithm> s);
   
@@ -103,10 +120,11 @@ protected:
 
 private:
 
-  Ptr<LteEnbPhy> m_phy;
-  Ptr<LteEnbMac> m_mac;
-  Ptr<FfMacScheduler> m_scheduler;
-  Ptr<LteFfrAlgorithm> m_ffrAlgorithm;
+  uint16_t m_cellId; ///< Cell identifer
+  Ptr<LteEnbPhy> m_phy; ///< the Phy instance of this eNodeB component carrier
+  Ptr<LteEnbMac> m_mac; ///< the MAC instance of this eNodeB component carrier
+  Ptr<FfMacScheduler> m_scheduler; ///< the scheduler instance of this eNodeB component carrier
+  Ptr<LteFfrAlgorithm> m_ffrAlgorithm; ///< the FFR algorithm instance of this eNodeB component carrier
  
 
 };

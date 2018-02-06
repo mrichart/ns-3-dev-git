@@ -44,6 +44,10 @@ class LteAmc : public Object
 {
 
 public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
   static TypeId GetTypeId (void);
   
   LteAmc ();
@@ -80,7 +84,15 @@ public:
   * \param nprb the no. of PRB
   * \return the Transport Block Size in bits
   */
-  /*static*/ int GetTbSizeFromMcs (int mcs, int nprb);
+  /*static*/ int GetDlTbSizeFromMcs (int mcs, int nprb);
+
+  /**
+   * \brief Get the Transport Block Size for a selected MCS and number of PRB (table 8.6.1-1 of 36.213)
+   * \param mcs the mcs index
+   * \param nprb the no. of PRB
+   * \return the Transport Block Size in bits
+   */
+  /*static*/ int GetUlTbSizeFromMcs (int mcs, int nprb);
 
   /**
    * \brief Get the spectral efficiency value associated
@@ -100,7 +112,7 @@ public:
                                                   uint8_t rbgSize = 0);
 
   /**
-   * \brief Get a proper CQI for the spectrale efficiency value.
+   * \brief Get a proper CQI for the spectral efficiency value.
    * In order to assure a fewer block error rate, the AMC chooses the lower CQI value
    * for a given spectral efficiency
    * \param s the spectral efficiency

@@ -21,10 +21,12 @@
 #include "wifi-net-device.h"
 #include "wifi-phy.h"
 #include "regular-wifi-mac.h"
+#include "wifi-mac-queue.h"
 #include "ns3/llc-snap-header.h"
 #include "ns3/socket.h"
 #include "ns3/pointer.h"
 #include "ns3/log.h"
+#include "ns3/net-device-queue-interface.h"
 
 namespace ns3 {
 
@@ -46,7 +48,7 @@ WifiNetDevice::GetTypeId (void)
                    MakeUintegerChecker<uint16_t> (1,MAX_MSDU_SIZE - LLC_SNAP_HEADER_LENGTH))
     .AddAttribute ("Channel", "The channel attached to this device",
                    PointerValue (),
-                   MakePointerAccessor (&WifiNetDevice::DoGetChannel),
+                   MakePointerAccessor (&WifiNetDevice::GetChannel),
                    MakePointerChecker<Channel> ())
     .AddAttribute ("Phy", "The PHY layer attached to this device.",
                    PointerValue (),
@@ -135,46 +137,82 @@ WifiNetDevice::NotifyNewAggregate (void)
       if (ndqi != 0)
         {
           m_queueInterface = ndqi;
-          if (m_mac == 0)
-            {
-              NS_LOG_WARN ("A mac has not been installed yet, using a single tx queue");
-            }
-          else
-            {
-              Ptr<RegularWifiMac> mac = DynamicCast<RegularWifiMac> (m_mac);
-              if (mac != 0)
-                {
-                  BooleanValue qosSupported;
-                  mac->GetAttributeFailSafe ("QosSupported", qosSupported);
-                  if (qosSupported.Get ())
-                    {
-                      m_queueInterface->SetTxQueuesN (4);
-                      // register the select queue callback
-                      m_queueInterface->SetSelectQueueCallback (MakeCallback (&WifiNetDevice::SelectQueue, this));
-                    }
-                }
-            }
+          // register the select queue callback
+          m_queueInterface->SetSelectQueueCallback (MakeCallback (&WifiNetDevice::SelectQueue, this));
+          m_queueInterface->SetLateTxQueuesCreation (true);
+	  FlowControlConfig ();
         }
     }
   NetDevice::NotifyNewAggregate ();
 }
 
 void
-WifiNetDevice::SetMac (Ptr<WifiMac> mac)
+WifiNetDevice::FlowControlConfig (void)
 {
-  m_mac = mac;
-  CompleteConfig ();
+  if (m_mac == 0 || m_queueInterface == 0)
+    {
+      return;
+    }
+
+  Ptr<RegularWifiMac> mac = DynamicCast<RegularWifiMac> (m_mac);
+  if (mac == 0)
+    {
+      NS_LOG_WARN ("Flow control is only supported by RegularWifiMac");
+      return;
+    }
+
+  BooleanValue qosSupported;
+  mac->GetAttributeFailSafe ("QosSupported", qosSupported);
+  PointerValue ptr;
+  Ptr<WifiMacQueue> wmq;
+  if (qosSupported.Get ())
+    {
+      m_queueInterface->SetTxQueuesN (4);
+      m_queueInterface->CreateTxQueues ();
+
+      mac->GetAttributeFailSafe ("BE_EdcaTxopN", ptr);
+      wmq = ptr.Get<EdcaTxopN> ()->GetQueue ();
+      m_queueInterface->ConnectQueueTraces<WifiMacQueueItem> (wmq, 0);
+
+      mac->GetAttributeFailSafe ("BK_EdcaTxopN", ptr);
+      wmq = ptr.Get<EdcaTxopN> ()->GetQueue ();
+      m_queueInterface->ConnectQueueTraces<WifiMacQueueItem> (wmq, 1);
+
+      mac->GetAttributeFailSafe ("VI_EdcaTxopN", ptr);
+      wmq = ptr.Get<EdcaTxopN> ()->GetQueue ();
+      m_queueInterface->ConnectQueueTraces<WifiMacQueueItem> (wmq, 2);
+
+      mac->GetAttributeFailSafe ("VO_EdcaTxopN", ptr);
+      wmq = ptr.Get<EdcaTxopN> ()->GetQueue ();
+      m_queueInterface->ConnectQueueTraces<WifiMacQueueItem> (wmq, 3);
+    }
+  else
+    {
+      m_queueInterface->CreateTxQueues ();
+
+      mac->GetAttributeFailSafe ("DcaTxop", ptr);
+      wmq = ptr.Get<DcaTxop> ()->GetQueue ();
+      m_queueInterface->ConnectQueueTraces<WifiMacQueueItem> (wmq, 0);
+    }
 }
 
 void
-WifiNetDevice::SetPhy (Ptr<WifiPhy> phy)
+WifiNetDevice::SetMac (const Ptr<WifiMac> mac)
+{
+  m_mac = mac;
+  CompleteConfig ();
+  FlowControlConfig ();
+}
+
+void
+WifiNetDevice::SetPhy (const Ptr<WifiPhy> phy)
 {
   m_phy = phy;
   CompleteConfig ();
 }
 
 void
-WifiNetDevice::SetRemoteStationManager (Ptr<WifiRemoteStationManager> manager)
+WifiNetDevice::SetRemoteStationManager (const Ptr<WifiRemoteStationManager> manager)
 {
   m_stationManager = manager;
   CompleteConfig ();
@@ -212,12 +250,6 @@ WifiNetDevice::GetIfIndex (void) const
 
 Ptr<Channel>
 WifiNetDevice::GetChannel (void) const
-{
-  return m_phy->GetChannel ();
-}
-
-Ptr<Channel>
-WifiNetDevice::DoGetChannel (void) const
 {
   return m_phy->GetChannel ();
 }
@@ -328,7 +360,7 @@ WifiNetDevice::GetNode (void) const
 }
 
 void
-WifiNetDevice::SetNode (Ptr<Node> node)
+WifiNetDevice::SetNode (const Ptr<Node> node)
 {
   m_node = node;
   CompleteConfig ();

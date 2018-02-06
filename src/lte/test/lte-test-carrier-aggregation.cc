@@ -251,7 +251,7 @@ CarrierAggregationTestCase::BuildNameString (uint16_t nUser, uint16_t dist, uint
   return oss.str ();
 }
 
-CarrierAggregationTestCase::CarrierAggregationTestCase (uint16_t nUser, uint16_t dist, uint32_t dlbandwidth, uint32_t ulBandwidth, uint numberOfComponentCarriers)
+CarrierAggregationTestCase::CarrierAggregationTestCase (uint16_t nUser, uint16_t dist, uint32_t dlbandwidth, uint32_t ulBandwidth, uint32_t numberOfComponentCarriers)
   : TestCase (BuildNameString (nUser, dist, dlbandwidth, ulBandwidth, numberOfComponentCarriers)),
     m_nUser (nUser),
     m_dist (dist),
@@ -288,6 +288,14 @@ CarrierAggregationTestCase::DoRun (void)
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
   
   lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::FriisSpectrumPropagationLossModel"));
+
+  auto cch = CreateObject<CcHelper> ();
+  cch->SetDlEarfcn (100); // Same as default value for LteEnbNetDevice
+  cch->SetUlEarfcn (100 + 18000); // Same as default value for LteEnbNetDevice
+  cch->SetDlBandwidth (m_dlBandwidth);
+  cch->SetUlBandwidth (m_ulBandwidth);
+  cch->SetNumberOfComponentCarriers (m_numberOfComponentCarriers);
+  lteHelper->SetCcPhyParams (cch->EquallySpacedCcs ());
 
   // Create Nodes: eNodeB and UE
   NodeContainer enbNodes;

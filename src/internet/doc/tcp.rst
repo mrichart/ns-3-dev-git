@@ -271,9 +271,9 @@ Figure :ref:`fig-tcp-state-machine`.
   in the tx buffer has been transmitted). This does not prevent the socket in
   receiving data, and employing retransmit mechanism if losses are detected. If
   the application calls *Close()* with unread data in its rx buffer, the socket
-  will send a reset. If the socket is in the state SYN_SENT, CLOSING, LISTEN or
-  LAST_ACK, after that call the application will be notified with
-  *NotifyNormalClose()*. In all the other cases, the notification is delayed
+  will send a reset. If the socket is in the state SYN_SENT, CLOSING, LISTEN,
+  FIN_WAIT_2, or LAST_ACK, after that call the application will be notified with
+  *NotifyNormalClose()*. In other cases, the notification is delayed
   (see *NotifyNormalClose()*).
 
 -----------------------------------------
@@ -303,7 +303,7 @@ callback as well.
   - Received an ACK for the FIN sent, with or without the FIN bit set (we are in LAST_ACK)
   - The socket reaches the maximum amount of retries in retransmitting the SYN (*)
   - We receive a timeout in the LAST_ACK state
-  - After 2*Maximum Segment Lifetime seconds passed since the socket entered the TIME_WAIT state.
+  - Upon entering the TIME_WAIT state, before waiting the 2*Maximum Segment Lifetime seconds to finally deallocate the socket.
 
 *NotifyErrorClose*: *SetCloseCallbacks*, 2nd argument
   Invoked when we send an RST segment (for whatever reason) or we reached the
@@ -728,8 +728,7 @@ In comparison to RFC 6817, the scope and limitations of the current LEDBAT
 implementation are:
 
 * It assumes that the clocks on the sender side and receiver side are synchronised
-* In line with Linux implementation, the one-way delay is calculated at the sender
-side by using the timestamps option in TCP header
+* In line with Linux implementation, the one-way delay is calculated at the sender side by using the timestamps option in TCP header
 * Only the MIN function is used for noise filtering 
 
 More information about LEDBAT is available in RFC 6817: https://tools.ietf.org/html/rfc6817
@@ -804,6 +803,7 @@ Linux, and the following operations are defined:
   virtual void IncreaseWindow (Ptr<TcpSocketState> tcb, uint32_t segmentsAcked);
   virtual void PktsAcked (Ptr<TcpSocketState> tcb, uint32_t segmentsAcked,const Time& rtt);
   virtual Ptr<TcpCongestionOps> Fork ();
+  virtual void CwndEvent (Ptr<TcpSocketState> tcb, const TcpSocketState::TcpCaEvent_t event);
 
 The most interesting methods to write are GetSsThresh and IncreaseWindow.
 The latter is called when TcpSocketBase decides that it is time to increase
@@ -817,6 +817,9 @@ are then asked to lower such value, and to return it.
 
 PktsAcked is used in case the algorithm needs timing information (such as
 RTT), and it is called each time an ACK is received.
+
+CwndEvent is used in case the algorithm needs the state of socket during different
+congestion window event.
 
 TCP SACK and non-SACK
 +++++++++++++++++++++
