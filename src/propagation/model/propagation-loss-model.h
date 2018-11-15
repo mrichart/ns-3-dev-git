@@ -467,6 +467,84 @@ private:
 /**
  * \ingroup propagation
  *
+ * \brief a log normal shadowing propagation model.
+ *
+ * This model calculates the reception power with a so-called
+ * log-normal shadowing propagation model:
+ * \f$ L = L_0 + 10 n log_{10}(\frac{d}{d_0}) + \theta\f$
+ *
+ * where:
+ *  - \f$ n \f$ : the path loss distance exponent
+ *  - \f$ d_0 \f$ : reference distance (m)
+ *  - \f$ L_0 \f$ : path loss at reference distance (dB)
+ *  - \f$ d \f$ : distance (m)
+ *  - \f$ L \f$ : path loss (dB)
+ *
+ * When the path loss is requested at a distance smaller than
+ * the reference distance, the tx power is returned.
+ *
+ */
+class LogNormalShadowingLossModel : public PropagationLossModel
+{
+public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
+  LogNormalShadowingLossModel ();
+
+  /**
+   * \param n the path loss exponent.
+   * Set the path loss exponent.
+   */
+  void SetPathLossExponent (double n);
+  /**
+   * \returns the current path loss exponent.
+   */
+  double GetPathLossExponent (void) const;
+
+  /**
+   * Set the reference path loss at a given distance
+   * \param referenceDistance reference distance
+   * \param referenceLoss reference path loss
+   */
+  void SetReference (double referenceDistance, double referenceLoss);
+
+private:
+  /**
+   * \brief Copy constructor
+   *
+   * Defined and unimplemented to avoid misuse
+   */
+  LogNormalShadowingLossModel (const LogNormalShadowingLossModel &);
+  /**
+   * \brief Copy constructor
+   *
+   * Defined and unimplemented to avoid misuse
+   * \returns
+   */
+  LogNormalShadowingLossModel & operator = (const LogNormalShadowingLossModel &);
+
+  virtual double DoCalcRxPower (double txPowerDbm,
+                                Ptr<MobilityModel> a,
+                                Ptr<MobilityModel> b) const;
+  virtual int64_t DoAssignStreams (int64_t stream);
+
+  /**
+   *  Creates a default reference loss model
+   * \return a default reference loss model
+   */
+  static Ptr<PropagationLossModel> CreateDefaultReference (void);
+
+  double m_exponent; //!< model exponent
+  double m_referenceDistance; //!< reference distance
+  double m_referenceLoss; //!< reference loss
+  Ptr<LogNormalRandomVariable> m_logNormalRandomVariable; //!< log-normal distribution
+};
+/**
+ * \ingroup propagation
+ *
  * \brief a log distance propagation model.
  *
  * This model calculates the reception power with a so-called

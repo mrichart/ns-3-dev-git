@@ -994,6 +994,7 @@ LteSpectrumPhy::EndRxData ()
           (*itTb).second.mi = tbStats.mi;
           (*itTb).second.corrupt = m_random->GetValue () > tbStats.tbler ? false : true;
           NS_LOG_DEBUG (this << "RNTI " << (*itTb).first.m_rnti << " size " << (*itTb).second.size << " mcs " << (uint32_t)(*itTb).second.mcs << " bitmap " << (*itTb).second.rbBitmap.size () << " layer " << (uint16_t)(*itTb).first.m_layer << " TBLER " << tbStats.tbler << " corrupted " << (*itTb).second.corrupt);
+          std::cout<<"Time: "<<Simulator::Now ().GetSeconds()<< " RNTI " << (*itTb).first.m_rnti <<" CellID: "<<m_cellId<< " size " << (*itTb).second.size << " mcs " << (uint32_t)(*itTb).second.mcs << " bitmap " << (*itTb).second.rbBitmap.size () << " layer " << (uint16_t)(*itTb).first.m_layer << " TBLER " << tbStats.tbler << " corrupted " << (*itTb).second.corrupt<<"\n";
           // fire traces on DL/UL reception PHY stats
           PhyReceptionStatParameters params;
           params.m_timestamp = Simulator::Now ().GetMilliSeconds ();

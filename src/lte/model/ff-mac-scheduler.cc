@@ -43,6 +43,14 @@ FfMacScheduler::~FfMacScheduler ()
   NS_LOG_FUNCTION (this);
 }
 
+// MISL
+void
+FfMacScheduler::SetCellId(uint16_t cellId)
+{
+  NS_LOG_FUNCTION (this << " CELLID (ABSTRACT CLASS) " << cellId);
+
+}
+
 void
 FfMacScheduler::DoDispose ()
 {

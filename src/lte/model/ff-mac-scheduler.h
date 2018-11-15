@@ -127,6 +127,9 @@ public:
    * \return the User part of the LteFfrSap provided by the FfrAlgorithm
    */
   virtual LteFfrSapUser* GetLteFfrSapUser () = 0;
+
+  // MISL - added function for setting cell id
+  virtual void SetCellId(uint16_t cellId);
   
 protected:
     

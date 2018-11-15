@@ -588,6 +588,9 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   
       it->second->SetPhy (phy);
 
+      //MISL - set cell id
+      sched->SetCellId(cellId);
+
     }
 
   Ptr<LteEnbRrc> rrc = CreateObject<LteEnbRrc> ();
@@ -600,6 +603,7 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   ccmEnbManager->SetNumberOfComponentCarriers (m_noOfCcs);
   ccmEnbManager->SetRrc(rrc);
 
+  
   if (m_useIdealRrc)
     {
       Ptr<LteEnbRrcProtocolIdeal> rrcProtocol = CreateObject<LteEnbRrcProtocolIdeal> ();

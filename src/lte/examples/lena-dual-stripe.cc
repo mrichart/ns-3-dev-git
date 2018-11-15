@@ -32,59 +32,347 @@
 #include <ios>
 #include <string>
 #include <vector>
-
-// The topology of this simulation program is inspired from 
+#include <ns3/netanim-module.h>
+#include <ns3/lte-ue-phy.h>
+// The topology of this simulation program is inspired from
 // 3GPP R4-092042, Section 4.2.1 Dual Stripe Model
 // note that the term "apartments" used in that document matches with
-// the term "room" used in the BuildingsMobilityModel 
+// the term "room" used in the BuildingsMobilityModel
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("LenaDualStripe");
+
+#define PI 3.14159265
+AsciiTraceHelper asciiTraceHelper;
+Ptr<OutputStreamWrapper> stream = asciiTraceHelper.CreateFileStream ("ueReport.cwnd");
+void
+ReportUeMeasurementsCallback (int tt,std::string path, uint16_t rnti, uint16_t cellId,
+                              double rsrp, double rsrq, bool servingCell)
+{
+  if (servingCell == true)
+  std::cout << Simulator::Now ().GetSeconds () << " "
+            << " RNTI " << rnti
+            << ", CellId: " << cellId
+            << ", Serving Cell: " << servingCell
+            << ", RSRP: " << rsrp
+            << ", RSRQ: " << rsrq
+            
+            << std::endl;
+}
+
+
+//void
+//NotifyUeReport (Ptr<OutputStreamWrapper> stream, std::string context, uint16_t cellid, uint16_t rnti, double rsrp , double avsinr)
+//{
+//     std::cout << Simulator::Now ().GetSeconds ()<< " "
+//                << " eNB CellId " << cellid
+//                << " RNTI " << rnti
+//                << " RSRP " << rsrp
+//                << " SINR " << avsinr
+//                << std::endl;
+
+     //*stream->GetStream() << Simulator::Now().GetSeconds() << "\t" << avsinr << std::endl;
+//}
+
+
+void
+NotifyConnectionEstablishedUe (std::string context,
+                               uint64_t imsi,
+                               uint16_t cellid,
+                               uint16_t rnti)
+{
+  std::cout << Simulator::Now ().GetSeconds () << " " << context
+            << " UE IMSI " << imsi
+            << ": connected to CellId " << cellid
+            << " with RNTI " << rnti
+            << std::endl;
+}
+
+void
+NotifyHandoverStartUe (std::string context,
+                       uint64_t imsi,
+                       uint16_t cellid,
+                       uint16_t rnti,
+                       uint16_t targetCellId)
+{
+  std::cout << Simulator::Now ().GetSeconds () << " " << context
+            << " UE IMSI " << imsi
+            << ": previously connected to CellId " << cellid
+            << " with RNTI " << rnti
+            << ", doing handover to CellId " << targetCellId
+            << std::endl;
+}
+
+void
+NotifyHandoverEndOkUe (std::string context,
+                       uint64_t imsi,
+                       uint16_t cellid,
+                       uint16_t rnti)
+{
+  std::cout << Simulator::Now ().GetSeconds () << " " << context
+            << " UE IMSI " << imsi
+            << ": successful handover to CellId " << cellid
+            << " with RNTI " << rnti
+            << std::endl;
+}
+
+void
+NotifyConnectionEstablishedEnb (std::string context,
+                                uint64_t imsi,
+                                uint16_t cellid,
+                                uint16_t rnti)
+{
+  std::cout << Simulator::Now ().GetSeconds () << " " << context
+            << " eNB CellId " << cellid
+            << ": successful connection of UE with IMSI " << imsi
+            << " RNTI " << rnti
+            << std::endl;
+}
+
+void
+NotifyHandoverStartEnb (std::string context,
+                        uint64_t imsi,
+                        uint16_t cellid,
+                        uint16_t rnti,
+                        uint16_t targetCellId)
+{
+  std::cout << Simulator::Now ().GetSeconds () << " " << context
+            << " eNB CellId " << cellid
+            << ": start handover of UE with IMSI " << imsi
+            << " RNTI " << rnti
+            << " to CellId " << targetCellId
+            << std::endl;
+}
+
+void
+NotifyHandoverEndOkEnb (std::string context,
+                        uint64_t imsi,
+                        uint16_t cellid,
+                        uint16_t rnti)
+{
+  std::cout << Simulator::Now ().GetSeconds () << " " << context
+            << " eNB CellId " << cellid
+            << ": completed handover of UE with IMSI " << imsi
+            << " RNTI " << rnti
+            << std::endl;
+}
+
+
+// pointer to the sinks
+ApplicationContainer sinks;
+
+// holds number of sinks
+uint32_t numSinks;
+// holds last amount of received bytes for all the clients
+std::vector<int> lastTotalRx;
+
+
+void CalculateThroughput (uint16_t inter)
+    {
+      Time now = Simulator::Now (); /* Return the simulator's virtual time. */
+
+      for (uint32_t u = 0; u < numSinks; ++u) {
+
+      Ptr<PacketSink> sink = StaticCast<PacketSink> (sinks.Get (u));
+      uint32_t idd = ((sinks.Get(u))->GetNode())->GetId();
+      double curRx = sink->GetTotalRx();
+      double cur = ((curRx - lastTotalRx[u]) * 8.0) / ((double)inter/1000);
+      //double avg = (curRx * 8.0) / now.GetSeconds ();     /* Convert Application RX Packets to MBits. */
+      std::cout <<"Time: "<< now.GetSeconds () <<" UE "<<idd<< " Current Throughput: " << cur << " bit/s" << std::endl;
+      //std::cout <<"Time: "<< now.GetSeconds () <<" UE "<<u<<" Average Throughput: " << avg << " bit/s" << std::endl;
+      lastTotalRx[u] = curRx;
+      }
+
+
+      Simulator::Schedule (MilliSeconds (inter), &CalculateThroughput,inter);
+    }
+
+// Prints actual position and velocity when a course change event occurs
+static void
+CourseChange (std::string foo, Ptr<const MobilityModel> mobility)
+{
+  Time now = Simulator::Now ();
+  Vector pos = mobility->GetPosition (); // Get position
+  //Vector vel = mobility->GetVelocity (); // Get velocity
+  //double speed = mobility->GetRelativeSpeed()
+  // Prints position and velocities
+  //std::cout <<foo<<std::endl; 
+  std::cout <<"Time: "<< now.GetSeconds ()<<" "<<foo<< " POS: x=" << pos.x << ", y=" << pos.y<< ", z=" << pos.z << std::endl; 
+  //std::cout <<"Time: "<< now.GetSeconds () << " VEL: " <<"vel.x="<< vel.x << ", y=" << vel.y<< ", z=" << vel.z << std::endl;
+}
+
+void RandomAcrossSectorsUE (NodeContainer macroUEs, std::vector<Vector> SectorsCoord, uint16_t density,uint16_t start,uint16_t stop, uint32_t NumberOfUEpCell)
+{
+  double d_distance[21] = {250,250,250,170,180,200,190,190,180,180,190,200,350,210,170,180,260,180,180,180,190};
+  double d_counter[21] = {-70,90,200,-60,70,190,-55,65,190,-55,70,190,-50,60,180,-55,60,185,-55,70,190};
+  double u_counter[21] = {50,160,280,60,180,290,55,180,300,55,170,290,50,170,300,55,180,300,60,175,290};
+  uint16_t sectorCount = 0;
+  //double temp_angle = 290;
+  //double temp_dist= 190;
+  uint16_t cellCount = 0;
+  Ptr<UniformRandomVariable> angle = CreateObject<UniformRandomVariable> ();
+  Ptr<UniformRandomVariable> distance = CreateObject<UniformRandomVariable> ();
+  for (uint32_t u = start; u < stop; ++u)
+    {
+      if (u > start && u%(10/density) == 0)
+        sectorCount++;
+      if (u > start && u%(NumberOfUEpCell/density) == 0)
+          cellCount+=3;
+
+       Ptr<MobilityModel> mobility2 = (macroUEs.Get(u))->GetObject<MobilityModel> ();
+
+
+
+       double temp_angle = angle->GetValue((double)(d_counter[sectorCount]),(double) (u_counter[sectorCount]));
+       double temp_dist = distance->GetValue(0.0,d_distance[sectorCount]);
+       double yCord = SectorsCoord[cellCount].y + round(sin (temp_angle*PI/180) *temp_dist);
+       double xCord = SectorsCoord[cellCount].x + round(cos(temp_angle*PI/180)*temp_dist);
+       std::cout<<"XCord: "<<xCord <<" Ycord: "<< yCord<<"\n";
+       mobility2->SetPosition (Vector(xCord,yCord,1.5));
+       //mobility2->SetPosition (Vector(0,50,1.5));
+       //Vector pos = mobility2->GetPosition();
+        //std::cout<<"UE "<<u<<" "<<pos.x<<" "<<pos.y<<" "<<pos.z<<"\n";
+     }
+
+}
+
+void RandomEdgeUE (NodeContainer macroUEs, std::vector<Vector> SectorsCoord, uint16_t density,uint16_t start,uint16_t stop,uint32_t NumberOfUEpCell)
+{
+  SeedManager::SetRun (3);
+  std::cout<<"Second Scenario"<<std::endl;
+  uint16_t sectorCount = 0;
+  uint16_t cellCount = 0;
+
+  double e_distance[21][3] = {{250,180,180},
+                              {170,180,200},
+                              {190,190,180},
+                              {555,950,170},
+                              {190,320,180},
+                              {200,880,700},
+                              {190,320,190},
+                              {190,950,600},
+                              {650,950,180},
+                              {180,300,180},
+                              {190,310,190},
+                              {200,320,200},
+                              {360,950,350},
+                              {270,320,210},
+                              {190,320,280},
+                              {180,310,260},
+                              {260,950,260},
+                              {260,310,180},
+                              {180,950,650},
+                              {650,950,180},
+                              {200,320,190}};
+  double e_angle[21][3] =
+  {{-70,0,50},
+   {60,120,180},
+   {200,240,280},
+
+   {-60,0,60},
+   {70,120,180},
+   {190,240,290},
+
+   {-55,0,55},
+   {65,120,180},
+   {190,240,300},
+
+   {-55,0,55},
+   {70,120,170},
+   {190,240,290},
+
+   {-50,0,50},
+   {60,120,170},
+   {180,240,300},
+
+   {-55,0,55},
+   {60,120,180},
+   {190,240,300},
+
+   {-55,0,60},
+   {70,120,180},
+   {190,240,290}};
+
+  Ptr<UniformRandomVariable> randomOrientation = CreateObject<UniformRandomVariable> ();
+  Ptr<UniformRandomVariable> angleVariation = CreateObject<UniformRandomVariable> ();
+  Ptr<UniformRandomVariable> distanceVariation = CreateObject<UniformRandomVariable> ();
+  for (uint32_t u = start; u < stop; ++u)
+    {
+      std::cout<<"User: "<<u<<std::endl;
+      if (u > start && u%(10/density) == 0)
+        sectorCount++;
+      if (u > start && u%(NumberOfUEpCell/density) == 0)
+        cellCount+=3;
+
+       int sel_dir = round(randomOrientation->GetValue(0,2));
+       std::cout<<"sss: "<<sel_dir<<std::endl;
+       std::cout<<"edis: "<<e_distance[u][sel_dir]<<std::endl;
+       Ptr<MobilityModel> mobility2 = (macroUEs.Get(u))->GetObject<MobilityModel> ();
+
+       double temp_angle = angleVariation->GetValue(-5.1,5.1) + e_angle[sectorCount][sel_dir];
+       double temp_dist = e_distance[sectorCount][sel_dir] - distanceVariation->GetValue(0.0,50.0);
+
+       double yCord = SectorsCoord[cellCount].y + round(sin (temp_angle*PI/180) *temp_dist);
+       double xCord = SectorsCoord[cellCount].x + round(cos(temp_angle*PI/180)*temp_dist);
+       std::cout<<"XCord: "<<xCord <<" Ycord: "<< yCord<<"\n";
+       mobility2->SetPosition (Vector(xCord,yCord,1.5));
+       //mobility2->SetPosition (Vector(0,50,1.5));
+       //Vector pos = mobility2->GetPosition();
+        //std::cout<<"UE "<<u<<" "<<pos.x<<" "<<pos.y<<" "<<pos.z<<"\n";
+     }
+
+}
+
+void RandomCentreUE (NodeContainer macroUEs, std::vector<Vector> SectorsCoord, uint16_t density,uint16_t start,uint16_t stop,uint32_t NumberOfUEpCell)
+{
+  double d_counter[21] = {-70,90,200,-60,70,190,-55,65,190,-55,70,190,-50,60,180,-55,60,185,-55,70,190};
+  double u_counter[21] = {50,160,280,60,180,290,55,180,300,55,170,290,50,170,300,55,180,300,60,175,290};
+  uint16_t sectorCount = 0;
+  uint16_t cellCount = 0;
+  Ptr<UniformRandomVariable> distance = CreateObject<UniformRandomVariable> ();
+  Ptr<UniformRandomVariable> angle = CreateObject<UniformRandomVariable> ();
+
+  for (uint32_t u = start; u < stop; ++u)
+    {
+      std::cout<<"User: "<<u<<std::endl;
+      if (u > start && u%(10/density) == 0)
+        sectorCount++;
+      if (u > start && u%(NumberOfUEpCell/density) == 0)
+        cellCount+=3;
+
+      Ptr<MobilityModel> mobility2 = (macroUEs.Get(u))->GetObject<MobilityModel> ();
+      double temp_angle = angle->GetValue((double)(d_counter[sectorCount]),(double) (u_counter[sectorCount]));
+      double temp_dist = distance->GetValue(0.0,100);
+      double yCord = SectorsCoord[cellCount].y + round(sin (temp_angle*PI/180) *temp_dist);
+      double xCord = SectorsCoord[cellCount].x + round(cos(temp_angle*PI/180)*temp_dist);
+      std::cout<<"XCord: "<<xCord <<" Ycord: "<< yCord<<"\n";
+      mobility2->SetPosition (Vector(xCord,yCord,1.5));
+    }
+}
 
 bool AreOverlapping (Box a, Box b)
 {
   return !((a.xMin > b.xMax) || (b.xMin > a.xMax) || (a.yMin > b.yMax) || (b.yMin > a.yMax));
 }
 
-/**
- * Class that takes care of installing blocks of the
- * buildings in a given area. Buildings are installed in pairs
- * as in dual stripe scenario.
- */
 class FemtocellBlockAllocator
 {
 public:
-  /**
-   * Constructor
-   * \param area the total area
-   * \param nApartmentsX the number of apartments in the X direction
-   * \param nFloors the number of floors
-   */
   FemtocellBlockAllocator (Box area, uint32_t nApartmentsX, uint32_t nFloors);
-  /**
-   * Function that creates building blocks.
-   * \param n the number of blocks to create
-   */
   void Create (uint32_t n);
-  /// Create function
   void Create ();
 
 private:
-  /**
-   * Function that checks if the box area is overlapping with some of previously created building blocks.
-   * \param box the area to check
-   * \returns true if there is an overlap
-   */
-  bool OverlapsWithAnyPrevious (Box box);
-  Box m_area; ///< Area
-  uint32_t m_nApartmentsX; ///< X apartments 
-  uint32_t m_nFloors; ///< number of floors
-  std::list<Box> m_previousBlocks; ///< previous bocks
-  double m_xSize; ///< X size
-  double m_ySize; ///< Y size
-  Ptr<UniformRandomVariable> m_xMinVar; ///< X minimum variance
-  Ptr<UniformRandomVariable> m_yMinVar; ///< Y minimum variance
+  bool OverlapsWithAnyPrevious (Box);
+  Box m_area;
+  uint32_t m_nApartmentsX;
+  uint32_t m_nFloors;
+  std::list<Box> m_previousBlocks;
+  double m_xSize;
+  double m_ySize;
+  Ptr<UniformRandomVariable> m_xMinVar;
+  Ptr<UniformRandomVariable> m_yMinVar;
 
 };
 
@@ -103,7 +391,7 @@ FemtocellBlockAllocator::FemtocellBlockAllocator (Box area, uint32_t nApartments
   m_yMinVar->SetAttribute ("Max", DoubleValue (area.yMax - m_ySize));
 }
 
-void 
+void
 FemtocellBlockAllocator::Create (uint32_t n)
 {
   for (uint32_t i = 0; i < n; ++i)
@@ -117,7 +405,7 @@ FemtocellBlockAllocator::Create ()
 {
   Box box;
   uint32_t attempt = 0;
-  do 
+  do
     {
       NS_ASSERT_MSG (attempt < 100, "Too many failed attemtps to position apartment block. Too many blocks? Too small area?");
       box.xMin = m_xMinVar->GetValue ();
@@ -133,7 +421,7 @@ FemtocellBlockAllocator::Create ()
   Ptr<GridBuildingAllocator>  gridBuildingAllocator;
   gridBuildingAllocator = CreateObject<GridBuildingAllocator> ();
   gridBuildingAllocator->SetAttribute ("GridWidth", UintegerValue (1));
-  gridBuildingAllocator->SetAttribute ("LengthX", DoubleValue (10*m_nApartmentsX)); 
+  gridBuildingAllocator->SetAttribute ("LengthX", DoubleValue (10*m_nApartmentsX));
   gridBuildingAllocator->SetAttribute ("LengthY", DoubleValue (10*2));
   gridBuildingAllocator->SetAttribute ("DeltaX", DoubleValue (10));
   gridBuildingAllocator->SetAttribute ("DeltaY", DoubleValue (10));
@@ -146,7 +434,7 @@ FemtocellBlockAllocator::Create ()
   gridBuildingAllocator->Create (2);
 }
 
-bool 
+bool
 FemtocellBlockAllocator::OverlapsWithAnyPrevious (Box box)
 {
   for (std::list<Box>::iterator it = m_previousBlocks.begin (); it != m_previousBlocks.end (); ++it)
@@ -159,7 +447,7 @@ FemtocellBlockAllocator::OverlapsWithAnyPrevious (Box box)
   return false;
 }
 
-void 
+void
 PrintGnuplottableBuildingListToFile (std::string filename)
 {
   std::ofstream outFile;
@@ -182,7 +470,7 @@ PrintGnuplottableBuildingListToFile (std::string filename)
     }
 }
 
-void 
+void
 PrintGnuplottableUeListToFile (std::string filename)
 {
   std::ofstream outFile;
@@ -210,7 +498,7 @@ PrintGnuplottableUeListToFile (std::string filename)
     }
 }
 
-void 
+void
 PrintGnuplottableEnbListToFile (std::string filename)
 {
   std::ofstream outFile;
@@ -303,11 +591,11 @@ static ns3::GlobalValue g_homeEnbDlEarfcn ("homeEnbDlEarfcn",
                                            ns3::MakeUintegerChecker<uint16_t> ());
 static ns3::GlobalValue g_macroEnbBandwidth ("macroEnbBandwidth",
                                              "bandwidth [num RBs] used by macro eNBs",
-                                             ns3::UintegerValue (25),
+                                             ns3::UintegerValue (50),
                                              ns3::MakeUintegerChecker<uint16_t> ());
 static ns3::GlobalValue g_homeEnbBandwidth ("homeEnbBandwidth",
                                             "bandwidth [num RBs] used by HeNBs",
-                                            ns3::UintegerValue (25),
+                                            ns3::UintegerValue (50),
                                             ns3::MakeUintegerChecker<uint16_t> ());
 static ns3::GlobalValue g_simTime ("simTime",
                                    "Total duration of the simulation [s]",
@@ -372,22 +660,33 @@ static ns3::GlobalValue g_outdoorUeMaxSpeed ("outdoorUeMaxSpeed",
                                              ns3::DoubleValue (0.0),
                                              ns3::MakeDoubleChecker<double> ());
 
+static ns3::GlobalValue g_sType ("sType",
+                                  "Type of Scenario",
+                                  ns3::UintegerValue (1),
+                                  ns3::MakeUintegerChecker<uint32_t> ());
+static ns3::GlobalValue g_NumberOfUEpCell ("NumberOfUEpCell",
+                                 "Number of UEs per Cell",
+                                 ns3::UintegerValue (15),
+                                 ns3::MakeUintegerChecker<uint32_t> ());
+
 int
 main (int argc, char *argv[])
 {
   // change some default attributes so that they are reasonable for
   // this scenario, but do this before processing command line
-  // arguments, so that the user is allowed to override these settings 
-  Config::SetDefault ("ns3::UdpClient::Interval", TimeValue (MilliSeconds (1)));
-  Config::SetDefault ("ns3::UdpClient::MaxPackets", UintegerValue (1000000));
+  // arguments, so that the user is allowed to override these settings
+  Config::SetDefault ("ns3::UdpClient::Interval", TimeValue (MilliSeconds (0.2)));
+  Config::SetDefault ("ns3::UdpClient::MaxPackets", UintegerValue (100000000));
+  Config::SetDefault ("ns3::UdpClient::PacketSize", UintegerValue (1024));
   Config::SetDefault ("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue (10 * 1024));
+
 
   CommandLine cmd;
   cmd.Parse (argc, argv);
   ConfigStore inputConfig;
   inputConfig.ConfigureDefaults ();
   // parse again so you can override input file default values via command line
-  cmd.Parse (argc, argv); 
+  cmd.Parse (argc, argv);
 
   // the scenario parameters get their values from the global attributes defined above
   UintegerValue uintegerValue;
@@ -422,9 +721,9 @@ main (int argc, char *argv[])
   GlobalValue::GetValueByName ("homeEnbTxPowerDbm", doubleValue);
   double homeEnbTxPowerDbm = doubleValue.Get ();
   GlobalValue::GetValueByName ("macroEnbDlEarfcn", uintegerValue);
-  uint32_t macroEnbDlEarfcn = uintegerValue.Get ();
+  uint16_t macroEnbDlEarfcn = uintegerValue.Get ();
   GlobalValue::GetValueByName ("homeEnbDlEarfcn", uintegerValue);
-  uint32_t homeEnbDlEarfcn = uintegerValue.Get ();
+  uint16_t homeEnbDlEarfcn = uintegerValue.Get ();
   GlobalValue::GetValueByName ("macroEnbBandwidth", uintegerValue);
   uint16_t macroEnbBandwidth = uintegerValue.Get ();
   GlobalValue::GetValueByName ("homeEnbBandwidth", uintegerValue);
@@ -453,6 +752,10 @@ main (int argc, char *argv[])
   uint16_t outdoorUeMinSpeed = doubleValue.Get ();
   GlobalValue::GetValueByName ("outdoorUeMaxSpeed", doubleValue);
   uint16_t outdoorUeMaxSpeed = doubleValue.Get ();
+  GlobalValue::GetValueByName ("sType", uintegerValue);
+  uint32_t sType = uintegerValue.Get ();
+  GlobalValue::GetValueByName ("NumberOfUEpCell", uintegerValue);
+  uint32_t NumberOfUEpCell = uintegerValue.Get ();
 
   Config::SetDefault ("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue (srsPeriodicity));
 
@@ -461,21 +764,28 @@ main (int argc, char *argv[])
   if (nMacroEnbSites > 0)
     {
       uint32_t currentSite = nMacroEnbSites -1;
+      std::cout<<"CurrentSite: "<<currentSite<<"\n";
       uint32_t biRowIndex = (currentSite / (nMacroEnbSitesX + nMacroEnbSitesX + 1));
+      std::cout<<"biRowIndex: "<<biRowIndex<<"\n";
       uint32_t biRowRemainder = currentSite % (nMacroEnbSitesX + nMacroEnbSitesX + 1);
+      std::cout<<"biRowRemainder: "<<biRowRemainder<<"\n";
       uint32_t rowIndex = biRowIndex*2 + 1;
+      std::cout<<"rowIndex: "<<rowIndex<<"\n";
       if (biRowRemainder >= nMacroEnbSitesX)
         {
           ++rowIndex;
         }
+      std::cout<<"rowIndex: "<<rowIndex<<"\n";
       uint32_t nMacroEnbSitesY = rowIndex;
+      std::cout<<"nMacroEnbSitesY: "<<nMacroEnbSitesY<<"\n";
       NS_LOG_LOGIC ("nMacroEnbSitesY = " << nMacroEnbSitesY);
 
-      macroUeBox = Box (-areaMarginFactor*interSiteDistance, 
-                        (nMacroEnbSitesX + areaMarginFactor)*interSiteDistance, 
-                        -areaMarginFactor*interSiteDistance, 
+      macroUeBox = Box (-areaMarginFactor*interSiteDistance,
+                        (nMacroEnbSitesX + areaMarginFactor)*interSiteDistance,
+                        -areaMarginFactor*interSiteDistance,
                         (nMacroEnbSitesY -1)*interSiteDistance*sqrt (0.75) + areaMarginFactor*interSiteDistance,
                         ueZ, ueZ);
+     std::cout<<"macroUeBox: "<<macroUeBox<<"\n";
     }
   else
     {
@@ -493,6 +803,11 @@ main (int argc, char *argv[])
   NS_LOG_LOGIC ("nHomeUes = " << nHomeUes);
   double macroUeAreaSize = (macroUeBox.xMax - macroUeBox.xMin) * (macroUeBox.yMax - macroUeBox.yMin);
   uint32_t nMacroUes = round (macroUeAreaSize * macroUeDensity);
+  nMacroUes = 100;
+  macroUeDensity = (double)nMacroUes/macroUeAreaSize;
+  std::cout<<"Number of UEs: "<<nMacroUes<<"\n";
+
+
   NS_LOG_LOGIC ("nMacroUes = " << nMacroUes << " (density=" << macroUeDensity << ")");
 
   NodeContainer homeEnbs;
@@ -509,22 +824,29 @@ main (int argc, char *argv[])
 
 
   Ptr <LteHelper> lteHelper = CreateObject<LteHelper> ();
-  lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::HybridBuildingsPropagationLossModel"));
-  lteHelper->SetPathlossModelAttribute ("ShadowSigmaExtWalls", DoubleValue (0));
-  lteHelper->SetPathlossModelAttribute ("ShadowSigmaOutdoor", DoubleValue (1));
-  lteHelper->SetPathlossModelAttribute ("ShadowSigmaIndoor", DoubleValue (1.5));
+  lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::LogNormalShadowingLossModel"));
+  lteHelper->SetPathlossModelAttribute("Exponent",DoubleValue (3.52));
+  // create a log-normal random variable with zero mean and 6.5dB Variance
+  Ptr<LogNormalRandomVariable> theta = CreateObject<LogNormalRandomVariable> ();
+  theta->SetAttribute ("Mu", DoubleValue (0.0));
+  theta->SetAttribute ("Sigma", DoubleValue (6.5));
+  // assign random variable to the path loss MobilityModel
+  lteHelper->SetPathlossModelAttribute("LogNormalRv",PointerValue(theta));
+  //lteHelper->SetPathlossModelAttribute ("ShadowSigmaExtWalls", DoubleValue (0));
+  //lteHelper->SetPathlossModelAttribute ("ShadowSigmaOutdoor", DoubleValue (1));
+  //lteHelper->SetPathlossModelAttribute ("ShadowSigmaIndoor", DoubleValue (1.5));
   // use always LOS model
-  lteHelper->SetPathlossModelAttribute ("Los2NlosThr", DoubleValue (1e6));
-  lteHelper->SetSpectrumChannelType ("ns3::MultiModelSpectrumChannel");
+  //lteHelper->SetPathlossModelAttribute ("Los2NlosThr", DoubleValue (1e6));
+  //lteHelper->SetSpectrumChannelType ("ns3::MultiModelSpectrumChannel");
 
 //   lteHelper->EnableLogComponents ();
 //   LogComponentEnable ("PfFfMacScheduler", LOG_LEVEL_ALL);
 
-  if (!fadingTrace.empty ())
-    {
-      lteHelper->SetAttribute ("FadingModel", StringValue ("ns3::TraceFadingLossModel"));
-      lteHelper->SetFadingModelAttribute ("TraceFilename", StringValue (fadingTrace));
-    }
+  //if (!fadingTrace.empty ())
+  //  {
+  //    lteHelper->SetAttribute ("FadingModel", StringValue ("ns3::TraceFadingLossModel"));
+  //    lteHelper->SetFadingModelAttribute ("TraceFilename", StringValue (fadingTrace));
+  //  }
 
   Ptr<PointToPointEpcHelper> epcHelper;
   if (epc)
@@ -553,12 +875,25 @@ main (int argc, char *argv[])
   lteHelper->SetEnbDeviceAttribute ("UlBandwidth", UintegerValue (macroEnbBandwidth));
   NetDeviceContainer macroEnbDevs = lteHexGridEnbTopologyHelper->SetPositionAndInstallEnbDevice (macroEnbs);
 
+
+  std::vector<Vector> SectorsCoord;
+  for (uint32_t u = 0; u < macroEnbDevs.GetN (); ++u)
+    {
+
+       Ptr<MobilityModel> tMobility = ((macroEnbDevs.Get(u)))->GetNode()->GetObject<MobilityModel> ();
+       if (tMobility != 0){
+      Vector pos = tMobility->GetPosition();
+      SectorsCoord.push_back(pos);
+       std::cout<<"Sector "<<u<<" "<<pos.x<<" "<<pos.y<<" "<<pos.z<<"\n";
+     }
+     }
+
   if (epc)
     {
       // this enables handover for macro eNBs
       lteHelper->AddX2Interface (macroEnbs);
     }
-  
+
   // HomeEnbs randomly indoor
 
   Ptr<PositionAllocator> positionAlloc = CreateObject<RandomRoomPositionAllocator> ();
@@ -566,6 +901,9 @@ main (int argc, char *argv[])
   mobility.Install (homeEnbs);
   BuildingsHelper::Install (homeEnbs);
   Config::SetDefault ("ns3::LteEnbPhy::TxPower", DoubleValue (homeEnbTxPowerDbm));
+
+  Config::SetDefault ("ns3::LteUePhy::UeMeasurementsFilterPeriod", TimeValue (MilliSeconds (100)));
+   
   lteHelper->SetEnbAntennaModelType ("ns3::IsotropicAntennaModel");
   lteHelper->SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (homeEnbDlEarfcn));
   lteHelper->SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (homeEnbDlEarfcn + 18000));
@@ -586,17 +924,35 @@ main (int argc, char *argv[])
 
   // macro Ues
   NS_LOG_LOGIC ("randomly allocating macro UEs in " << macroUeBox << " speedMin " << outdoorUeMinSpeed << " speedMax " << outdoorUeMaxSpeed);
+  std::cout<<"randomly allocating macro UEs in " << macroUeBox << " speedMin " << outdoorUeMinSpeed << " speedMax " << outdoorUeMaxSpeed<<"\n";
   if (outdoorUeMaxSpeed!=0.0)
     {
-      mobility.SetMobilityModel ("ns3::SteadyStateRandomWaypointMobilityModel");
       
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinX", DoubleValue (macroUeBox.xMin));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinY", DoubleValue (macroUeBox.yMin));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxX", DoubleValue (macroUeBox.xMax));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxY", DoubleValue (macroUeBox.yMax));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::Z", DoubleValue (ueZ));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxSpeed", DoubleValue (outdoorUeMaxSpeed));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinSpeed", DoubleValue (outdoorUeMinSpeed));
+      //mobility.SetMobilityModel ("ns3::SteadyStateRandomWaypointMobilityModel");
+
+      //Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinX", DoubleValue (macroUeBox.xMin));
+      //Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinY", DoubleValue (macroUeBox.yMin));
+      //Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxX", DoubleValue (macroUeBox.xMax));
+      //Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxY", DoubleValue (macroUeBox.yMax));
+      //Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::Z", DoubleValue (ueZ));
+      //Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxSpeed", DoubleValue (outdoorUeMaxSpeed));
+      //Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinSpeed", DoubleValue (outdoorUeMinSpeed));
+
+      mobility.SetMobilityModel ("ns3::GaussMarkovMobilityModel");
+      Config::SetDefault ("ns3::GaussMarkovMobilityModel::Bounds", BoxValue(macroUeBox));
+      Config::SetDefault ("ns3::GaussMarkovMobilityModel::TimeStep", TimeValue (Seconds (1.0)));
+      Config::SetDefault ("ns3::GaussMarkovMobilityModel::Alpha", DoubleValue (0.85));
+      Config::SetDefault ("ns3::GaussMarkovMobilityModel::MeanVelocity", StringValue ("ns3::UniformRandomVariable[Min=22|Max=22]"));
+      Config::SetDefault ("ns3::GaussMarkovMobilityModel::NormalVelocity", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
+      Config::SetDefault ("ns3::GaussMarkovMobilityModel::NormalDirection", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"));
+                                 
+                                 //"TimeStep", TimeValue (Seconds (1.0)),
+                                 //"Alpha", DoubleValue (0.85),
+                                 //"MeanVelocity", StringValue ("ns3::UniformRandomVariable[Min=22|Max=22]"),
+                                 //"MeanDirection", StringValue ("ns3::UniformRandomVariable[Min=0|Max=6.283185307]"),
+                                 //"NormalVelocity", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
+                                 //"NormalDirection", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"),
+                                  
 
       // this is not used since SteadyStateRandomWaypointMobilityModel
       // takes care of initializing the positions;  however we need to
@@ -604,8 +960,10 @@ main (int argc, char *argv[])
       // (SameRoom) will cause an error when used with homeDeploymentRatio=0
       positionAlloc = CreateObject<RandomBoxPositionAllocator> ();
       mobility.SetPositionAllocator (positionAlloc);
+      //
       mobility.Install (macroUes);
       
+      RandomAcrossSectorsUE(macroUes,SectorsCoord,1,0,macroUes.GetN (),NumberOfUEpCell);
       // forcing initialization so we don't have to wait for Nodes to
       // start before positions are assigned (which is needed to
       // output node positions to file and to make AttachToClosestEnb work)
@@ -633,6 +991,28 @@ main (int argc, char *argv[])
       positionAlloc->SetAttribute ("Z", PointerValue (zVal));
       mobility.SetPositionAllocator (positionAlloc);
       mobility.Install (macroUes);
+
+      // check the type of scenario
+      std::cout<<"Scenario: "<<sType<<std::endl;
+      if (sType == 1) {
+
+          RandomAcrossSectorsUE(macroUes,SectorsCoord,1,0,macroUes.GetN (),NumberOfUEpCell);
+
+
+
+      }
+      else if (sType == 2){
+
+        RandomEdgeUE(macroUes,SectorsCoord,1,0,macroUes.GetN (),NumberOfUEpCell);
+
+      }
+      else if (sType == 3) {
+         std::cout<<sType<<std::endl;
+         RandomEdgeUE(macroUes,SectorsCoord,2,macroUes.GetN()/2,macroUes.GetN (),NumberOfUEpCell);
+         RandomCentreUE(macroUes,SectorsCoord,2,0,macroUes.GetN ()/2,NumberOfUEpCell);
+
+
+      }
     }
   BuildingsHelper::Install (macroUes);
 
@@ -693,6 +1073,7 @@ main (int argc, char *argv[])
       // macro UEs attached to the closest macro eNB
       lteHelper->AttachToClosestEnb (macroUeDevs, macroEnbDevs);
 
+
       // each home UE is attached explicitly to its home eNB
       NetDeviceContainer::Iterator ueDevIt;
       NetDeviceContainer::Iterator enbDevIt;
@@ -719,27 +1100,30 @@ main (int argc, char *argv[])
 
       // randomize a bit start times to avoid simulation artifacts
       // (e.g., buffer overflows due to packet transmissions happening
-      // exactly at the same time) 
+      // exactly at the same time)
       Ptr<UniformRandomVariable> startTimeSeconds = CreateObject<UniformRandomVariable> ();
       if (useUdp)
         {
-          startTimeSeconds->SetAttribute ("Min", DoubleValue (0));
-          startTimeSeconds->SetAttribute ("Max", DoubleValue (0.010));
+          startTimeSeconds->SetAttribute ("Min", DoubleValue (0.3));
+          startTimeSeconds->SetAttribute ("Max", DoubleValue (0.3));
         }
       else
         {
           // TCP needs to be started late enough so that all UEs are connected
           // otherwise TCP SYN packets will get lost
-          startTimeSeconds->SetAttribute ("Min", DoubleValue (0.100));
-          startTimeSeconds->SetAttribute ("Max", DoubleValue (0.110));
+          startTimeSeconds->SetAttribute ("Min", DoubleValue (0.3));
+          startTimeSeconds->SetAttribute ("Max", DoubleValue (0.3));
         }
 
+      numSinks = ues.GetN()/2;
       for (uint32_t u = 0; u < ues.GetN (); ++u)
         {
           Ptr<Node> ue = ues.Get (u);
           // Set the default gateway for the UE
           Ptr<Ipv4StaticRouting> ueStaticRouting = ipv4RoutingHelper.GetStaticRouting (ue->GetObject<Ipv4> ());
           ueStaticRouting->SetDefaultRoute (epcHelper->GetUeDefaultGatewayAddress (), 1);
+
+
 
           for (uint32_t b = 0; b < numBearersPerUe; ++b)
             {
@@ -753,22 +1137,29 @@ main (int argc, char *argv[])
                 {
                   if (epcDl)
                     {
+                      if (u%2 == 0) {
+                      Config::SetDefault ("ns3::UdpClient::Interval", TimeValue (NanoSeconds (2500000)));
                       NS_LOG_LOGIC ("installing UDP DL app for UE " << u);
                       UdpClientHelper dlClientHelper (ueIpIfaces.GetAddress (u), dlPort);
                       clientApps.Add (dlClientHelper.Install (remoteHost));
-                      PacketSinkHelper dlPacketSinkHelper ("ns3::UdpSocketFactory", 
+                      PacketSinkHelper dlPacketSinkHelper ("ns3::UdpSocketFactory",
                                                            InetSocketAddress (Ipv4Address::GetAny (), dlPort));
                       serverApps.Add (dlPacketSinkHelper.Install (ue));
-                    }
+                      lastTotalRx.push_back(0);
+                      // add pointer to the sinks
+                     sinks.Add(serverApps);
+                   }}
                   if (epcUl)
                     {
+                      if (u%2 == 1) {
+                      Config::SetDefault ("ns3::UdpClient::Interval", TimeValue (MilliSeconds (1.35)));
                       NS_LOG_LOGIC ("installing UDP UL app for UE " << u);
                       UdpClientHelper ulClientHelper (remoteHostAddr, ulPort);
                       clientApps.Add (ulClientHelper.Install (ue));
-                      PacketSinkHelper ulPacketSinkHelper ("ns3::UdpSocketFactory", 
+                      PacketSinkHelper ulPacketSinkHelper ("ns3::UdpSocketFactory",
                                                            InetSocketAddress (Ipv4Address::GetAny (), ulPort));
                       serverApps.Add (ulPacketSinkHelper.Install (remoteHost));
-                    }
+                    }}
                 }
               else // use TCP
                 {
@@ -779,7 +1170,7 @@ main (int argc, char *argv[])
                                                      InetSocketAddress (ueIpIfaces.GetAddress (u), dlPort));
                       dlClientHelper.SetAttribute ("MaxBytes", UintegerValue (0));
                       clientApps.Add (dlClientHelper.Install (remoteHost));
-                      PacketSinkHelper dlPacketSinkHelper ("ns3::TcpSocketFactory", 
+                      PacketSinkHelper dlPacketSinkHelper ("ns3::TcpSocketFactory",
                                                            InetSocketAddress (Ipv4Address::GetAny (), dlPort));
                       serverApps.Add (dlPacketSinkHelper.Install (ue));
                     }
@@ -790,7 +1181,7 @@ main (int argc, char *argv[])
                                                      InetSocketAddress (remoteHostAddr, ulPort));
                       ulClientHelper.SetAttribute ("MaxBytes", UintegerValue (0));
                       clientApps.Add (ulClientHelper.Install (ue));
-                      PacketSinkHelper ulPacketSinkHelper ("ns3::TcpSocketFactory", 
+                      PacketSinkHelper ulPacketSinkHelper ("ns3::TcpSocketFactory",
                                                            InetSocketAddress (Ipv4Address::GetAny (), ulPort));
                       serverApps.Add (ulPacketSinkHelper.Install (remoteHost));
                     }
@@ -802,7 +1193,7 @@ main (int argc, char *argv[])
                   EpcTft::PacketFilter dlpf;
                   dlpf.localPortStart = dlPort;
                   dlpf.localPortEnd = dlPort;
-                  tft->Add (dlpf); 
+                  tft->Add (dlpf);
                 }
               if (epcUl)
                 {
@@ -821,10 +1212,11 @@ main (int argc, char *argv[])
               serverApps.Start (startTime);
               clientApps.Start (startTime);
 
+
             } // end for b
         }
 
-    } 
+    }
   else // (epc == false)
     {
       // for radio bearer activation purposes, consider together home UEs and macro UEs
@@ -877,10 +1269,36 @@ main (int argc, char *argv[])
 
   lteHelper->EnableMacTraces ();
   lteHelper->EnableRlcTraces ();
+  lteHelper->EnablePhyTraces ();
   if (epc)
     {
       lteHelper->EnablePdcpTraces ();
     }
+
+
+    Config::Connect ("/NodeList/*/DeviceList/*/LteUeRrc/ConnectionEstablished",
+                     MakeCallback (&NotifyConnectionEstablishedUe));
+    Config::Connect ("/NodeList/*/DeviceList/*/LteUeRrc/ConnectionEstablished",
+                                      MakeCallback (&NotifyConnectionEstablishedUe));
+    Config::Connect ("/NodeList/*/DeviceList/*/LteEnbRrc/HandoverStart",
+                                      MakeCallback (&NotifyHandoverStartEnb));
+    Config::Connect ("/NodeList/*/DeviceList/*/LteUeRrc/HandoverStart",
+                                      MakeCallback (&NotifyHandoverStartUe));
+    Config::Connect ("/NodeList/*/DeviceList/*/LteEnbRrc/HandoverEndOk",
+                                      MakeCallback (&NotifyHandoverEndOkEnb));
+    Config::Connect ("/NodeList/*/DeviceList/*/LteUeRrc/HandoverEndOk",
+                                      MakeCallback (&NotifyHandoverEndOkUe));
+  
+    Config::Connect ("/NodeList/*/$ns3::MobilityModel/CourseChange",
+                   MakeCallback (&CourseChange));
+     
+    //Config::Connect ("/NodeList/*/DeviceList/*/LteUePhy/ReportCurrentCellRsrpSinr",
+    //                   MakeBoundCallback (&NotifyUeReport, stream));
+
+    Config::Connect ("/NodeList/*/DeviceList/*/LteUePhy/ReportUeMeasurements",
+                   MakeBoundCallback (&ReportUeMeasurementsCallback,1));
+  //AnimationInterface anim ("topology.xml");
+  Simulator::Schedule (Seconds (0.4), &CalculateThroughput,100);
 
   Simulator::Run ();
 
