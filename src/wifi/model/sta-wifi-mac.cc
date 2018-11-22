@@ -847,6 +847,7 @@ StaWifiMac::SetState (MacState value)
            && m_state == ASSOCIATED)
     {
       m_deAssocLogger (GetBssid ());
+      DisposeStaTidQueues(GetBssid ());
     }
   m_state = value;
 }

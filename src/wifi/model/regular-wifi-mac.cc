@@ -377,16 +377,20 @@ RegularWifiMac::SetupStaTidQueues (Mac48Address address)
 
   //Our caller shouldn't be attempting to setup a queue that is
   //already configured.
-  NS_ASSERT (m_staQueues.find (address) == m_staQueues.end ());
+  //NS_ASSERT (m_staQueues.find (address) == m_staQueues.end ());TODO
+  //a station can try to associate because of missed beacons but it was already associated
 
-  TidQueues staQueue;
-  for (uint8_t i = 0; i < 8; i++)
-    {
-      Ptr<WifiMacQueue> tidQueue = CreateObject<WifiMacQueue> ();
-      staQueue.insert(std::make_pair(i, tidQueue));
-    }
+  if (m_staQueues.find (address) == m_staQueues.end ())
+  {
+	TidQueues staQueue;
+	for (uint8_t i = 0; i < 8; i++)
+	{
+	  Ptr<WifiMacQueue> tidQueue = CreateObject<WifiMacQueue> ();
+	  staQueue.insert(std::make_pair(i, tidQueue));
+	}
 
-  m_staQueues.insert(std::make_pair(address, staQueue));
+	m_staQueues.insert(std::make_pair(address, staQueue));
+  }
 }
 
 void
