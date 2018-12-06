@@ -668,7 +668,7 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus (WifiRemoteStation *st, uint8_t nSu
   station->m_groupsTable[groupId].m_ratesTable[rateId].numRateSuccess += nSuccessfulMpdus;
   station->m_groupsTable[groupId].m_ratesTable[rateId].numRateAttempt += nSuccessfulMpdus + nFailedMpdus;
 
-  if (nSuccessfulMpdus == 0 && station->m_longRetry < CountRetries (station))
+  if (nSuccessfulMpdus == 0 && nFailedMpdus != 0 && station->m_longRetry < CountRetries (station))
     {
       // We do not receive a BlockAck. The entire AMPDU fail.
       UpdateRate (station);
