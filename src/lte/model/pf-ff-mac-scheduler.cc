@@ -1264,6 +1264,18 @@ PfFfMacScheduler::DoSchedDlCqiInfoReq (const struct FfMacSchedSapProvider::Sched
           std::map <uint16_t,uint8_t>::iterator it;
           uint16_t rnti = params.m_cqiList.at (i).m_rnti;
           it = m_p10CqiRxed.find (rnti);
+          uint8_t mcs = 0;
+          uint32_t cqi = params.m_cqiList.at (i).m_wbCqi.at (0);
+          mcs = m_amc->GetMcsFromCqi (cqi);
+          double achievableRate = 0.0;
+          int rbgSize = GetRbgSize (m_cschedCellConfig.m_dlBandwidth);
+          // achievableRate += ((m_amc->GetTbSizeFromMcs (mcs, rbgSize) / 8) / 0.001);   // = TB size / TTI
+          achievableRate += (m_amc->GetTbSizeFromMcs (mcs, rbgSize) / 0.001);   // = TB size / TTI
+
+          // if we are to print CQI values
+          Time now = Simulator::Now ();
+          //std::cout <<"Time: "<< now.GetSeconds()<< " RNTI = " << rnti << " CellID = "<< m_cellId << " achievableRate = " << achievableRate << " CQI = " <<  (uint32_t) params.m_cqiList.at (i).m_wbCqi.at (0) << "\n";
+
           if (it == m_p10CqiRxed.end ())
             {
               // create the new entry
@@ -2131,5 +2143,11 @@ PfFfMacScheduler::TransmissionModeConfigurationUpdate (uint16_t rnti, uint8_t tx
   m_cschedSapUser->CschedUeConfigUpdateInd (params);
 }
 
+void
+PfFfMacScheduler::SetCellId(uint16_t cellId)
+{
+  NS_LOG_FUNCTION (this << " CELLID " << cellId);
+  m_cellId = cellId;
+}
 
 }

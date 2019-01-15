@@ -128,6 +128,8 @@ public:
    */
   virtual LteFfrSapUser* GetLteFfrSapUser () = 0;
   
+  virtual void SetCellId(uint16_t cellId);
+
 protected:
     
   UlCqiFilter_t m_ulCqiFilter; ///< UL CQI filter

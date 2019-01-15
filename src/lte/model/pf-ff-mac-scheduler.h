@@ -115,6 +115,8 @@ public:
    */
   void TransmissionModeConfigurationUpdate (uint16_t rnti, uint8_t txMode);
 
+  virtual void SetCellId(uint16_t cellId);
+
 private:
   //
   // Implementation of the CSCHED API primitives
@@ -412,6 +414,8 @@ private:
   std::vector <struct RachListElement_s> m_rachList; ///< RACH list
   std::vector <uint16_t> m_rachAllocationMap; ///< RACH allocation map
   uint8_t m_ulGrantMcs; ///< MCS for UL grant (default 0)
+
+  uint16_t m_cellId;
 
 };
 

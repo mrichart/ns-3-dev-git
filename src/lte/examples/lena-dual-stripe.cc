@@ -509,13 +509,15 @@ main (int argc, char *argv[])
 
 
   Ptr <LteHelper> lteHelper = CreateObject<LteHelper> ();
-  lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::HybridBuildingsPropagationLossModel"));
-  lteHelper->SetPathlossModelAttribute ("ShadowSigmaExtWalls", DoubleValue (0));
-  lteHelper->SetPathlossModelAttribute ("ShadowSigmaOutdoor", DoubleValue (1));
-  lteHelper->SetPathlossModelAttribute ("ShadowSigmaIndoor", DoubleValue (1.5));
+  lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::FriisPropagationLossModel"));
+  lteHelper->SetAttribute ("Scheduler", StringValue ("ns3::RrFfMacScheduler"));
+
+  //lteHelper->SetPathlossModelAttribute ("ShadowSigmaExtWalls", DoubleValue (0));
+  //lteHelper->SetPathlossModelAttribute ("ShadowSigmaOutdoor", DoubleValue (1));
+  //lteHelper->SetPathlossModelAttribute ("ShadowSigmaIndoor", DoubleValue (1.5));
   // use always LOS model
-  lteHelper->SetPathlossModelAttribute ("Los2NlosThr", DoubleValue (1e6));
-  lteHelper->SetSpectrumChannelType ("ns3::MultiModelSpectrumChannel");
+ // lteHelper->SetPathlossModelAttribute ("Los2NlosThr", DoubleValue (1e6));
+  //lteHelper->SetSpectrumChannelType ("ns3::MultiModelSpectrumChannel");
 
 //   lteHelper->EnableLogComponents ();
 //   LogComponentEnable ("PfFfMacScheduler", LOG_LEVEL_ALL);

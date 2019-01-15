@@ -588,6 +588,8 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   
       it->second->SetPhy (phy);
 
+      sched->SetCellId(cellId);
+
     }
 
   Ptr<LteEnbRrc> rrc = CreateObject<LteEnbRrc> ();
