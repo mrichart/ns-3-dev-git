@@ -1580,13 +1580,13 @@ WifiRemoteStationManager::GetRatioSlice (uint8_t tid) const
   switch (tid)
   {
   case 1:
-    return 0.2;
+    return 0.6;
     break;
   case 2:
-    return 0.2;
+    return 0.1;
     break;
   case 3:
-    return 0.6;
+    return 0.3;
     break;
   case 4:
     return 0.2;
