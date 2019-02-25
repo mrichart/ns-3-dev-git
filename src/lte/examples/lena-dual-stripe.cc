@@ -510,7 +510,7 @@ main (int argc, char *argv[])
 
   Ptr <LteHelper> lteHelper = CreateObject<LteHelper> ();
   lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::FriisPropagationLossModel"));
-  lteHelper->SetAttribute ("Scheduler", StringValue ("ns3::RrFfMacScheduler"));
+  lteHelper->SetAttribute ("Scheduler", StringValue ("ns3::PfFfMacScheduler"));
 
   //lteHelper->SetPathlossModelAttribute ("ShadowSigmaExtWalls", DoubleValue (0));
   //lteHelper->SetPathlossModelAttribute ("ShadowSigmaOutdoor", DoubleValue (1));
@@ -879,6 +879,7 @@ main (int argc, char *argv[])
 
   lteHelper->EnableMacTraces ();
   lteHelper->EnableRlcTraces ();
+  lteHelper->EnablePhyTraces();
   if (epc)
     {
       lteHelper->EnablePdcpTraces ();
