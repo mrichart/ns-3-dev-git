@@ -67,7 +67,6 @@ public:
    *
    * \param mode WifiMode
    * \param powerLevel transmission power level
-   * \param retries retries
    * \param preamble preamble type
    * \param guardInterval the guard interval duration in nanoseconds
    * \param nTx the number of TX antennas
@@ -76,18 +75,19 @@ public:
    * \param channelWidth the channel width in MHz
    * \param aggregation enable or disable MPDU aggregation
    * \param stbc enable or disable STBC
+   * \param bssColor the BSS color
    */
   WifiTxVector (WifiMode mode,
                 uint8_t powerLevel,
-                uint8_t retries,
                 WifiPreamble preamble,
                 uint16_t guardInterval,
                 uint8_t nTx,
                 uint8_t nss,
                 uint8_t ness,
-                uint8_t channelWidth,
+                uint16_t channelWidth,
                 bool aggregation,
-                bool stbc);
+                bool stbc,
+                uint8_t bssColor = 0);
   /**
    * \returns the selected payload transmission mode
    */
@@ -109,16 +109,6 @@ public:
    */
   void SetTxPowerLevel (uint8_t powerlevel);
   /**
-   * \returns the number of retries
-   */
-  uint8_t GetRetries (void) const;
-  /**
-   * Sets the number of retries
-   *
-   * \param retries
-   */
-  void SetRetries (uint8_t retries);
-  /**
    * \returns the preamble type
    */
   WifiPreamble GetPreambleType (void) const;
@@ -131,13 +121,13 @@ public:
   /**
    * \returns the channel width (in MHz)
    */
-  uint8_t GetChannelWidth (void) const;
+  uint16_t GetChannelWidth (void) const;
   /**
    * Sets the selected channelWidth (in MHz)
    *
    * \param channelWidth
    */
-  void SetChannelWidth (uint8_t channelWidth);
+  void SetChannelWidth (uint16_t channelWidth);
   /**
    * \returns the guard interval duration (in nanoseconds)
    */
@@ -203,6 +193,24 @@ public:
    * \param stbc enable or disable STBC
    */
   void SetStbc (bool stbc);
+  /**
+   * Set the BSS color
+   * \param color the BSS color
+   */
+  void SetBssColor (uint8_t color);
+  /**
+   * Get the BSS color
+   * \return the BSS color
+   */
+  uint8_t GetBssColor (void) const;
+  /**
+   * The standard disallows certain combinations of WifiMode, number of
+   * spatial streams, and channel widths.  This method can be used to
+   * check whether this WifiTxVector contains an invalid combination.
+   *
+   * \return true if the WifiTxVector parameters are allowed by the standard
+   */
+   bool IsValid (void) const;
 
 
 private:
@@ -212,16 +220,15 @@ private:
   uint8_t  m_txPowerLevel;       /**< The TXPWR_LEVEL parameter in Table 15-4.
                                  It is the value that will be passed
                                  to PMD_TXPWRLVL.request */
-  uint8_t  m_retries;            /**< The DATA_RETRIES/RTS_RETRIES parameter
-                                 for Click radiotap information */
   WifiPreamble m_preamble;       /**< preamble */
-  uint8_t m_channelWidth;        /**< channel width in MHz */
+  uint16_t m_channelWidth;       /**< channel width in MHz */
   uint16_t m_guardInterval;      /**< guard interval duration in nanoseconds */
   uint8_t  m_nTx;                /**< number of TX antennas */
   uint8_t  m_nss;                /**< number of spatial streams */
   uint8_t  m_ness;               /**< number of spatial streams in beamforming */
   bool     m_aggregation;        /**< Flag whether the PSDU contains A-MPDU. */
   bool     m_stbc;               /**< STBC used or not */
+  uint8_t  m_bssColor;           /**< BSS color */
 
   bool     m_modeInitialized;         /**< Internal initialization flag */
   bool     m_txPowerLevelInitialized; /**< Internal initialization flag */

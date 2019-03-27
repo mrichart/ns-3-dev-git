@@ -18,11 +18,12 @@
  * Author: Mirko Banchi <mk.banchi@gmail.com>
  */
 
-#include "block-ack-cache.h"
-#include "ctrl-headers.h"
-#include "wifi-mac-header.h"
-#include "qos-utils.h"
 #include "ns3/log.h"
+#include "block-ack-cache.h"
+#include "qos-utils.h"
+#include "wifi-utils.h"
+#include "wifi-mac-header.h"
+#include "ctrl-headers.h"
 
 #define WINSIZE_ASSERT NS_ASSERT ((m_winEnd - m_winStart + 4096) % 4096 == m_winSize - 1)
 
@@ -35,7 +36,7 @@ BlockAckCache::Init (uint16_t winStart, uint16_t winSize)
 {
   NS_LOG_FUNCTION (this << winStart << winSize);
   m_winStart = winStart;
-  m_winSize = winSize <= 64 ? winSize : 64;
+  m_winSize = winSize;
   m_winEnd = (m_winStart + m_winSize - 1) % 4096;
   memset (m_bitmap, 0, sizeof (m_bitmap));
 }
@@ -53,7 +54,7 @@ BlockAckCache::UpdateWithMpdu (const WifiMacHeader *hdr)
   uint16_t seqNumber = hdr->GetSequenceNumber ();
   if (!QosUtilsIsOldPacket (m_winStart, seqNumber))
     {
-      if (!IsInWindow (seqNumber))
+      if (!IsInWindow (seqNumber, m_winStart, m_winSize))
         {
           uint16_t delta = (seqNumber - m_winEnd + 4096) % 4096;
           if (delta > 1)
@@ -75,7 +76,7 @@ BlockAckCache::UpdateWithBlockAckReq (uint16_t startingSeq)
   NS_LOG_FUNCTION (this << startingSeq);
   if (!QosUtilsIsOldPacket (m_winStart, startingSeq))
     {
-      if (IsInWindow (startingSeq))
+      if (IsInWindow (startingSeq, m_winStart, m_winSize))
         {
           if (startingSeq != m_winStart)
             {
@@ -110,13 +111,6 @@ BlockAckCache::ResetPortionOfBitmap (uint16_t start, uint16_t end)
   m_bitmap[i] = 0;
 }
 
-bool
-BlockAckCache::IsInWindow (uint16_t seq) const
-{
-  NS_LOG_FUNCTION (this << seq);
-  return ((seq - m_winStart + 4096) % 4096) < m_winSize;
-}
-
 void
 BlockAckCache::FillBlockAckBitmap (CtrlBAckResponseHeader *blockAckHeader)
 {
@@ -125,7 +119,7 @@ BlockAckCache::FillBlockAckBitmap (CtrlBAckResponseHeader *blockAckHeader)
     {
       NS_FATAL_ERROR ("Basic block ack is only partially implemented.");
     }
-  else if (blockAckHeader->IsCompressed ())
+  else if (blockAckHeader->IsCompressed () || blockAckHeader->IsExtendedCompressed ())
     {
       uint16_t i = blockAckHeader->GetStartingSequence ();
       uint16_t end = (i + m_winSize - 1) % 4096;

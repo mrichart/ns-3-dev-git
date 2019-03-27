@@ -22,9 +22,11 @@
 #define FRAME_CAPTURE_MODEL_H
 
 #include "ns3/object.h"
-#include "interference-helper.h"
 
 namespace ns3 {
+
+class Event;
+class Time;
 
 /**
  * \ingroup wifi
@@ -51,10 +53,24 @@ public:
    * \return true if the reception should be switched to a new incoming frame,
    *         false otherwise
    */
-  virtual bool CaptureNewFrame (Ptr<InterferenceHelper::Event> currentEvent, Ptr<InterferenceHelper::Event> newEvent) const = 0;
+  virtual bool CaptureNewFrame (Ptr<Event> currentEvent, Ptr<Event> newEvent) const = 0;
+
+  /**
+   * This method returns true if the capture window duration has not elapsed yet,
+   *                     false otherwise.
+   *
+   * \param timePreambleDetected the time the preamble was detected
+   *
+   * \return true if the capture window duration has not elapsed yet,
+   *         false otherwise
+   */
+  virtual bool IsInCaptureWindow (Time timePreambleDetected) const;
+
+
+private:
+  Time m_captureWindow; //!< Capture window duration
 };
 
 } //namespace ns3
 
 #endif /* FRAME_CAPTURE_MODEL_H */
-

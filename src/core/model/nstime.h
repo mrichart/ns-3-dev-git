@@ -64,7 +64,7 @@ class TimeWithUnit;
  *
  * This class defines all the classic C++ addition/subtraction
  * operators: +, -, +=, -=; and all the classic comparison operators:
- * ==, !=, <, >, <=, >=. It is thus easy to add, substract, or
+ * ==, !=, <, >, <=, >=. It is thus easy to add, subtract, or
  * compare Time objects.
  *
  * For example:
@@ -124,7 +124,7 @@ public:
    *  Assignment operator
    * \param [in] o Time to assign.
    * \return The Time.
-   */      
+   */
   inline Time & operator = (const Time & o)
   {
     m_data = o.m_data;
@@ -136,20 +136,34 @@ public:
   {
     if (g_markingTimes)
       {
-	Mark (this);
+        Mark (this);
       }
   }
   /**
    *  Copy constructor
    *
    * \param [in] o Time to copy
-   */      
+   */
   inline Time(const Time & o)
     : m_data (o.m_data)
   {
     if (g_markingTimes)
       {
-	Mark (this);
+        Mark (this);
+      }
+  }
+
+  /**
+   * \brief Move constructor
+   *
+   * \param [in] o Time from which take the data
+   */
+  Time (Time &&o)
+    : m_data (o.m_data)
+  {
+    if (g_markingTimes)
+      {
+        Mark (this);
       }
   }
   /**
@@ -380,7 +394,7 @@ public:
   }
   inline double GetDouble (void) const
   {
-    return m_data;
+    return static_cast<double> (m_data);
   }
   inline int64_t GetInteger (void) const
   {
@@ -531,6 +545,13 @@ public:
    */
   TimeWithUnit As (const enum Unit unit) const;
 
+  /**
+   * TracedCallback signature for Time
+   *
+   * \param [in] value Current value of Time
+   */
+  typedef void (* TracedCallback)(Time value);
+
 private:
   /** How to convert between other units and the current unit. */
   struct Information
@@ -677,8 +698,11 @@ private:
   friend Time operator - (const Time & lhs, const Time & rhs);
   friend Time operator * (const Time & lhs, const int64_t & rhs);
   friend Time operator * (const int64_t & lhs, const Time & rhs);
-  friend int64_t operator / (const Time & lhs, const Time & rhs);
+  friend Time operator * (const Time & lhs, const int64x64_t & rhs);
+  friend Time operator * (const int64x64_t & lhs, const Time & rhs);
+  friend int64x64_t operator / (const Time & lhs, const Time & rhs);
   friend Time operator / (const Time & lhs, const int64_t & rhs);
+  friend Time operator / (const Time & lhs, const int64x64_t & rhs);
   friend Time & operator += (Time & lhs, const Time & rhs);
   friend Time & operator -= (Time & lhs, const Time & rhs);
   /** @} */
@@ -725,6 +749,9 @@ static bool NS_UNUSED_GLOBAL (g_TimeStaticInit) = Time::StaticInit ();
 
 /**
  * \ingroup time
+ * @{
+ */
+/**
  * \brief Equality operator for Time.
  * \param [in] lhs The first value
  * \param [in] rhs The second value
@@ -847,16 +874,43 @@ operator * (const int64_t & lhs, const Time & rhs)
 }
 /**
  * \ingroup time
+ * \brief Multiplication operator for Time.
+ * \param [in] lhs The first value
+ * \param [in] rhs The second value
+ * \returns the product of the two input values.
+ */
+inline Time
+operator * (const Time & lhs, const int64x64_t & rhs)
+{
+  int64x64_t res = lhs.m_data;
+  res *= rhs;
+  return Time (res);
+}
+/**
+ * \ingroup time
+ * \brief Multiplication operator for Time.
+ * \param [in] lhs The first value
+ * \param [in] rhs The second value
+ * \returns the product of the two input values.
+ */
+inline Time
+operator * (const int64x64_t & lhs, const Time & rhs)
+{
+  return rhs * lhs;
+}
+/**
+ * \ingroup time
  * \brief Division operator for Time.
  * \param [in] lhs The first value
  * \param [in] rhs The second value
  * \returns the resultof the first input value divided by the second input value.
  */
-inline int64_t
+inline int64x64_t
 operator / (const Time & lhs, const Time & rhs)
 {
-  int64_t res = lhs.m_data / rhs.m_data;
-  return res;
+  int64x64_t num = lhs.m_data;
+  int64x64_t den = rhs.m_data;
+  return num / den;
 }
 /**
  * \ingroup time
@@ -871,6 +925,20 @@ operator / (const Time & lhs, const int64_t & rhs)
   Time res = lhs;
   res.m_data /= rhs;
   return res;
+}
+/**
+ * \ingroup time
+ * \brief Division operator for Time.
+ * \param [in] lhs The first value
+ * \param [in] rhs The second value
+ * \returns the resultof the first input value divided by the second input value.
+ */
+inline Time
+operator / (const Time & lhs, const int64x64_t & rhs)
+{
+  int64x64_t res = lhs.m_data;
+  res /= rhs;
+  return Time (res);
 }
 /**
  * \ingroup time
@@ -896,7 +964,6 @@ inline Time & operator -= (Time & lhs, const Time & rhs)
   lhs.m_data -= rhs.m_data;
   return lhs;
 }
-/**@}*/
   
 inline Time Abs (const Time & time)
 {
@@ -939,6 +1006,8 @@ std::ostream & operator << (std::ostream & os, const Time & time);
  * \return The stream.
  */
 std::istream & operator >> (std::istream & is, Time & time);
+
+/**@}*/  // \ingroup time
 
 /**
  * \ingroup time

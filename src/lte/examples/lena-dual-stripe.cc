@@ -120,7 +120,7 @@ FemtocellBlockAllocator::Create ()
   uint32_t attempt = 0;
   do 
     {
-      NS_ASSERT_MSG (attempt < 100, "Too many failed attemtps to position apartment block. Too many blocks? Too small area?");
+      NS_ASSERT_MSG (attempt < 100, "Too many failed attempts to position apartment block. Too many blocks? Too small area?");
       box.xMin = m_xMinVar->GetValue ();
       box.xMax = box.xMin + m_xSize;
       box.yMin = m_yMinVar->GetValue ();
@@ -365,11 +365,11 @@ static ns3::GlobalValue g_srsPeriodicity ("srsPeriodicity",
                                           ns3::UintegerValue (80),
                                           ns3::MakeUintegerChecker<uint16_t> ());
 //static ns3::GlobalValue g_outdoorUeMinSpeed ("outdoorUeMinSpeed",
-//                                             "Minimum speed value of macor UE with random waypoint model [m/s].",
+//                                             "Minimum speed value of macro UE with random waypoint model [m/s].",
 //                                             ns3::DoubleValue (0.0),
  //                                            ns3::MakeDoubleChecker<double> ());
 static ns3::GlobalValue g_outdoorUeMaxSpeed ("outdoorUeMaxSpeed",
-                                             "Maximum speed value of macor UE with random waypoint model [m/s].",
+                                             "Maximum speed value of macro UE with random waypoint model [m/s].",
                                              ns3::DoubleValue (0.0),
                                              ns3::MakeDoubleChecker<double> ());
 
@@ -496,15 +496,14 @@ main (int argc, char *argv[])
   uint32_t nMacroUes = round (macroUeAreaSize * macroUeDensity);
   NS_LOG_LOGIC ("nMacroUes = " << nMacroUes << " (density=" << macroUeDensity << ")");
 
-
-  NodeContainer macroUes;
-  macroUes.Create (nMacroUes);
   NodeContainer homeEnbs;
   homeEnbs.Create (nHomeEnbs);
   NodeContainer macroEnbs;
   macroEnbs.Create (3 * nMacroEnbSites);
   NodeContainer homeUes;
   homeUes.Create (nHomeUes);
+  NodeContainer macroUes;
+  macroUes.Create (nMacroUes);
 
   MobilityHelper mobility;
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
@@ -592,7 +591,7 @@ main (int argc, char *argv[])
   //NS_LOG_LOGIC ("randomly allocating macro UEs in " << macroUeBox << " speedMin " << outdoorUeMinSpeed << " speedMax " << outdoorUeMaxSpeed);
   if (outdoorUeMaxSpeed!=0.0)
     {
-
+      
 	  Ns2MobilityHelper traceMobility = Ns2MobilityHelper ("dispositions.txt");
 	  traceMobility.Install();
 

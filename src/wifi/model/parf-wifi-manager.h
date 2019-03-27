@@ -53,13 +53,11 @@ public:
 
   // Inherited from WifiRemoteStationManager
   void SetupPhy (const Ptr<WifiPhy> phy);
-  void SetHtSupported (bool enable);
-  void SetVhtSupported (bool enable);
-  void SetHeSupported (bool enable);
 
 
 private:
-  //overriden from base class
+  // Overridden from base class.
+  void DoInitialize (void);
   WifiRemoteStation * DoCreateStation (void) const;
   void DoReportRxOk (WifiRemoteStation *station,
                      double rxSnr, WifiMode txMode);
@@ -89,12 +87,12 @@ private:
    * In contrast to rate, power levels do not depend on the remote station.
    * The levels depend only on the physical layer of the device.
    */
-  uint32_t m_minPower;
+  uint8_t m_minPower;
 
   /**
    * Maximal power level.
    */
-  uint32_t m_maxPower;
+  uint8_t m_maxPower;
 
   /**
    * The trace source fired when the transmission power changes.

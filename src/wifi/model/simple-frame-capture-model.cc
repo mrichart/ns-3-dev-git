@@ -18,10 +18,10 @@
  * Author: Sébastien Deronne <sebastien.deronne@gmail.com>
  */
 
-#include "simple-frame-capture-model.h"
 #include "ns3/simulator.h"
 #include "ns3/log.h"
 #include "ns3/double.h"
+#include "simple-frame-capture-model.h"
 #include "wifi-utils.h"
 #include "wifi-phy.h"
 
@@ -41,7 +41,7 @@ SimpleFrameCaptureModel::GetTypeId (void)
     .AddAttribute ("Margin",
                    "Reception is switched if the newly arrived frame has a power higher than "
                    "this value above the frame currently being received (expressed in dB).",
-                   DoubleValue (10),
+                   DoubleValue (5),
                    MakeDoubleAccessor (&SimpleFrameCaptureModel::GetMargin,
                                        &SimpleFrameCaptureModel::SetMargin),
                    MakeDoubleChecker<double> ())
@@ -73,11 +73,11 @@ SimpleFrameCaptureModel::GetMargin (void) const
 }
 
 bool
-SimpleFrameCaptureModel::CaptureNewFrame (Ptr<InterferenceHelper::Event> currentEvent, Ptr<InterferenceHelper::Event> newEvent) const
+SimpleFrameCaptureModel::CaptureNewFrame (Ptr<Event> currentEvent, Ptr<Event> newEvent) const
 {
   NS_LOG_FUNCTION (this);
   if (newEvent->GetTxVector ().GetPreambleType () != WIFI_PREAMBLE_NONE
-      && (WToDbm (currentEvent->GetRxPowerW ()) + m_margin) < WToDbm (newEvent->GetRxPowerW ())
+      && (WToDbm (currentEvent->GetRxPowerW ()) + GetMargin ()) < WToDbm (newEvent->GetRxPowerW ())
       && ((currentEvent->GetStartTime () + WifiPhy::CalculatePlcpPreambleAndHeaderDuration (currentEvent->GetTxVector ())) > Simulator::Now ()))
     {
       return true;

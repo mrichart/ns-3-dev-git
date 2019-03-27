@@ -32,15 +32,17 @@
 #include "ns3/enum.h"
 #include "lte-amc.h"
 #include "ns3/ipv4-header.h"
+#include "ns3/ipv6-header.h"
 #include <ns3/lte-radio-bearer-tag.h>
 #include <ns3/ipv4-l3-protocol.h>
+#include <ns3/ipv6-l3-protocol.h>
 #include <ns3/log.h>
 
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LteNetDevice");
 
-NS_OBJECT_ENSURE_REGISTERED ( LteNetDevice);
+NS_OBJECT_ENSURE_REGISTERED (LteNetDevice);
 
 ////////////////////////////////
 // LteNetDevice
@@ -48,10 +50,7 @@ NS_OBJECT_ENSURE_REGISTERED ( LteNetDevice);
 
 TypeId LteNetDevice::GetTypeId (void)
 {
-  static TypeId
-    tid =
-    TypeId ("ns3::LteNetDevice")
-
+  static TypeId tid = TypeId ("ns3::LteNetDevice")
     .SetParent<NetDevice> ()
 
     .AddAttribute ("Mtu", "The MAC-level Maximum Transmission Unit",
@@ -98,7 +97,7 @@ void
 LteNetDevice::SetAddress (Address address)
 {
   NS_LOG_FUNCTION (this << address);
-  m_address = Mac48Address::ConvertFrom (address);
+  m_address = Mac64Address::ConvertFrom (address);
 }
 
 
@@ -108,7 +107,6 @@ LteNetDevice::GetAddress (void) const
   NS_LOG_FUNCTION (this);
   return m_address;
 }
-
 
 void
 LteNetDevice::SetNode (Ptr<Node> node)
@@ -244,7 +242,7 @@ LteNetDevice::GetMulticast (Ipv4Address multicastGroup) const
 
   //
   // Implicit conversion (operator Address ()) is defined for Mac48Address, so
-  // use it by just returning the EUI-48 address which is automagically converted
+  // use it by just returning the EUI-48 address which is automatically converted
   // to an Address.
   //
   NS_LOG_LOGIC ("multicast address is " << ad);
@@ -269,7 +267,6 @@ LteNetDevice::AddLinkChangeCallback (Callback<void> callback)
   m_linkChangeCallbacks.ConnectWithoutContext (callback);
 }
 
-
 void
 LteNetDevice::SetPromiscReceiveCallback (PromiscReceiveCallback cb)
 {
@@ -277,14 +274,27 @@ LteNetDevice::SetPromiscReceiveCallback (PromiscReceiveCallback cb)
   NS_LOG_WARN ("Promisc mode not supported");
 }
 
-
-
 void
 LteNetDevice::Receive (Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << p);
-  m_rxCallback (this, p, Ipv4L3Protocol::PROT_NUMBER, Address ());
+
+  Ipv4Header ipv4Header;
+  Ipv6Header ipv6Header;
+
+  if (p->PeekHeader (ipv4Header) != 0)
+    {
+      NS_LOG_LOGIC ("IPv4 stack...");
+      m_rxCallback (this, p, Ipv4L3Protocol::PROT_NUMBER, Address ());
+    }
+  else if  (p->PeekHeader (ipv6Header) != 0)
+    {
+      NS_LOG_LOGIC ("IPv6 stack...");
+      m_rxCallback (this, p, Ipv6L3Protocol::PROT_NUMBER, Address ());
+    }
+  else
+    {
+      NS_ABORT_MSG ("LteNetDevice::Receive - Unknown IP type...");
+    }
 }
-
-
 }

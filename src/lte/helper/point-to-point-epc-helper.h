@@ -1,6 +1,6 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2011-2013 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2011-2018 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,6 +25,7 @@
 
 #include <ns3/object.h>
 #include <ns3/ipv4-address-helper.h>
+#include <ns3/ipv6-address-helper.h>
 #include <ns3/data-rate.h>
 #include <ns3/epc-tft.h>
 #include <ns3/eps-bearer.h>
@@ -35,31 +36,31 @@ namespace ns3 {
 class Node;
 class NetDevice;
 class VirtualNetDevice;
-class EpcSgwPgwApplication;
+class EpcSgwApplication;
+class EpcPgwApplication;
+class EpcMmeApplication;
 class EpcX2;
-class EpcMme;
 
 /**
  * \ingroup lte
  * \brief Create an EPC network with PointToPoint links
  *
- * This Helper will create an EPC network topology comprising of a
- * single node that implements both the SGW and PGW functionality, and
- * an MME node. The S1-U, X2-U and X2-C interfaces are realized over
+ * This Helper will create an EPC network topology comprising of
+ * three nodes: SGW, PGW and MME.
+ * The S1-U, X2-U, X2-C, S5 and S11 interfaces are realized over
  * PointToPoint links. 
  */
 class PointToPointEpcHelper : public EpcHelper
 {
 public:
-  
-  /** 
+  /**
    * Constructor
    */
   PointToPointEpcHelper ();
 
-  /** 
+  /**
    * Destructor
-   */  
+   */
   virtual ~PointToPointEpcHelper ();
   
   // inherited from Object
@@ -68,6 +69,7 @@ public:
    *  \return The object TypeId.
    */
   static TypeId GetTypeId (void);
+  TypeId GetInstanceTypeId () const;
   virtual void DoDispose ();
 
   // inherited from EpcHelper
@@ -77,26 +79,51 @@ public:
   virtual uint8_t ActivateEpsBearer (Ptr<NetDevice> ueLteDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer);
   virtual Ptr<Node> GetPgwNode ();
   virtual Ipv4InterfaceContainer AssignUeIpv4Address (NetDeviceContainer ueDevices);
+  virtual Ipv6InterfaceContainer AssignUeIpv6Address (NetDeviceContainer ueDevices);
   virtual Ipv4Address GetUeDefaultGatewayAddress ();
-
+  virtual Ipv6Address GetUeDefaultGatewayAddress6 ();
 
 
 private:
 
   /** 
-   * helper to assign addresses to UE devices as well as to the TUN device of the SGW/PGW
+   * helper to assign IPv4 addresses to UE devices as well as to the TUN device of the SGW/PGW
    */
-  Ipv4AddressHelper m_ueAddressHelper; 
+  Ipv4AddressHelper m_uePgwAddressHelper;
+  /** 
+   * helper to assign IPv6 addresses to UE devices as well as to the TUN device of the SGW/PGW
+   */
+  Ipv6AddressHelper m_uePgwAddressHelper6;
   
   /**
-   * SGW-PGW network element
+   * SGW network element
    */
-  Ptr<Node> m_sgwPgw; 
+  Ptr<Node> m_sgw;
 
   /**
-   * SGW-PGW application
+   * PGW network element
    */
-  Ptr<EpcSgwPgwApplication> m_sgwPgwApp;
+  Ptr<Node> m_pgw;
+
+  /**
+   * MME network element
+   */
+  Ptr<Node> m_mme;
+
+  /**
+   * SGW application
+   */
+  Ptr<EpcSgwApplication> m_sgwApp;
+
+  /**
+   * PGW application
+   */
+  Ptr<EpcPgwApplication> m_pgwApp;
+
+  /**
+   * MME application
+   */
+  Ptr<EpcMmeApplication> m_mmeApp;
 
   /**
    * TUN device implementing tunneling of user data over GTP-U/UDP/IP
@@ -104,16 +131,11 @@ private:
   Ptr<VirtualNetDevice> m_tunDevice;
 
   /**
-   * MME network element
-   */
-  Ptr<EpcMme> m_mme;
-
-  /**
    * S1-U interfaces
    */
 
-  /** 
-   * helper to assign addresses to S1-U NetDevices 
+  /**
+   * Helper to assign addresses to S1-U NetDevices 
    */
   Ipv4AddressHelper m_s1uIpv4AddressHelper; 
 
@@ -139,16 +161,69 @@ private:
    * UDP port where the GTP-U Socket is bound, fixed by the standard as 2152
    */
   uint16_t m_gtpuUdpPort;
+  /**
+   * Helper to assign addresses to S1-MME NetDevices
+   */
+  Ipv4AddressHelper m_s1apIpv4AddressHelper;
+
+  /**
+   * Helper to assign addresses to S11 NetDevices
+   */
+  Ipv4AddressHelper m_s11Ipv4AddressHelper;
+
+  /**
+   * The data rate to be used for the next S11 link to be created
+   */
+  DataRate m_s11LinkDataRate;
+
+  /**
+   * The delay to be used for the next S11 link to be created
+   */
+  Time     m_s11LinkDelay;
+
+  /**
+   * The MTU of the next S11 link to be created
+   */
+  uint16_t m_s11LinkMtu;
+
+  /**
+   * UDP port where the GTPv2-C Socket is bound, fixed by the standard as 2123
+   */
+  uint16_t m_gtpcUdpPort;
+
+  /**
+   * S5 interfaces
+   */
+
+  /**
+   * Helper to assign addresses to S5 NetDevices
+   */
+  Ipv4AddressHelper m_s5Ipv4AddressHelper; 
+
+  /**
+   * The data rate to be used for the next S5 link to be created
+   */
+  DataRate m_s5LinkDataRate;
+
+  /**
+   * The delay to be used for the next S5 link to be created
+   */
+  Time     m_s5LinkDelay;
+
+  /**
+   * The MTU of the next S5 link to be created
+   */
+  uint16_t m_s5LinkMtu;
 
   /**
    * Map storing for each IMSI the corresponding eNB NetDevice
    */
   std::map<uint64_t, Ptr<NetDevice> > m_imsiEnbDeviceMap;
-  
-  /** 
-   * helper to assign addresses to X2 NetDevices 
+
+  /**
+   * helper to assign addresses to X2 NetDevices
    */
-  Ipv4AddressHelper m_x2Ipv4AddressHelper;   
+  Ipv4AddressHelper m_x2Ipv4AddressHelper;
 
   /**
    * The data rate to be used for the next X2 link to be created
@@ -166,6 +241,24 @@ private:
    */
   uint16_t m_x2LinkMtu;
 
+  /**
+   * Enable PCAP generation for X2 link
+   */
+  bool        m_enablePcapOverX2;
+  /**
+   * Prefix for the PCAP file for the X2 link
+   */
+  std::string m_x2LinkPcapPrefix;
+
+  /**
+   * Enable PCAP generation for S1U link
+   */
+  bool        m_enablePcapOverS1U;
+
+  /**
+   * Prefix for the PCAP file for the S1 link
+   */
+  std::string m_s1uLinkPcapPrefix;
 };
 
 

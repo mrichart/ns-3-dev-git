@@ -245,7 +245,7 @@ Ipv4L3Protocol::DeleteRawSocket (Ptr<Socket> socket)
   return;
 }
 /*
- * This method is called by AddAgregate and completes the aggregation
+ * This method is called by AggregateObject and completes the aggregation
  * by setting the node in the ipv4 stack
  */
 void
@@ -388,7 +388,6 @@ Ipv4L3Protocol::AddInterface (Ptr<NetDevice> device)
   interface->SetDevice (device);
   interface->SetTrafficControl (tc);
   interface->SetForwarding (m_ipForward);
-  tc->SetupDevice (device);
   return AddIpv4Interface (interface);
 }
 
@@ -1036,7 +1035,7 @@ Ipv4L3Protocol::IpForward (Ptr<Ipv4Route> rtentry, Ptr<const Packet> p, const Ip
           ipHeader.GetDestination ().IsMulticast () == false)
         {
           Ptr<Icmpv4L4Protocol> icmp = GetIcmp ();
-          icmp->SendTimeExceededTtl (ipHeader, packet);
+          icmp->SendTimeExceededTtl (ipHeader, packet, false);
         }
       NS_LOG_WARN ("TTL exceeded.  Drop.");
       m_dropTrace (header, packet, DROP_TTL_EXPIRED, m_node->GetObject<Ipv4> (), interface);
@@ -1689,7 +1688,7 @@ Ipv4L3Protocol::HandleFragmentsTimeout (std::pair<uint64_t, uint32_t> key, Ipv4H
   if ( packet->GetSize () > 8 )
     {
       Ptr<Icmpv4L4Protocol> icmp = GetIcmp ();
-      icmp->SendTimeExceededTtl (ipHeader, packet);
+      icmp->SendTimeExceededTtl (ipHeader, packet, true);
     }
   m_dropTrace (ipHeader, packet, DROP_FRAGMENT_TIMEOUT, m_node->GetObject<Ipv4> (), iif);
 

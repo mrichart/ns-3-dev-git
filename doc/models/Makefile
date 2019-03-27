@@ -64,6 +64,7 @@ SOURCES = \
 	$(SRC)/internet/doc/ipv6.rst \
 	$(SRC)/internet/doc/routing-overview.rst \
 	$(SRC)/internet/doc/tcp.rst \
+	$(SRC)/internet/doc/udp.rst \
 	$(SRC)/internet-apps/doc/internet-apps.rst \
 	$(SRC)/mobility/doc/mobility.rst \
 	$(SRC)/olsr/doc/olsr.rst \
@@ -80,20 +81,15 @@ SOURCES = \
 	$(SRC)/traffic-control/doc/traffic-control-layer.rst \
 	$(SRC)/traffic-control/doc/queue-discs.rst \
 	$(SRC)/traffic-control/doc/pfifo-fast.rst \
+	$(SRC)/traffic-control/doc/fifo.rst \
+	$(SRC)/traffic-control/doc/prio.rst \
+	$(SRC)/traffic-control/doc/tbf.rst \
 	$(SRC)/traffic-control/doc/red.rst \
 	$(SRC)/traffic-control/doc/codel.rst \
 	$(SRC)/traffic-control/doc/fq-codel.rst \
 	$(SRC)/traffic-control/doc/pie.rst \
 	$(SRC)/traffic-control/doc/mq.rst \
 	$(SRC)/spectrum/doc/spectrum.rst \
-	$(SRC)/stats/doc/adaptor.rst \
-	$(SRC)/stats/doc/aggregator.rst \
-	$(SRC)/stats/doc/collector.rst \
-	$(SRC)/stats/doc/data-collection-helpers.rst \
-	$(SRC)/stats/doc/data-collection-overview.rst \
-	$(SRC)/stats/doc/data-collection.rst \
-	$(SRC)/stats/doc/probe.rst \
-	$(SRC)/stats/doc/scope-and-limitations.rst \
 	$(SRC)/netanim/doc/animation.rst \
 	$(SRC)/flow-monitor/doc/flow-monitor.rst \
 	$(SRC)/wave/doc/wave.rst \
@@ -110,6 +106,11 @@ SOURCEFIGS = \
 	figures/testbed.dia \
 	figures/emulated-channel.dia \
 	$(SRC)/antenna/doc/source/figures/antenna-coordinate-system.dia	\
+	$(SRC)/applications/doc/http-embedded-object-size.png \
+	$(SRC)/applications/doc/http-main-object-size.png \
+	$(SRC)/applications/doc/http-num-of-embedded-objects.png \
+	$(SRC)/applications/doc/http-parsing-time.png \
+	$(SRC)/applications/doc/http-reading-time.png \
 	$(SRC)/network/doc/packet.dia \
 	$(SRC)/network/doc/node.dia \
 	$(SRC)/network/doc/buffer.dia \
@@ -129,9 +130,12 @@ SOURCEFIGS = \
 	$(SRC)/wimax/doc/WimaxArchitecture.dia \
 	$(SRC)/lte/doc/source/figures/epc-ctrl-arch.dia \
 	$(SRC)/lte/doc/source/figures/epc-data-flow-dl.dia \
+	$(SRC)/lte/doc/source/figures/epc-data-flow-dl-with-split.dia \
 	$(SRC)/lte/doc/source/figures/epc-data-flow-ul.dia \
+	$(SRC)/lte/doc/source/figures/epc-data-flow-ul-with-split.dia \
 	$(SRC)/lte/doc/source/figures/epc-profiling-scenario.dia \
 	$(SRC)/lte/doc/source/figures/epc-topology.dia \
+	$(SRC)/lte/doc/source/figures/epc-topology-with-split.dia \
 	$(SRC)/lte/doc/source/figures/epc-topology-x2-enhanced.dia \
 	$(SRC)/lte/doc/source/figures/eutran-profiling-scenario.dia \
 	$(SRC)/lte/doc/source/figures/ff-example.dia \
@@ -144,6 +148,8 @@ SOURCEFIGS = \
 	$(SRC)/lte/doc/source/figures/lte-ue-phy.dia \
 	$(SRC)/lte/doc/source/figures/lte-epc-x2-handover-seq-diagram.dia \
 	$(SRC)/lte/doc/source/figures/lte-epc-e2e-data-protocol-stack.dia \
+	$(SRC)/lte/doc/source/figures/lte-epc-e2e-data-protocol-stack-with-split.dia \
+	$(SRC)/lte/doc/source/figures/lte-epc-e2e-control-protocol-stack-with-split.dia \
 	$(SRC)/lte/doc/source/figures/lte-interference-test-scenario.dia \
 	$(SRC)/lte/doc/source/figures/lte-subframe-structure.dia \
 	$(SRC)/lte/doc/source/figures/lte-epc-x2-interface.dia \
@@ -270,15 +276,6 @@ SOURCEFIGS = \
 	$(SRC)/lte/doc/source/figures/lte-legacy-handover-algorithm.pdf \
 	$(SRC)/lte/doc/source/figures/lte-legacy-handover-algorithm.png \
 	$(SRC)/uan/doc/auvmobility-classes.dia \
-	$(SRC)/stats/doc/Stat-framework-arch.png \
-	$(SRC)/stats/doc/Wifi-default.png \
-	$(SRC)/stats/doc/dcf-overview.dia \
-	$(SRC)/stats/doc/dcf-overview-with-aggregation.dia \
-	$(SRC)/stats/doc/file-example.png \
-	$(SRC)/stats/doc/gnuplot-aggregator.png \
-	$(SRC)/stats/doc/gnuplot-example.png \
-	$(SRC)/stats/doc/gnuplot-helper-example.png \
-	$(SRC)/stats/doc/seventh-packet-byte-count.png \
 	$(SRC)/netanim/doc/figures/PacketStatistics.png \
 	$(SRC)/netanim/doc/figures/PacketStatistics.pdf \
 	$(SRC)/netanim/doc/figures/NetAnim_3_105.png \
@@ -325,13 +322,14 @@ IMAGES_EPS = \
 	$(FIGURES)/WifiArchitecture.eps \
 	$(FIGURES)/snir.eps \
 	$(FIGURES)/WimaxArchitecture.eps \
-	$(FIGURES)/dcf-overview.eps \
-	$(FIGURES)/dcf-overview-with-aggregation.eps \
 	$(FIGURES)/epc-ctrl-arch.eps \
 	$(FIGURES)/epc-data-flow-dl.eps \
+	$(FIGURES)/epc-data-flow-dl-with-split.eps \
 	$(FIGURES)/epc-data-flow-ul.eps \
+	$(FIGURES)/epc-data-flow-ul-with-split.eps \
 	$(FIGURES)/epc-profiling-scenario.eps \
 	$(FIGURES)/epc-topology.eps \
+	$(FIGURES)/epc-topology-with-split.eps \
 	$(FIGURES)/epc-topology-x2-enhanced.eps \
 	$(FIGURES)/eutran-profiling-scenario.eps \
 	$(FIGURES)/ff-example.eps \
@@ -353,6 +351,8 @@ IMAGES_EPS = \
 	$(FIGURES)/lte-enb-phy.eps \
 	$(FIGURES)/lte-ue-phy.eps \
 	$(FIGURES)/lte-epc-e2e-data-protocol-stack.eps \
+	$(FIGURES)/lte-epc-e2e-data-protocol-stack-with-split.eps \
+	$(FIGURES)/lte-epc-e2e-control-protocol-stack-with-split.eps \
 	$(FIGURES)/lte-interference-test-scenario.eps \
 	$(FIGURES)/lte-subframe-structure.eps \
 	$(FIGURES)/lte-epc-x2-interface.eps \

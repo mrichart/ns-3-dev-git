@@ -39,11 +39,14 @@
 #include "lte-ue-mac.h"
 #include "lte-ue-rrc.h"
 #include "ns3/ipv4-header.h"
+#include "ns3/ipv6-header.h"
 #include "ns3/ipv4.h"
+#include "ns3/ipv6.h"
 #include "lte-amc.h"
 #include "lte-ue-phy.h"
 #include "epc-ue-nas.h"
 #include <ns3/ipv4-l3-protocol.h>
+#include <ns3/ipv6-l3-protocol.h>
 #include <ns3/log.h>
 #include "epc-tft.h"
 #include <ns3/lte-ue-component-carrier-manager.h>
@@ -283,13 +286,11 @@ LteUeNetDevice::DoInitialize (void)
 bool
 LteUeNetDevice::Send (Ptr<Packet> packet, const Address& dest, uint16_t protocolNumber)
 {
-  NS_LOG_FUNCTION (this << dest << protocolNumber);
-  if (protocolNumber != Ipv4L3Protocol::PROT_NUMBER)
-    {
-      NS_LOG_INFO ("unsupported protocol " << protocolNumber << ", only IPv4 is supported");
-      return true;
-    }  
-  return m_nas->Send (packet);
+  NS_LOG_FUNCTION (this << packet << dest << protocolNumber);
+  NS_ABORT_MSG_IF (protocolNumber != Ipv4L3Protocol::PROT_NUMBER
+                   && protocolNumber != Ipv6L3Protocol::PROT_NUMBER,
+                   "unsupported protocol " << protocolNumber << ", only IPv4 and IPv6 are supported");
+  return m_nas->Send (packet, protocolNumber);
 }
 
 

@@ -18,18 +18,18 @@
  * Author: Sidharth Nabar <snabar@uw.edu>, He Wu <mdzz@u.washington.edu>
  */
 
-#include "ns3/core-module.h"
-#include "ns3/network-module.h"
-#include "ns3/mobility-module.h"
-#include "ns3/config-store-module.h"
-#include "ns3/wifi-module.h"
-#include "ns3/energy-module.h"
-#include "ns3/internet-module.h"
-
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
+#include "ns3/core-module.h"
+#include "ns3/network-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/config-store-module.h"
+#include "ns3/energy-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/yans-wifi-helper.h"
+#include "ns3/wifi-radio-energy-model-helper.h"
 
 using namespace ns3;
 
@@ -119,6 +119,8 @@ main (int argc, char *argv[])
   LogComponentEnable ("WifiRadioEnergyModel", LOG_LEVEL_DEBUG);
    */
 
+  LogComponentEnable ("EnergyExample", LogLevel (LOG_PREFIX_TIME | LOG_PREFIX_NODE | LOG_LEVEL_INFO));
+
   std::string phyMode ("DsssRate1Mbps");
   double Prss = -80;            // dBm
   uint32_t PpacketSize = 200;   // bytes
@@ -129,11 +131,6 @@ main (int argc, char *argv[])
   double interval = 1;          // seconds
   double startTime = 0.0;       // seconds
   double distanceToRx = 100.0;  // meters
-  /*
-   * This is a magic number used to set the transmit power, based on other
-   * configuration.
-   */
-  double offset = 81;
 
   CommandLine cmd;
   cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
@@ -175,15 +172,12 @@ main (int argc, char *argv[])
   /** Wifi PHY **/
   /***************************************************************************/
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
-  wifiPhy.Set ("RxGain", DoubleValue (-10));
-  wifiPhy.Set ("TxGain", DoubleValue (offset + Prss));
-  wifiPhy.Set ("CcaMode1Threshold", DoubleValue (0.0));
-  /***************************************************************************/
 
   /** wifi channel **/
   YansWifiChannelHelper wifiChannel;
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
   wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
+  
   // create wifi channel
   Ptr<YansWifiChannel> wifiChannelPtr = wifiChannel.Create ();
   wifiPhy.SetChannel (wifiChannelPtr);
@@ -266,6 +260,15 @@ main (int argc, char *argv[])
 
   Simulator::Stop (Seconds (10.0));
   Simulator::Run ();
+
+  for (DeviceEnergyModelContainer::Iterator iter = deviceModels.Begin (); iter != deviceModels.End (); iter ++)
+    {
+      double energyConsumed = (*iter)->GetTotalEnergyConsumption ();
+      NS_LOG_UNCOND ("End of simulation (" << Simulator::Now ().GetSeconds ()
+                     << "s) Total energy consumed by radio = " << energyConsumed << "J");
+      NS_ASSERT (energyConsumed <= 0.1);
+    }
+
   Simulator::Destroy ();
 
   return 0;

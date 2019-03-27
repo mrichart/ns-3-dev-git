@@ -86,6 +86,7 @@ public:
     INITIAL_RANDOM_ACCESS = 0,
     CONNECTION_SETUP,
     CONNECTION_REJECTED,
+    ATTACH_REQUEST,
     CONNECTED_NORMALLY,
     CONNECTION_RECONFIGURATION,
     CONNECTION_REESTABLISHMENT,
@@ -138,6 +139,12 @@ public:
    * \param imsi the IMSI
    */
   void SetImsi (uint64_t imsi);
+
+  /**
+   * Process Initial context setup request message from the MME.
+   * It triggers RRC connection reconfiguration.
+   */
+  void InitialContextSetupRequest ();
 
   /** 
    * Setup a new data radio bearer, including both the configuration
@@ -836,7 +843,6 @@ public:
 
   /**
    * \brief Configure cell-specific parameters.
-   * \param cellId the ID of the cell
    *
    * Configure cell-specific parameters and propagate them to lower layers.
    * The parameters include bandwidth, EARFCN (E-UTRA Absolute Radio Frequency
@@ -1088,6 +1094,12 @@ private:
   // S1 SAP methods
 
   /**
+   * Initial context setup request function
+   *
+   * \param params EpcEnbS1SapUser::InitialContextSetupRequestParameters
+   */
+  void DoInitialContextSetupRequest (EpcEnbS1SapUser::InitialContextSetupRequestParameters params);
+  /**
    * Data radio beaerer setup request function
    *
    * \param params EpcEnbS1SapUser::DataRadioBearerSetupRequestParameters
@@ -1191,6 +1203,12 @@ private:
    * \returns measure ID
    */
   uint8_t DoAddUeMeasReportConfigForComponentCarrier (LteRrcSap::ReportConfigEutra reportConfig);
+  /**
+   * \brief Set number of component carriers
+   * \param numberOfComponentCarriers the number of component carriers
+   */
+  void DoSetNumberOfComponentCarriers (uint16_t numberOfComponentCarriers);
+
 
   /**
    * Trigger handover function
@@ -1305,12 +1323,6 @@ public:
    * simulation.
    */
   void SetCsgId (uint32_t csgId, bool csgIndication);
-
-  /**
-   * \brief Set number of component carriers
-   * \param numberOfComponentCarriers the number of component carriers
-   */
-  void SetNumberOfComponentCarriers (uint16_t numberOfComponentCarriers);
 
 private:
 

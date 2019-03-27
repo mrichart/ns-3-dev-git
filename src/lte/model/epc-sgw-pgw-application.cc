@@ -24,6 +24,10 @@
 #include "ns3/log.h"
 #include "ns3/mac48-address.h"
 #include "ns3/ipv4.h"
+#include "ns3/ipv4-l3-protocol.h"
+#include "ns3/ipv6.h"
+#include "ns3/ipv6-header.h"
+#include "ns3/ipv6-l3-protocol.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/epc-gtpu-header.h"
 #include "ns3/abort.h"
@@ -58,13 +62,13 @@ EpcSgwPgwApplication::UeInfo::RemoveBearer (uint8_t bearerId)
 }
 
 uint32_t
-EpcSgwPgwApplication::UeInfo::Classify (Ptr<Packet> p)
+EpcSgwPgwApplication::UeInfo::Classify (Ptr<Packet> p, uint16_t protocolNumber)
 {
   NS_LOG_FUNCTION (this << p);
-  // we hardcode DOWNLINK direction since the PGW is espected to
+  // we hardcode DOWNLINK direction since the PGW is expected to
   // classify only downlink packets (uplink packets will go to the
   // internet without any classification). 
-  return m_tftClassifier.Classify (p, EpcTft::DOWNLINK);
+  return m_tftClassifier.Classify (p, EpcTft::DOWNLINK, protocolNumber);
 }
 
 Ipv4Address 
@@ -91,6 +95,18 @@ EpcSgwPgwApplication::UeInfo::SetUeAddr (Ipv4Address ueAddr)
   m_ueAddr = ueAddr;
 }
 
+Ipv6Address 
+EpcSgwPgwApplication::UeInfo::GetUeAddr6 ()
+{
+  return m_ueAddr6;
+}
+
+void
+EpcSgwPgwApplication::UeInfo::SetUeAddr6 (Ipv6Address ueAddr)
+{
+  m_ueAddr6 = ueAddr;
+}
+
 /////////////////////////
 // EpcSgwPgwApplication
 /////////////////////////
@@ -101,7 +117,16 @@ EpcSgwPgwApplication::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::EpcSgwPgwApplication")
     .SetParent<Object> ()
-    .SetGroupName("Lte");
+    .SetGroupName("Lte")
+    .AddTraceSource ("RxFromTun",
+                     "Receive data packets from internet in Tunnel net device",
+                     MakeTraceSourceAccessor (&EpcSgwPgwApplication::m_rxTunPktTrace),
+                     "ns3::EpcSgwPgwApplication::RxTracedCallback")
+    .AddTraceSource ("RxFromS1u",
+                     "Receive data packets from S1 U Socket",
+                     MakeTraceSourceAccessor (&EpcSgwPgwApplication::m_rxS1uPktTrace),
+                     "ns3::EpcSgwPgwApplication::RxTracedCallback")
+    ;
   return tid;
 }
 
@@ -115,7 +140,6 @@ EpcSgwPgwApplication::DoDispose ()
 }
 
   
-
 EpcSgwPgwApplication::EpcSgwPgwApplication (const Ptr<VirtualNetDevice> tunDevice, const Ptr<Socket> s1uSocket)
   : m_s1uSocket (s1uSocket),
     m_tunDevice (tunDevice),
@@ -138,34 +162,68 @@ EpcSgwPgwApplication::~EpcSgwPgwApplication ()
 bool
 EpcSgwPgwApplication::RecvFromTunDevice (Ptr<Packet> packet, const Address& source, const Address& dest, uint16_t protocolNumber)
 {
-  NS_LOG_FUNCTION (this << source << dest << packet << packet->GetSize ());
+  NS_LOG_FUNCTION (this << source << dest << protocolNumber << packet << packet->GetSize ());
+  m_rxTunPktTrace (packet->Copy ());
+  Ptr<Packet> pCopy = packet->Copy ();
 
   // get IP address of UE
-  Ptr<Packet> pCopy = packet->Copy ();
-  Ipv4Header ipv4Header;
-  pCopy->RemoveHeader (ipv4Header);
-  Ipv4Address ueAddr =  ipv4Header.GetDestination ();
-  NS_LOG_LOGIC ("packet addressed to UE " << ueAddr);
-
-  // find corresponding UeInfo address
-  std::map<Ipv4Address, Ptr<UeInfo> >::iterator it = m_ueInfoByAddrMap.find (ueAddr);
-  if (it == m_ueInfoByAddrMap.end ())
-    {        
-      NS_LOG_WARN ("unknown UE address " << ueAddr);
-    }
-  else
+  if (protocolNumber == Ipv4L3Protocol::PROT_NUMBER)
     {
-      Ipv4Address enbAddr = it->second->GetEnbAddr ();      
-      uint32_t teid = it->second->Classify (packet);   
-      if (teid == 0)
-        {
-          NS_LOG_WARN ("no matching bearer for this packet");                   
+      Ipv4Header ipv4Header;
+      pCopy->RemoveHeader (ipv4Header);
+      Ipv4Address ueAddr =  ipv4Header.GetDestination ();
+      NS_LOG_LOGIC ("packet addressed to UE " << ueAddr);
+      // find corresponding UeInfo address
+      std::map<Ipv4Address, Ptr<UeInfo> >::iterator it = m_ueInfoByAddrMap.find (ueAddr);
+      if (it == m_ueInfoByAddrMap.end ())
+        {        
+          NS_LOG_WARN ("unknown UE address " << ueAddr);
         }
       else
         {
-          SendToS1uSocket (packet, enbAddr, teid);
+          Ipv4Address enbAddr = it->second->GetEnbAddr ();      
+          uint32_t teid = it->second->Classify (packet, protocolNumber);   
+          if (teid == 0)
+            {
+              NS_LOG_WARN ("no matching bearer for this packet");                   
+            }
+          else
+            {
+              SendToS1uSocket (packet, enbAddr, teid);
+            }
         }
     }
+  else if (protocolNumber == Ipv6L3Protocol::PROT_NUMBER)
+    {
+      Ipv6Header ipv6Header;
+      pCopy->RemoveHeader (ipv6Header);
+      Ipv6Address ueAddr =  ipv6Header.GetDestinationAddress ();
+      NS_LOG_LOGIC ("packet addressed to UE " << ueAddr);
+      // find corresponding UeInfo address
+      std::map<Ipv6Address, Ptr<UeInfo> >::iterator it = m_ueInfoByAddrMap6.find (ueAddr);
+      if (it == m_ueInfoByAddrMap6.end ())
+        {        
+          NS_LOG_WARN ("unknown UE address " << ueAddr);
+        }
+      else
+        {
+          Ipv4Address enbAddr = it->second->GetEnbAddr ();      
+          uint32_t teid = it->second->Classify (packet, protocolNumber);   
+          if (teid == 0)
+            {
+              NS_LOG_WARN ("no matching bearer for this packet");                   
+            }
+          else
+            {
+              SendToS1uSocket (packet, enbAddr, teid);
+            }
+        }
+    }
+  else
+    {
+      NS_ABORT_MSG ("EpcSgwPgwApplication::RecvFromTunDevice - Unknown IP type...");
+    }
+
   // there is no reason why we should notify the TUN
   // VirtualNetDevice that he failed to send the packet: if we receive
   // any bogus packet, it will just be silently discarded.
@@ -184,6 +242,8 @@ EpcSgwPgwApplication::RecvFromS1uSocket (Ptr<Socket> socket)
   uint32_t teid = gtpu.GetTeid ();
 
   SendToTunDevice (packet, teid);
+
+  m_rxS1uPktTrace (packet->Copy ());
 }
 
 void 
@@ -191,7 +251,23 @@ EpcSgwPgwApplication::SendToTunDevice (Ptr<Packet> packet, uint32_t teid)
 {
   NS_LOG_FUNCTION (this << packet << teid);
   NS_LOG_LOGIC (" packet size: " << packet->GetSize () << " bytes");
-  m_tunDevice->Receive (packet, 0x0800, m_tunDevice->GetAddress (), m_tunDevice->GetAddress (), NetDevice::PACKET_HOST);
+
+  uint8_t ipType;
+  packet->CopyData (&ipType, 1);
+  ipType = (ipType>>4) & 0x0f;
+
+  if (ipType == 0x04)
+    {
+      m_tunDevice->Receive (packet, 0x0800, m_tunDevice->GetAddress (), m_tunDevice->GetAddress (), NetDevice::PACKET_HOST);
+    }
+  else if (ipType == 0x06)
+    {
+      m_tunDevice->Receive (packet, 0x86DD, m_tunDevice->GetAddress (), m_tunDevice->GetAddress (), NetDevice::PACKET_HOST);
+    }
+  else
+    {
+      NS_ABORT_MSG ("EpcSgwPgwApplication::SendToTunDevice - Unknown IP type...");
+    }
 }
 
 void 
@@ -248,6 +324,16 @@ EpcSgwPgwApplication::SetUeAddress (uint64_t imsi, Ipv4Address ueAddr)
   NS_ASSERT_MSG (ueit != m_ueInfoByImsiMap.end (), "unknown IMSI " << imsi); 
   m_ueInfoByAddrMap[ueAddr] = ueit->second;
   ueit->second->SetUeAddr (ueAddr);
+}
+
+void 
+EpcSgwPgwApplication::SetUeAddress6 (uint64_t imsi, Ipv6Address ueAddr)
+{
+  NS_LOG_FUNCTION (this << imsi << ueAddr);
+  std::map<uint64_t, Ptr<UeInfo> >::iterator ueit = m_ueInfoByImsiMap.find (imsi);
+  NS_ASSERT_MSG (ueit != m_ueInfoByImsiMap.end (), "unknown IMSI " << imsi); 
+  m_ueInfoByAddrMap6[ueAddr] = ueit->second;
+  ueit->second->SetUeAddr6 (ueAddr);
 }
 
 void 

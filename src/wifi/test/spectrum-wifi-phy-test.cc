@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "ns3/spectrum-phy.h"
 #include "ns3/test.h"
 #include "ns3/spectrum-wifi-helper.h"
 #include "ns3/wifi-spectrum-value-helper.h"
@@ -25,13 +26,17 @@
 #include "ns3/wifi-mac-trailer.h"
 #include "ns3/wifi-phy-tag.h"
 #include "ns3/wifi-spectrum-signal-parameters.h"
+#include "ns3/wifi-phy-listener.h"
+#include "ns3/log.h"
 
 using namespace ns3;
 
+NS_LOG_COMPONENT_DEFINE ("SpectrumWifiPhyBasicTest");
+
 static const uint8_t CHANNEL_NUMBER = 36;
 static const uint32_t FREQUENCY = 5180; // MHz
-static const uint8_t CHANNEL_WIDTH = 20; // MHz
-static const uint8_t GUARD_WIDTH = 10; // MHz
+static const uint16_t CHANNEL_WIDTH = 20; // MHz
+static const uint16_t GUARD_WIDTH = CHANNEL_WIDTH; // MHz (expanded to channel width to model spectrum mask)
 
 /**
  * \ingroup wifi-test
@@ -50,6 +55,7 @@ public:
    */
   SpectrumWifiPhyBasicTest (std::string name);
   virtual ~SpectrumWifiPhyBasicTest ();
+
 protected:
   virtual void DoSetup (void);
   Ptr<SpectrumWifiPhy> m_phy; ///< Phy
@@ -74,10 +80,10 @@ protected:
   /**
    * Spectrum wifi receive failure function
    * \param p the packet
-   * \param snr the SNR
-   */
-  void SpectrumWifiPhyRxFailure (Ptr<Packet> p, double snr);
+-   */
+  void SpectrumWifiPhyRxFailure (Ptr<Packet> p);
   uint32_t m_count; ///< count
+
 private:
   virtual void DoRun (void);
 };
@@ -98,7 +104,7 @@ SpectrumWifiPhyBasicTest::SpectrumWifiPhyBasicTest (std::string name)
 Ptr<SpectrumSignalParameters>
 SpectrumWifiPhyBasicTest::MakeSignal (double txPowerWatts)
 {
-  WifiTxVector txVector = WifiTxVector (WifiPhy::GetOfdmRate6Mbps (), 0, 0, WIFI_PREAMBLE_LONG, false, 1, 1, 0, 20, false, false);
+  WifiTxVector txVector = WifiTxVector (WifiPhy::GetOfdmRate6Mbps (), 0, WIFI_PREAMBLE_LONG, false, 1, 1, 0, 20, false, false);
   MpduType mpdutype = NORMAL_MPDU;
 
   Ptr<Packet> pkt = Create<Packet> (1000);
@@ -113,7 +119,7 @@ SpectrumWifiPhyBasicTest::MakeSignal (double txPowerWatts)
 
   pkt->AddHeader (hdr);
   pkt->AddTrailer (trailer);
-  WifiPhyTag tag (txVector, mpdutype);
+  WifiPhyTag tag (txVector, mpdutype, 1);
   pkt->AddPacketTag (tag);
   Ptr<SpectrumValue> txPowerSpectrum = WifiSpectrumValueHelper::CreateOfdmTxPowerSpectralDensity (FREQUENCY, CHANNEL_WIDTH, txPowerWatts, GUARD_WIDTH);
   Ptr<WifiSpectrumSignalParameters> txParams = Create<WifiSpectrumSignalParameters> ();
@@ -134,12 +140,14 @@ SpectrumWifiPhyBasicTest::SendSignal (double txPowerWatts)
 void
 SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxSuccess (Ptr<Packet> p, double snr, WifiTxVector txVector)
 {
+  NS_LOG_FUNCTION (this << p << snr << txVector);
   m_count++;
 }
 
 void
-SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxFailure (Ptr<Packet> p, double snr)
+SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxFailure (Ptr<Packet> p)
 {
+  NS_LOG_FUNCTION (this << p);
   m_count++;
 }
 
@@ -160,8 +168,6 @@ SpectrumWifiPhyBasicTest::DoSetup (void)
   m_phy->SetFrequency (FREQUENCY);
   m_phy->SetReceiveOkCallback (MakeCallback (&SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxSuccess, this));
   m_phy->SetReceiveErrorCallback (MakeCallback (&SpectrumWifiPhyBasicTest::SpectrumWifiPhyRxFailure, this));
-  //Bug 2460: CcaMode1Threshold default should be set to -62 dBm when using Spectrum
-  m_phy->SetCcaMode1Threshold (-62.0);
 }
 
 // Test that the expected number of packet receptions occur.
@@ -207,21 +213,26 @@ public:
   }
   virtual void NotifyRxStart (Time duration)
   {
+    NS_LOG_FUNCTION (this << duration);
     ++m_notifyRxStart;
   }
   virtual void NotifyRxEndOk (void)
   {
+    NS_LOG_FUNCTION (this);
     ++m_notifyRxEndOk;
   }
   virtual void NotifyRxEndError (void)
   {
+    NS_LOG_FUNCTION (this);
     ++m_notifyRxEndError;
   }
   virtual void NotifyTxStart (Time duration, double txPowerDbm)
   {
+    NS_LOG_FUNCTION (this << duration << txPowerDbm);
   }
   virtual void NotifyMaybeCcaBusyStart (Time duration)
   {
+    NS_LOG_FUNCTION (this);
     ++m_notifyMaybeCcaBusyStart;
   }
   virtual void NotifySwitchingStart (Time duration)
@@ -230,7 +241,13 @@ public:
   virtual void NotifySleep (void)
   {
   }
+  virtual void NotifyOff (void)
+  {
+  }
   virtual void NotifyWakeup (void)
+  {
+  }
+  virtual void NotifyOn (void)
   {
   }
   uint32_t m_notifyRxStart; ///< notify receive start

@@ -23,7 +23,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-
 #include <ns3/object.h>
 #include <ns3/spectrum-interference.h>
 #include <ns3/spectrum-error-model.h>
@@ -34,6 +33,7 @@
 #include <ns3/ptr.h>
 #include "ns3/radio-bearer-stats-calculator.h"
 #include <ns3/constant-position-mobility-model.h>
+#include <ns3/ff-mac-scheduler.h>
 #include "lte-test-tta-ff-mac-scheduler.h"
 #include <ns3/eps-bearer.h>
 #include <ns3/node-container.h>
@@ -49,9 +49,6 @@
 #include <ns3/lte-ue-phy.h>
 #include <ns3/boolean.h>
 #include <ns3/enum.h>
-
-
-#include "lte-test-tta-ff-mac-scheduler.h"
 
 using namespace ns3;
 
@@ -225,6 +222,7 @@ LenaTtaFfMacSchedulerTestCase::DoRun (void)
   NetDeviceContainer enbDevs;
   NetDeviceContainer ueDevs;
   lteHelper->SetSchedulerType ("ns3::TtaFfMacScheduler");
+  lteHelper->SetSchedulerAttribute ("UlCqiFilter", EnumValue (FfMacScheduler::SRS_UL_CQI));
   enbDevs = lteHelper->InstallEnbDevice (enbNodes);
   ueDevs = lteHelper->InstallUeDevice (ueNodes);
 
@@ -320,7 +318,7 @@ LenaTtaFfMacSchedulerTestCase::DoRun (void)
     }
   /**
   * Check that the assignation is done in a "proportional fair" manner among users
-  * with equal SINRs: the bandwidht should be distributed according to the 
+  * with equal SINRs: the bandwidth should be distributed according to the 
   * ratio of the estimated throughput per TTI of each user; therefore equally 
   * partitioning the whole bandwidth achievable from a single users in a TTI
   */

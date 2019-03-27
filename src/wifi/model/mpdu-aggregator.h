@@ -21,16 +21,16 @@
 #ifndef MPDU_AGGREGATOR_H
 #define MPDU_AGGREGATOR_H
 
-#include "ns3/packet.h"
 #include "ns3/object.h"
-#include "ampdu-subframe-header.h"
 
 namespace ns3 {
 
+class AmpduSubframeHeader;
 class WifiMacHeader;
+class Packet;
 
 /**
- * \brief Abstract class that concrete mpdu aggregators have to implement
+ * \brief Aggregator used to construct A-MPDUs
  * \ingroup wifi
  */
 class MpduAggregator : public Object
@@ -51,37 +51,27 @@ public:
    */
   static TypeId GetTypeId (void);
 
-  /**
-   * Sets the maximum A-MPDU size in bytes.
-   * Value 0 means that MPDU aggregation is disabled.
-   *
-   * \param maxSize the maximum A-MPDU size in bytes.
-   */
-  virtual void SetMaxAmpduSize (uint32_t maxSize) = 0;
-  /**
-   * Returns the maximum A-MPDU size in bytes.
-   * Value 0 means that MPDU aggregation is disabled.
-   *
-   * \return the maximum A-MPDU size in bytes.
-   */
-  virtual uint32_t GetMaxAmpduSize (void) const = 0;
+  MpduAggregator ();
+  virtual ~MpduAggregator ();
+
   /**
    * \param packet Packet we have to insert into <i>aggregatedPacket</i>.
    * \param aggregatedPacket Packet that will contain <i>packet</i>, if aggregation is possible.
+   * \param maxAmpduSize the maximum A-MPDU size.
    *
    * \return true if <i>packet</i> can be aggregated to <i>aggregatedPacket</i>, false otherwise.
    *
    * Adds <i>packet</i> to <i>aggregatedPacket</i>. In concrete aggregator's implementation is
    * specified how and if <i>packet</i> can be added to <i>aggregatedPacket</i>.
    */
-  virtual bool Aggregate (Ptr<const Packet> packet, Ptr<Packet> aggregatedPacket) const = 0;
+  bool Aggregate (Ptr<const Packet> packet, Ptr<Packet> aggregatedPacket, uint32_t maxAmpduSize) const;
   /**
    * \param packet the packet we want to insert into <i>aggregatedPacket</i>.
    * \param aggregatedPacket packet that will contain the packet of size <i>packetSize</i>, if aggregation is possible.
    *
    * This method performs a VHT/HE single MPDU aggregation.
    */
-  virtual void AggregateSingleMpdu (Ptr<const Packet> packet, Ptr<Packet> aggregatedPacket) const = 0;
+  void AggregateSingleMpdu (Ptr<const Packet> packet, Ptr<Packet> aggregatedPacket) const;
   /**
    * \param packet the packet we want to insert into <i>aggregatedPacket</i>.
    * \param last true if it is the last packet.
@@ -89,25 +79,19 @@ public:
    *
    * Adds A-MPDU subframe header and padding to each MPDU that is part of an A-MPDU before it is sent.
    */
-  virtual void AddHeaderAndPad (Ptr<Packet> packet, bool last, bool isSingleMpdu) const = 0;
+  void AddHeaderAndPad (Ptr<Packet> packet, bool last, bool isSingleMpdu) const;
   /**
    * \param packetSize size of the packet we want to insert into <i>aggregatedPacket</i>.
    * \param aggregatedPacket packet that will contain the packet of size <i>packetSize</i>, if aggregation is possible.
    * \param blockAckSize size of the piggybacked block ack request
+   * \param maxAmpduSize the maximum A-MPDU size.
    *
    * \return true if the packet of size <i>packetSize</i> can be aggregated to <i>aggregatedPacket</i>, false otherwise.
    *
    * This method is used to determine if a packet could be aggregated to an A-MPDU without exceeding the maximum packet size.
    */
-  virtual bool CanBeAggregated (uint32_t packetSize, Ptr<Packet> aggregatedPacket, uint8_t blockAckSize) const = 0;
-  /**
-   * \param packet the Packet
-   * \return padding that must be added to the end of an aggregated packet
-   *
-   * Calculates how much padding must be added to the end of an aggregated packet, after that a new packet is added.
-   * Each A-MPDU subframe is padded so that its length is multiple of 4 octets.
-   */
-  virtual uint32_t CalculatePadding (Ptr<const Packet> packet) const = 0;
+  bool CanBeAggregated (uint32_t packetSize, Ptr<Packet> aggregatedPacket, uint8_t blockAckSize, uint32_t maxAmpduSize) const;
+
   /**
    * Deaggregates an A-MPDU by removing the A-MPDU subframe header and padding.
    *
@@ -115,6 +99,17 @@ public:
    * \return list of deaggragted packets and their A-MPDU subframe headers
    */
   static DeaggregatedMpdus Deaggregate (Ptr<Packet> aggregatedPacket);
+
+
+private:
+  /**
+   * \param packet the Packet
+   * \return padding that must be added to the end of an aggregated packet
+   *
+   * Calculates how much padding must be added to the end of an aggregated packet, after that a new packet is added.
+   * Each A-MPDU subframe is padded so that its length is multiple of 4 octets.
+   */
+  uint8_t CalculatePadding (Ptr<const Packet> packet) const;
 };
 
 }  //namespace ns3

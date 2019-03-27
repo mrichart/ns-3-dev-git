@@ -19,7 +19,9 @@
  */
 
 #include "ns3/log.h"
+#include "ns3/packet.h"
 #include "mpdu-aggregator.h"
+#include "ampdu-subframe-header.h"
 
 NS_LOG_COMPONENT_DEFINE ("MpduAggregator");
 
@@ -33,9 +35,115 @@ MpduAggregator::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::MpduAggregator")
     .SetParent<Object> ()
     .SetGroupName ("Wifi")
-    //No AddConstructor because this is an abstract class.
+    .AddConstructor<MpduAggregator> ()
   ;
   return tid;
+}
+
+MpduAggregator::MpduAggregator ()
+{
+}
+
+MpduAggregator::~MpduAggregator ()
+{
+}
+
+bool
+MpduAggregator::Aggregate (Ptr<const Packet> packet, Ptr<Packet> aggregatedPacket, uint32_t maxAmpduSize) const
+{
+  NS_LOG_FUNCTION (this);
+  Ptr<Packet> currentPacket;
+  AmpduSubframeHeader currentHdr;
+
+  uint8_t padding = CalculatePadding (aggregatedPacket);
+  uint32_t actualSize = aggregatedPacket->GetSize ();
+
+  if ((4 + packet->GetSize () + actualSize + padding) <= maxAmpduSize)
+    {
+      if (padding)
+        {
+          Ptr<Packet> pad = Create<Packet> (padding);
+          aggregatedPacket->AddAtEnd (pad);
+        }
+      currentHdr.SetLength (static_cast<uint16_t> (packet->GetSize ()));
+      currentPacket = packet->Copy ();
+
+      currentPacket->AddHeader (currentHdr);
+      aggregatedPacket->AddAtEnd (currentPacket);
+      return true;
+    }
+  return false;
+}
+
+void
+MpduAggregator::AggregateSingleMpdu (Ptr<const Packet> packet, Ptr<Packet> aggregatedPacket) const
+{
+  NS_LOG_FUNCTION (this);
+  Ptr<Packet> currentPacket;
+  AmpduSubframeHeader currentHdr;
+
+  uint8_t padding = CalculatePadding (aggregatedPacket);
+  if (padding)
+    {
+      Ptr<Packet> pad = Create<Packet> (padding);
+      aggregatedPacket->AddAtEnd (pad);
+    }
+
+  currentHdr.SetEof (1);
+  currentHdr.SetLength (static_cast<uint16_t> (packet->GetSize ()));
+  currentPacket = packet->Copy ();
+
+  currentPacket->AddHeader (currentHdr);
+  aggregatedPacket->AddAtEnd (currentPacket);
+}
+
+void
+MpduAggregator::AddHeaderAndPad (Ptr<Packet> packet, bool last, bool isSingleMpdu) const
+{
+  NS_LOG_FUNCTION (this);
+  AmpduSubframeHeader currentHdr;
+
+  //This is called to prepare packets from the aggregate queue to be sent so no need to check total size since it has already been
+  //done before when deciding how many packets to add to the queue
+  currentHdr.SetLength (static_cast<uint16_t> (packet->GetSize ()));
+  if (isSingleMpdu)
+    {
+      currentHdr.SetEof (1);
+    }
+
+  packet->AddHeader (currentHdr);
+  uint32_t padding = CalculatePadding (packet);
+
+  if (padding && !last)
+    {
+      Ptr<Packet> pad = Create<Packet> (padding);
+      packet->AddAtEnd (pad);
+    }
+}
+
+bool
+MpduAggregator::CanBeAggregated (uint32_t packetSize, Ptr<Packet> aggregatedPacket, uint8_t blockAckSize, uint32_t maxAmpduSize) const
+{
+  uint8_t padding = CalculatePadding (aggregatedPacket);
+  uint32_t actualSize = aggregatedPacket->GetSize ();
+  if (blockAckSize > 0)
+    {
+      blockAckSize = blockAckSize + 4 + padding;
+    }
+  if ((4 + packetSize + actualSize + padding + blockAckSize) <= maxAmpduSize)
+    {
+      return true;
+    }
+  else
+    {
+      return false;
+    }
+}
+
+uint8_t
+MpduAggregator::CalculatePadding (Ptr<const Packet> packet) const
+{
+  return (4 - (packet->GetSize () % 4 )) % 4;
 }
 
 MpduAggregator::DeaggregatedMpdus

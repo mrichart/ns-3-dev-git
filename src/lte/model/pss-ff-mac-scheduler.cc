@@ -592,7 +592,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
   std::vector <struct RachListElement_s>::iterator itRach;
   for (itRach = m_rachList.begin (); itRach != m_rachList.end (); itRach++)
     {
-      NS_ASSERT_MSG (m_amc->GetTbSizeFromMcs (m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize, " Default UL Grant MCS does not allow to send RACH messages");
+      NS_ASSERT_MSG (m_amc->GetUlTbSizeFromMcs (m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize, " Default UL Grant MCS does not allow to send RACH messages");
       BuildRarListElement_s newRar;
       newRar.m_rnti = (*itRach).m_rnti;
       // DL-RACH Allocation
@@ -606,7 +606,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
       while ((tbSizeBits < (*itRach).m_estimatedSize) && (rbStart + rbLen < (ffrRbStartOffset + maxContinuousUlBandwidth)))
         {
           rbLen++;
-          tbSizeBits = m_amc->GetTbSizeFromMcs (m_ulGrantMcs, rbLen);
+          tbSizeBits = m_amc->GetUlTbSizeFromMcs (m_ulGrantMcs, rbLen);
         }
       if (tbSizeBits < (*itRach).m_estimatedSize)
         {
@@ -620,7 +620,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
       newRar.m_grant.m_tpc = 0;
       newRar.m_grant.m_cqiRequest = false;
       newRar.m_grant.m_ulDelay = false;
-      NS_LOG_INFO (this << " UL grant allocated to RNTI " << (*itRach).m_rnti << " rbStart " << rbStart << " rbLen " << rbLen << " MCS " << m_ulGrantMcs << " tbSize " << newRar.m_grant.m_tbSize);
+      NS_LOG_INFO (this << " UL grant allocated to RNTI " << (*itRach).m_rnti << " rbStart " << rbStart << " rbLen " << rbLen << " MCS " << (uint16_t)m_ulGrantMcs << " tbSize " << newRar.m_grant.m_tbSize);
       for (uint16_t i = rbStart; i < rbStart + rbLen; i++)
         {
           m_rachAllocationMap.at (i) = (*itRach).m_rnti;
@@ -1048,7 +1048,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
                         {
                           uint8_t mcs = 0; 
                           mcs = m_amc->GetMcsFromCqi (wbCqi);
-                          achievableRate += ((m_amc->GetTbSizeFromMcs (mcs, rbgSize) / 8) / 0.001); // = TB size / TTI
+                          achievableRate += ((m_amc->GetDlTbSizeFromMcs (mcs, rbgSize) / 8) / 0.001); // = TB size / TTI
                         }
     
                       metric = achievableRate / (*it).second.lastAveragedThroughput;
@@ -1177,7 +1177,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
                       if ((m_ffrSapProvider->IsDlRbgAvailableForUe (i, (*it).first)) == false)
                         continue;
 
-                      // calculate PF weigth 
+                      // calculate PF weight 
                       double weight = (*it).second.targetThroughput / (*it).second.lastAveragedThroughput;
                       if (weight < 1.0)
                         weight = 1.0;
@@ -1274,7 +1274,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
                     {
                       if ((m_ffrSapProvider->IsDlRbgAvailableForUe (i, (*it).first)) == false)
                         continue;
-                      // calculate PF weigth 
+                      // calculate PF weight 
                       double weight = (*it).second.targetThroughput / (*it).second.lastAveragedThroughput;
                       if (weight < 1.0)
                         weight = 1.0;
@@ -1324,7 +1324,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
                                   // no info on this subband  -> worst MCS
                                   mcs = 0;
                                 }
-                              achievableRate += ((m_amc->GetTbSizeFromMcs (mcs, rbgSize) / 8) / 0.001); // = TB size / TTI
+                              achievableRate += ((m_amc->GetDlTbSizeFromMcs (mcs, rbgSize) / 8) / 0.001); // = TB size / TTI
             	  	    }
                           schMetric = achievableRate / (*it).second.secondLastAveragedThroughput;
                         }   // end if cqi
@@ -1444,7 +1444,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
       for (uint8_t j = 0; j < nLayer; j++)
         {
           newDci.m_mcs.push_back (m_amc->GetMcsFromCqi (worstCqi.at (j)));
-          int tbSize = (m_amc->GetTbSizeFromMcs (newDci.m_mcs.at (j), RgbPerRnti * rbgSize) / 8); // (size of TB in bytes according to table 7.1.7.2.1-1 of 36.213)
+          int tbSize = (m_amc->GetDlTbSizeFromMcs (newDci.m_mcs.at (j), RgbPerRnti * rbgSize) / 8); // (size of TB in bytes according to table 7.1.7.2.1-1 of 36.213)
           newDci.m_tbsSize.push_back (tbSize);
           NS_LOG_INFO (this << " Layer " << (uint16_t)j << " MCS selected" << m_amc->GetMcsFromCqi (worstCqi.at (j)));
           bytesTxed += tbSize;
@@ -1524,7 +1524,7 @@ PssFfMacScheduler::DoSchedDlTriggerReq (const struct FfMacSchedSapProvider::Sche
           (*itHarqTimer).second.at (newDci.m_harqProcess) = 0;
         }
 
-      // ...more parameters -> ingored in this version
+      // ...more parameters -> ignored in this version
 
       ret.m_buildDataList.push_back (newEl);
       // update UE stats
@@ -1953,6 +1953,7 @@ PssFfMacScheduler::DoSchedUlTriggerReq (const struct FfMacSchedSapProvider::Sche
       else
         {
           // take the lowest CQI value (worst RB)
+    	  NS_ABORT_MSG_IF ((*itCqi).second.size() == 0, "CQI of RNTI = " << (*it).first << " has expired");
           double minSinr = (*itCqi).second.at (uldci.m_rbStart);
           if (minSinr == NO_SINR)
             {
@@ -1984,7 +1985,7 @@ PssFfMacScheduler::DoSchedUlTriggerReq (const struct FfMacSchedSapProvider::Sche
                   // restart from the first
                   it = m_ceBsrRxed.begin ();
                 }
-              NS_LOG_DEBUG (this << " UE discared for CQI=0, RNTI " << uldci.m_rnti);
+              NS_LOG_DEBUG (this << " UE discarded for CQI = 0, RNTI " << uldci.m_rnti);
               // remove UE from allocation map
               for (uint16_t i = uldci.m_rbStart; i < uldci.m_rbStart + uldci.m_rbLen; i++)
                 {
@@ -1995,7 +1996,7 @@ PssFfMacScheduler::DoSchedUlTriggerReq (const struct FfMacSchedSapProvider::Sche
           uldci.m_mcs = m_amc->GetMcsFromCqi (cqi);
         }
 
-      uldci.m_tbSize = (m_amc->GetTbSizeFromMcs (uldci.m_mcs, rbPerFlow) / 8);
+      uldci.m_tbSize = (m_amc->GetUlTbSizeFromMcs (uldci.m_mcs, rbPerFlow) / 8);
       UpdateUlRlcBufferInfo (uldci.m_rnti, uldci.m_tbSize);
       uldci.m_ndi = 1;
       uldci.m_cceIndex = 0;
@@ -2141,9 +2142,7 @@ PssFfMacScheduler::DoSchedUlCqiInfoReq (const struct FfMacSchedSapProvider::Sche
             return;
           }
       }
-    case FfMacScheduler::ALL_UL_CQI:
       break;
-
     default:
       NS_FATAL_ERROR ("Unknown UL CQI type");
     }

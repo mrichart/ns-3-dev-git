@@ -415,7 +415,7 @@ Handover configuration
 ######################
 
 The purpose of the handover configuration is to verify whether UE measurement
-configuration is updated properly after a succesful handover takes place. For
+configuration is updated properly after a successful handover takes place. For
 this purpose, the simulation will construct 2 eNodeBs with different UE
 measurement configuration, and the UE will perform handover from one cell to
 another. The UE will be located on a straight line between the 2 eNodeBs, and
@@ -932,7 +932,7 @@ might be produced in quantizing the MI and the error curve.
 HARQ Model
 ----------
 
-The test suite ``lte-harq`` includes two tests for evaluating the HARQ model and the related extension in the error model. The test consists on checking whether the amount of bytes received during the simulation corresponds to the expected ones according to the values of transport block and the HARQ dynamics. In detail, the test checks whether the throughput obtained after one HARQ retransmission is the expeted one. For evaluating the expected throughput the expected TB delivering time has been evaluated according to the following formula:
+The test suite ``lte-harq`` includes two tests for evaluating the HARQ model and the related extension in the error model. The test consists on checking whether the amount of bytes received during the simulation corresponds to the expected ones according to the values of transport block and the HARQ dynamics. In detail, the test checks whether the throughput obtained after one HARQ retransmission is the expected one. For evaluating the expected throughput the expected TB delivering time has been evaluated according to the following formula:
 
 .. math::
 
@@ -1015,7 +1015,7 @@ knowledge of the input test vector and knowledge of the expected
 behavior. These test vector are specialized for UM RLC and
 AM RLC due to their different behavior. Each test case passes if the
 sequence of primitives triggered by the RLC instance being tested is
-exacly equal to the output test vector. In particular, for each PDU
+exactly equal to the output test vector. In particular, for each PDU
 transmitted by the RLC instance, both the size and the content of the
 PDU are verified to check for an exact match with the test vector.
 
@@ -1473,8 +1473,8 @@ Power Control in three different ways:
    to ``RsPowerChunkProcessor`` list in UE DownlinkSpectrumPhy. Tx power of data 
    channel is measured in similar way, but it had to be implemented. Now 
    ``LteTestSinrChunkProcessor`` is added to ``DataPowerChunkProcessor`` list in UE 
-   DownlinkSpectrumPhy. Test vector contain a set of all avaiable P_A values. Test 
-   pass if power diffrence equals P_A value. 
+   DownlinkSpectrumPhy. Test vector contain a set of all available P_A values. Test 
+   pass if power difference equals P_A value. 
 
  * LteDownlinkPowerControlRrcConnectionReconfiguration test case check if 
    RrcConnectionReconfiguration is performed correctly. When FR entity gets UE 
@@ -1601,4 +1601,28 @@ are configured to use the secondary carrier and the component carrier manager is
 split the data uniformly between primary and secondary carrier. The test consists of checking that 
 the throughput obtained over the different carriers are equal considering a given tolerance. For more 
 details about this test, see the section Carrier aggregation usage example.
- 
+
+
+Carrier aggregation test for eNB and UE configuration 
+------------------------------------------------------
+
+The test suite ``carrier-aggregation-config-test`` is a system test program, which verifies the
+following two cases:
+
+ * When carrier aggregation is enabled and UE carriers configuration is different than the default 
+   configuration done in LteHelper, we check that the UE(s) is configured properly once it receives
+   RRC Connection Reconfiguration message from eNB.
+
+ * A user can configure 2 or more eNBs and UEs with different configuration parameters, i.e.,
+   each eNB and UE can have different EARFCN and Bandwidths and a UE connects to an eNB with similar DL EARFCN.
+   In this test, we check with CA enabled but the end results will be the same if carrier aggregation is not 
+   enabled and we have more than one eNBs and UEs with different configurations.
+
+Since, we do not need EPC to test the configuration, this test only simulates the LTE radio access with RLC SM. 
+There are two test cases, Test 1 tests that the UE is configured properly after receiving RRC Connection Reconfiguration 
+message from the eNB, which will overwrite UE default configuration done in LteHelper for the sake of
+creating PHY and MAC instances equal to the number of component carriers. Test 2 tests that every eNB or UE in a 
+simulation scenario can be configured with different EARFCNs and Bandwidths. For both test cases, it also counts 
+the number of times the hooked trace source ``SCarrierConfigured`` get triggered. As, it reflects how many UEs 
+got attached to their respective eNB. If the count is not equal to the number of UEs in the scenario, the test fails, 
+which could be the result of improper UE configuration.

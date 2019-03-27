@@ -18,7 +18,7 @@ the figure :ref:`fig-epc-topology`. There are two main components:
    stack (RRC, PDCP, RLC, MAC, PHY). These entities reside entirely within the
    UE and the eNB nodes.
 
- * the EPC Model. This models includes core network
+ * the EPC Model. This model includes core network
    interfaces, protocols and entities. These entities and protocols
    reside within the SGW, PGW and MME nodes, and partially within the
    eNB nodes.
@@ -26,7 +26,7 @@ the figure :ref:`fig-epc-topology`. There are two main components:
 
 .. _fig-epc-topology:
    
-.. figure:: figures/epc-topology.*
+.. figure:: figures/epc-topology-with-split.*
    :align: center
 
    Overview of the LTE-EPC simulation model
@@ -66,7 +66,7 @@ have been considered:
     approach, which evaluates resource allocation only at the granularity of
     call/bearer establishment.
  #. The simulator should scale up to tens of eNBs and hundreds of User
-    Equipments (UEs). This
+    Equipment (UEs). This
     rules out the use of a link level simulator, i.e., a simulator whose radio
     interface is modeled with a granularity up to the symbol level. This is because
     to have a symbol level model it is necessary to implement all the PHY
@@ -115,16 +115,22 @@ The main objective of the EPC model is to provides means for the
 simulation of end-to-end IP connectivity over the LTE model. 
 To this aim, it supports for the
 interconnection of multiple UEs to the Internet, via a radio access
-network of multiple eNBs connected to a single SGW/PGW node, as shown
+network of multiple eNBs connected to the core network, as shown
 in Figure :ref:`fig-epc-topology`.
 
 The following design choices have been made for the EPC model:
 
- #. The only Packet Data Network (PDN) type supported is IPv4.
- #. The SGW and PGW functional entities are implemented within a single
-    node, which is hence referred to as the SGW/PGW node.
- #. The scenarios with inter-SGW mobility are not of interests. Hence, a
-    single SGW/PGW node will be present in all simulations scenarios 
+ #. The Packet Data Network (PDN) type supported is both IPv4 and IPv6.
+    In other words, the end-to-end connections between the UEs and the remote
+    hosts can be IPv4 and IPv6. However, the networks between the core network
+    elements (MME, SGWs and PGWs) are IPv4-only.
+ #. The SGW and PGW functional entities are implemented in different
+    nodes, which are hence referred to as the SGW node and PGW node,
+    respectively.
+ #. The MME functional entities is implemented as a network node,
+    which is hence referred to as the MME node.
+ #. The scenarios with inter-SGW mobility are not of interest. But
+    several SGW nodes may be present in simulations scenarios.
  #. A requirement for the EPC model is that it can be used to simulate the
     end-to-end performance of realistic applications. Hence, it should
     be possible to use with the EPC model any regular ns-3 application
@@ -133,19 +139,20 @@ The following design choices have been made for the EPC model:
     with the presence of multiple eNBs, some of which might be
     equipped with a backhaul connection with limited capabilities. In
     order to simulate such scenarios, the user data plane
-    protocols being used between the eNBs and the SGW/PGW should be
+    protocols being used between the eNBs and the SGW should be
     modeled accurately.
  #. It should be possible for a single UE to use different applications
     with different QoS profiles. Hence, multiple EPS bearers should be
     supported for each UE. This includes the necessary classification
     of TCP/UDP traffic over IP done at the UE in the uplink and at the
     PGW in the downlink.
- #. The focus of the EPC model is mainly on the EPC data plane. The
-    accurate modeling of the EPC control plane is, 
-    for the time being, not a requirement; hence, the necessary control plane
-    interactions can be modeled in a simplified way by leveraging on direct
-    interaction among the different simulation objects via the
-    provided helper objects.
+ #. The initial focus of the EPC model is mainly on the EPC data plane.
+    The accurate modeling of the EPC control plane is, 
+    for the time being, not a requirement; however, the necessary control
+    plane interactions among the different network nodes of the core network
+    are realized by implementing control protocols/messages among them.
+    Direct interaction among the different simulation objects via the
+    provided helper objects should be avoided as much as possible.
  #. The focus of the EPC model is on simulations of active users in ECM
     connected mode. Hence, all the functionality that is only relevant
     for ECM idle mode (in particular, tracking area update and paging)
@@ -255,24 +262,20 @@ EPC Model
 EPC data plane
 --------------
 
-In Figure :ref:`fig-lte-epc-e2e-data-protocol-stack`, we represent the
+In Figure :ref:`fig-lte-epc-e2e-data-protocol-stack-with-split`, we represent the
 end-to-end LTE-EPC data plane protocol stack as it is modeled in the
-simulator. From the figure, it is evident that the 
-biggest simplification introduced in the data plane model
-is the inclusion of the SGW and PGW functionality within a single
-SGW/PGW node, which removes the need for the S5 or S8 interfaces 
-specified by 3GPP. On the other hand, for both the S1-U protocol stack and
-the LTE radio protocol stack all the protocol layers specified by 3GPP
-are present. 
+simulator. The figure shows all nodes in the data path, i.e. UE, eNB,
+SGW, PGW and a remote host in the Internet. All protocol stacks
+(S5 protocol stack, S1-U protocol stack and the LTE radio protocol stack)
+specified by 3GPP are present.
 
 
-.. _fig-lte-epc-e2e-data-protocol-stack:
+.. _fig-lte-epc-e2e-data-protocol-stack-with-split:
    
-.. figure:: figures/lte-epc-e2e-data-protocol-stack.*
+.. figure:: figures/lte-epc-e2e-data-protocol-stack-with-split.*
    :align: center
 
    LTE-EPC data plane protocol stack
-
 
 
 
@@ -280,29 +283,23 @@ EPC control plane
 -----------------
 
 The architecture of the implementation of the control plane model is
-shown in figure :ref:`fig-epc-ctrl-arch`. The control interfaces that are
-modeled explicitly are the S1-AP, the X2-AP and the S11 interfaces. 
+shown in figure :ref:`fig-lte-epc-e2e-control-protocol-stack-with-split`.
+The control interfaces that are modeled explicitly are the S1-MME, the S11, and the S5
+interfaces. The X2 interface is also modeled explicitly and it is described in more
+detail in section :ref:`sec-x2`
 
-We note that the S1-AP and the S11 interfaces are modeled in a simplified
-fashion, by using just one pair of interface classes to model the
-interaction between entities that reside on different nodes (the eNB
-and the MME for the S1-AP interface, and the MME and the SGW for the
-S11 interface). In practice, this means that the primitives of these
-interfaces are mapped to a direct function call between the two
-objects. On the other hand, the X2-AP interface is being modeled using
-protocol data units sent over an X2 link (modeled as a point-to-point
-link); for this reason, the X2-AP interface model is more realistic.
+The S1-MME, the S11 and the S5 interfaces are modeled using procotol data units sent
+over its respective links. These interfaces use the SCTP protocol as transport protocol
+but currently, the SCTP protocol is not modeled in the ns-3 simulator, so the
+UDP protocol is used instead of the SCTP protocol.
 
 
+.. _fig-lte-epc-e2e-control-protocol-stack-with-split:
 
-
-.. _fig-epc-ctrl-arch:
-   
-.. figure:: figures/epc-ctrl-arch.*
+.. figure:: figures/lte-epc-e2e-control-protocol-stack-with-split.*
    :align: center
 
-   EPC control model
-
+   LTE-EPC control plane protocol stack
 
 
 
@@ -466,7 +463,7 @@ Overview
 
 The physical layer model provided in this LTE simulator is based on
 the one described in [Piro2011]_, with the following modifications.  The model now includes the 
-inter cell intereference calculation and the simulation of uplink traffic, including both packet transmission and CQI generation. 
+inter cell interference calculation and the simulation of uplink traffic, including both packet transmission and CQI generation. 
 
 
 Subframe Structure
@@ -520,11 +517,10 @@ In uplink, two types of CQIs are implemented:
  - SRS based, periodically sent by the UEs.
  - PUSCH based, calculated from the actual transmitted data.
 
-The scheduler interface include an attribute system calld ``UlCqiFilter`` for managing the filtering of the CQIs according to their nature, in detail:
+The scheduler interface include an attribute system called ``UlCqiFilter`` for managing the filtering of the CQIs according to their nature, in detail:
 
   - ``SRS_UL_CQI`` for storing only SRS based CQIs.
   - ``PUSCH_UL_CQI`` for storing only PUSCH based CQIs.
-  - ``ALL_UL_CQI`` for storing all the CQIs received.
 
 It has to be noted that, the ``FfMacScheduler`` provides only the interface and it is matter of the actual scheduler implementation to include the code for managing these attributes (see scheduler related section for more information on this matter).
 
@@ -588,7 +584,7 @@ The specific LSM method adopted is the one based on the usage of a mutual inform
 
    MIESM computational procedure diagram
 
-The mutual information (MI) is dependent on the constellation mapping and can be calculated per transport block (TB) basis, by evaluating the MI over the symbols and the subcarrier. However, this would be too complex for a network simulator. Hence, in our implementation a flat channel response within the RB has been considered; therefore the overall MI of a TB is calculated averaging the MI evaluated per each RB used in the TB. In detail, the implemented scheme is depicted in Figure :ref:`fig-miesm-architecture`, where we see that the model starts by evaluating the MI value for each RB, represented in the figure by the SINR samples. Then the equivalent MI is evaluated per TB basis by averaging the MI values. Finally, a further step has to be done since the link level simulator returns the performance of the link in terms of block error rate (BLER) in a addive white guassian noise  (AWGN) channel, where the blocks are the code blocks (CBs) independently encoded/decoded by the turbo encoder. On this matter the 
+The mutual information (MI) is dependent on the constellation mapping and can be calculated per transport block (TB) basis, by evaluating the MI over the symbols and the subcarrier. However, this would be too complex for a network simulator. Hence, in our implementation a flat channel response within the RB has been considered; therefore the overall MI of a TB is calculated averaging the MI evaluated per each RB used in the TB. In detail, the implemented scheme is depicted in Figure :ref:`fig-miesm-architecture`, where we see that the model starts by evaluating the MI value for each RB, represented in the figure by the SINR samples. Then the equivalent MI is evaluated per TB basis by averaging the MI values. Finally, a further step has to be done since the link level simulator returns the performance of the link in terms of block error rate (BLER) in a addive white gaussian noise  (AWGN) channel, where the blocks are the code blocks (CBs) independently encoded/decoded by the turbo encoder. On this matter the 
 standard 3GPP segmentation scheme has been used for estimating the actual CB size (described in section 5.1.2 of [TS36212]_). This scheme divides the TB in :math:`N_{K_-}` blocks of size :math:`K_-` and :math:`N_{K+}` blocks of size :math:`K_+`. Therefore the overall TB BLER (TBLER) can be expressed as
 
 .. math::
@@ -611,16 +607,13 @@ BLER Curves
 
 On this respect, we reused part of the curves obtained within [PaduaPEM]_. In detail, we introduced the CB size dependency to the CB BLER curves with the support of the developers of [PaduaPEM]_ and of the LTE Vienna Simulator. In fact, the module released provides the link layer performance only for what concerns the MCSs (i.e, with a given fixed ECR). In detail the new error rate curves for each has been evaluated with a simulation campaign with the link layer simulator for a single link with AWGN noise and for CB size of 104, 140, 256, 512, 1024, 2048, 4032 and 6144. These curves has been mapped with the Gaussian cumulative model formula presented above for obtaining the correspondents :math:`b_{ECR}` and :math:`c_{ECR}` parameters.
 
-The BLER perfomance of all MCS obtained with the link level simulator are plotted in the following figures (blue lines) together with their correspondent mapping to the Gaussian cumulative distribution (red dashed lines).
+The BLER performance of all MCS obtained with the link level simulator are plotted in the following figures (blue lines) together with their correspondent mapping to the Gaussian cumulative distribution (red dashed lines).
 
 
 .. _fig-mcs-1-4-ber:
 
 .. figure:: figures/MCS_1_4.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 1, 2, 3 and 4.
 
@@ -628,30 +621,23 @@ The BLER perfomance of all MCS obtained with the link level simulator are plotte
 .. _fig-mcs-5-8-ber:
 
 .. figure:: figures/MCS_5_8.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 5, 6, 7 and 8.
+
 
 .. _fig-mcs-9-12-ber:
 
 .. figure:: figures/MCS_9_12.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 9, 10, 11 and 12.
+
 
 .. _fig-mcs-13-16-ber:
 
 .. figure:: figures/MCS_13_16.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 13, 14, 15 and 16.
 
@@ -659,20 +645,15 @@ The BLER perfomance of all MCS obtained with the link level simulator are plotte
 .. _fig-mcs-17-20-ber:
 
 .. figure:: figures/MCS_17_20.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 17, 17, 19 and 20.
+
 
 .. _fig-mcs-21-24-ber:
 
 .. figure:: figures/MCS_21_24.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 21, 22, 23 and 24.
 
@@ -680,25 +661,17 @@ The BLER perfomance of all MCS obtained with the link level simulator are plotte
 .. _fig-mcs-25-28-ber:
 
 .. figure:: figures/MCS_25_28.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 25, 26, 27 and 28.
+
 
 .. _fig-mcs-29-29-ber:
 
 .. figure:: figures/MCS_29_29.*
-   :width: 900px
    :align: center
-   :height: 700px
-
 
    BLER for MCS 29.
-
-
-
 
 
 
@@ -814,7 +787,7 @@ The PHY Error Model model (i.e., the ``LteMiErrorModel`` class already presented
 
     M_{I eff} = \frac{\sum\limits_{i=1}^q C_i M_i}{\sum\limits_{i=1}^q C_i}
 
-where :math:`X` is the number of original information bits, :math:`C_i` are number of coded bits, :math:`M_i` are the mutual informations per HARQ block received on the total number of :math:`q` retransmissions. Therefore, in order to be able to return the error probability with the error model implemented in the simulator evaluates the :math:`R_{eff}` and the :math:`MI_{I eff}` and return the value of error probability of the ECR of the same modulation with closest lower rate respect to the :math:`R_{eff}`. In order to consider the effect of HARQ retransmissions a new sets of curves have been integrated respect to the standard one used for the original MCS. The new curves are intended for covering the cases when the most conservative MCS of a modulation is used which implies the generation of :math:`R_{eff}` lower respect to the one of standard MCSs. On this matter the curves for 1, 2 and 3 retransmissions have been evaluated for 10 and 17. For MCS 0 we considered only the first retransmission since the 
+where :math:`X` is the number of original information bits, :math:`C_i` are number of coded bits, :math:`M_i` are the mutual information per HARQ block received on the total number of :math:`q` retransmissions. Therefore, in order to be able to return the error probability with the error model implemented in the simulator evaluates the :math:`R_{eff}` and the :math:`MI_{I eff}` and return the value of error probability of the ECR of the same modulation with closest lower rate respect to the :math:`R_{eff}`. In order to consider the effect of HARQ retransmissions a new sets of curves have been integrated respect to the standard one used for the original MCS. The new curves are intended for covering the cases when the most conservative MCS of a modulation is used which implies the generation of :math:`R_{eff}` lower respect to the one of standard MCSs. On this matter the curves for 1, 2 and 3 retransmissions have been evaluated for 10 and 17. For MCS 0 we considered only the first retransmission since the 
 produced code rate is already very conservative (i.e., 0.04) and returns an error rate enough robust for the reception (i.e., the downturn of the BLER is centered around -18 dB).
 It is to be noted that, the size of first TB transmission has been assumed as containing all the information bits to be coded; therefore :math:`X` is equal to the size of the first TB sent of a an HARQ process. The model assumes that the eventual presence of parity bits in the codewords is already considered in the link level curves. This implies that as soon as the minimum :math:`R_{eff}` is reached the model is not including the gain due to the transmission of further parity bits.
 
@@ -1026,11 +999,10 @@ For what concern the HARQ, RR implements the non adaptive version, which implies
 
    Config::SetDefault ("ns3::RrFfMacScheduler::HarqEnabled", BooleanValue (false));
 
-The scheduler implements the filtering of the uplink CQIs according to their nature with ``UlCqiFilter`` attibute, in detail:
+The scheduler implements the filtering of the uplink CQIs according to their nature with ``UlCqiFilter`` attribute, in detail:
 
   - ``SRS_UL_CQI``: only SRS based CQI are stored in the internal attributes.
   - ``PUSCH_UL_CQI``: only PUSCH based CQI are stored in the internal attributes.
-  - ``ALL_UL_CQI``: all CQIs are stored in the same internal attibute (i.e., the last CQI received is stored independently from its nature).
 
 
 
@@ -1283,11 +1255,10 @@ quality UE tend towards the TBR.
 
   Config::SetDefault ("ns3::PfFfMacScheduler::HarqEnabled", BooleanValue (false));
 
-The scheduler implements the filtering of the uplink CQIs according to their nature with ``UlCqiFilter`` attibute, in detail:
+The scheduler implements the filtering of the uplink CQIs according to their nature with ``UlCqiFilter`` attribute, in detail:
 
   - ``SRS_UL_CQI``: only SRS based CQI are stored in the internal attributes.
   - ``PUSCH_UL_CQI``: only PUSCH based CQI are stored in the internal attributes.
-  - ``ALL_UL_CQI``: all CQIs are stored in the same internal attribute (i.e., the last CQI received is stored independently from its nature).
 
 
 Channel and QoS Aware Scheduler
@@ -1482,7 +1453,6 @@ with all the other entities and services in the protocol stack.
 .. _fig-lte-rlc-implementation-model:
 
 .. figure:: figures/lte-rlc-implementation-model.*
-   :width: 800px
 
    Implementation Model of PDCP, RLC and MAC entities and SAPs
 
@@ -1597,7 +1567,7 @@ entities/services of the LTE protocol stack.
 .. _fig-lte-rlc-data-txon-dl:
    
 .. figure:: figures/lte-rlc-data-txon-dl.*
-   :width: 800px
+   :width: 550px
 
    Sequence diagram of data PDU transmission in downlink
 
@@ -1668,7 +1638,7 @@ are sent by the upper layers.
 .. _fig-lte-rlc-data-txon-ul:
    
 .. figure:: figures/lte-rlc-data-txon-ul.*
-   :width: 800px
+   :width: 550px
 
    Sequence diagram of data PDU transmission in uplink
 
@@ -2011,7 +1981,7 @@ as implemented in the RRC UE entity.
 .. _fig-lte-ue-rrc-states:
 
 .. figure:: figures/lte-ue-rrc-states.*
-   :scale: 70 %
+   :scale: 60 %
    :align: center
 
    UE RRC State Machine
@@ -2288,7 +2258,7 @@ following simplifying assumptions:
  - carrier aggregation is now supported in the LTE module
    - Event A6 is not implemented;
    
- - speed dependant scaling of time-to-trigger (Section 5.5.6.2 of [TS36331]_) is
+ - speed dependent scaling of time-to-trigger (Section 5.5.6.2 of [TS36331]_) is
    not supported.
 
 Overall design
@@ -3039,6 +3009,7 @@ The following RRC SAP have been implemented:
         \clearpage
 
 
+.. _sec-nas:
 
 ---
 NAS
@@ -3047,9 +3018,9 @@ NAS
 
 The focus of the LTE-EPC model is on the NAS Active state, which corresponds to EMM Registered, ECM connected, and RRC connected. Because of this, the following simplifications are made:
 
- - EMM and ECM are not modeled explicitly; instead, the NAS entity at the UE will interact directly with the MME to perform actions that are equivalent (with gross simplifications) to taking the UE to the states EMM Connected and ECM Connected; 
+- EMM and ECM are not modeled explicitly; instead, the NAS entity at the UE will interact directly with the MME to perform actions that are equivalent (with gross simplifications) to taking the UE to the states EMM Connected and ECM Connected; 
 
- - the NAS also takes care of multiplexing uplink data packets coming from the upper layers into the appropriate EPS bearer by using the Traffic Flow Template classifier (TftClassifier). 
+- the NAS also takes care of multiplexing uplink data packets coming from the upper layers into the appropriate EPS bearer by using the Traffic Flow Template classifier (TftClassifier). 
 
 - the NAS does not support PLMN and CSG selection 
 
@@ -3083,82 +3054,108 @@ procedure.
 
 
 
------------------
-S1
------------------
+----------------
+S1, S5 and S11
+----------------
 
-S1-U 
-+++++++++
+S1-U and S5 (user plane)
++++++++++++++++++++++++++
 
-The S1-U interface is modeled in a realistic way by encapsulating
+The S1-U and S5 interfaces are modeled in a realistic way by encapsulating
 data packets over GTP/UDP/IP, as done in real LTE-EPC systems. The
 corresponding protocol stack is shown in Figure
-:ref:`fig-lte-epc-e2e-data-protocol-stack`. As shown in the figure,
+:ref:`fig-lte-epc-e2e-data-protocol-stack-with-split`. As shown in the figure,
 there are two different layers of 
 IP networking. The first one is the end-to-end layer, which provides end-to-end 
-connectivity to the users; this layers involves the UEs, the PGW and
+connectivity to the users; this layer involves the UEs, the PGW and
 the remote host (including eventual internet routers and hosts in
-between), but does not involve the eNB. By default, UEs are assigned a public IPv4 address in the 7.0.0.0/8
-network, and the PGW gets the address 7.0.0.1, which is used by all
-UEs as the gateway to reach the internet. 
+between), but does not involve the eNB and the SGW. In this version of LTE, the EPC
+supports both IPv4 and IPv6 type users. The 3GPP unique 64 bit IPv6 prefix
+allocation process for each UE and PGW is followed here. Each EPC is assigned
+a unique 16 bit IPv4 and a 48 bit IPv6 network address from the pool of
+7.0.0.0/8 and 7777:f00d::/32 respectively. In the end-to-end IP connection
+between UE and PGW, all addresses are configured using these prefixes.
+The PGW's address is used by all UEs as the gateway to reach the internet. 
 
 The second layer of IP networking is the EPC local area network. This
-involves all eNB nodes and the SGW/PGW node. This network is
+involves all eNB nodes, SGW nodes and PGW nodes. This network is
 implemented as a set of point-to-point links which connect each eNB
-with the SGW/PGW node; thus, the SGW/PGW has a set of point-to-point
-devices, each providing connectivity to a different eNB. By default, a
-10.x.y.z/30 subnet is assigned to each point-to-point link (a /30
-subnet is the smallest subnet that allows for two distinct host
-addresses). 
+with its corresponding SGW node and a point-to-point link which connect
+each SGW node with its corresponding PGW node;
+thus, each SGW has a set of point-to-point devices, each providing
+connectivity to a different eNB. By default, a 10.x.y.z/30 subnet
+is assigned to each point-to-point link (a /30 subnet is the smallest
+subnet that allows for two distinct host addresses). 
 
 As specified by 3GPP, the end-to-end IP
 communications is tunneled over the local EPC IP network using
 GTP/UDP/IP. In the following, we explain how this tunneling is
 implemented in the EPC model. The explanation is done by discussing the
-end-to-end flow of data packets.  
+end-to-end flow of data packets.
 
-.. _fig-epc-data-flow-dl:
+.. _fig-epc-data-flow-dl-with-split:
    
-.. figure:: figures/epc-data-flow-dl.*
+.. figure:: figures/epc-data-flow-dl-with-split.*
    :align: center
 
    Data flow in the downlink between the internet and the UE
 
 To begin with, we consider the case of the downlink, which is depicted
-in Figure :ref:`fig-epc-data-flow-dl`.   
-Downlink Ipv4 packets are generated from a generic remote host, and
+in Figure :ref:`fig-epc-data-flow-dl-with-split`.   
+Downlink IPv4/IPv6 packets are generated from a generic remote host, and
 addressed to one of the UE device. Internet routing will take care of
-forwarding the packet to the generic NetDevice of the SGW/PGW node
+forwarding the packet to the generic NetDevice of the PGW node
 which is connected to the internet (this is the Gi interface according
-to 3GPP terminology). The SGW/PGW has a VirtualNetDevice which is
-assigned the gateway IP address of the UE subnet; hence, static
+to 3GPP terminology). The PGW has a VirtualNetDevice which is
+assigned the base IPv4 address of the EPC network; hence, static
 routing rules will cause the incoming packet from the internet to be
-routed through this VirtualNetDevice. Such device starts the
-GTP/UDP/IP tunneling procedure, by forwarding the packet to a
-dedicated application in the SGW/PGW  node which is called
-EpcSgwPgwApplication. This application does the following operations:
+routed through this VirtualNetDevice. In case of IPv6 address as destination,
+a manual route towards the VirtualNetDevice is inserted in the routing table,
+containing the 48 bit IPv6 prefix from which all the IPv6 addresses of the UEs
+and PGW are configured. Such device starts the GTP/UDP/IP tunneling procedure,
+by forwarding the packet to a dedicated application in the PGW node which
+is called EpcPgwApplication. This application does the following operations:
 
- #. it determines the eNB node to which the UE is attached, by looking
-    at the IP destination address (which is the address of the UE);
+ #. it determines the SGW node to which it must route the traffic
+    for this UE, by looking at the IP destination address
+    (which is the address of the UE);
  #. it classifies the packet using Traffic Flow Templates (TFTs) to
     identify to which EPS Bearer it belongs. EPS bearers have a
-    one-to-one mapping to S1-U Bearers, so this operation returns the
+    one-to-one mapping to S5 Bearers, so this operation returns the
     GTP-U Tunnel Endpoint Identifier  (TEID) to which the packet
     belongs;
  #. it adds the corresponding GTP-U protocol header to the packet;
- #. finally, it sends the packet over an UDP socket to the S1-U
+ #. finally, it sends the packet over a UDP socket to the S5
+    point-to-point NetDevice, addressed to the appropriate SGW.
+
+As a consequence, the end-to-end IP packet with newly added IP, UDP
+and GTP headers is sent through one of the S5 links to the SGW, where
+it is received and delivered locally (as the destination address of
+the outermost IP header matches the SGW IP address). The local delivery
+process will forward the packet, via an UDP socket, to a dedicated
+application called EpcSgwApplication. This application then performs
+the following operations:
+
+ #. it determines the eNB node to which the UE is attached, by looking
+    at the S5 TEID;
+ #. it maps the S5 TEID to get the S1 TEID. EPS bearers have a
+    one-to-one mapping to S1-U Bearers, so this operation returns the
+    S1 GTP-U Tunnel Endpoint Identifier (TEID) to which the packet
+    belongs;
+ #. it adds a new GTP-U protocol header to the packet;
+ #. finally, it sends the packet over a UDP socket to the S1-U
     point-to-point NetDevice, addressed to the eNB to which the UE is
     attached.
 
-As a consequence, the end-to-end IP packet with newly added IP, UDP
+Finally, the end-to-end IP packet with newly added IP, UDP
 and GTP headers is sent through one of the S1 links to the eNB, where
 it is received and delivered locally (as the destination address of
-the outmost IP header matches the eNB IP address). The local delivery
+the outermost IP header matches the eNB IP address). The local delivery
 process will forward the packet, via an UDP socket, to a dedicated
 application called EpcEnbApplication. This application then performs
 the following operations:
 
- #. it removes the GTP header and retrieves the TEID which is
+ #. it removes the GTP header and retrieves the S1 TEID which is
     contained in it;
  #. leveraging on the one-to-one mapping between S1-U bearers and
     Radio Bearers (which is a 3GPP requirement), it determines the 
@@ -3182,15 +3179,15 @@ the UE, which is the end point of the downlink communication.
 
 
 
-.. _fig-epc-data-flow-ul:
+.. _fig-epc-data-flow-ul-with-split:
    
-.. figure:: figures/epc-data-flow-ul.*
+.. figure:: figures/epc-data-flow-ul-with-split.*
    :align: center
 
    Data flow in the uplink between the UE and the internet
 
 
-The case of the uplink is depicted in Figure :ref:`fig-epc-data-flow-ul`.
+The case of the uplink is depicted in Figure :ref:`fig-epc-data-flow-ul-with-split`.
 Uplink IP packets are generated by a generic application inside the UE,
 and forwarded by the local TCP/IP stack to the LteUeNetDevice of the
 UE. The LteUeNetDevice then performs the following operations:
@@ -3218,27 +3215,45 @@ following operations:
     Bearers;
  #. it adds a GTP-U header on the packet, including the TEID
     determined previously;
- #. it sends the packet to the SGW/PGW node via the UDP socket
+ #. it sends the packet to the SGW node via the UDP socket
     connected to the S1-U point-to-point net device.
 
 At this point, the packet contains the S1-U IP, UDP and GTP headers in
 addition to the original end-to-end IP header. When the packet is
 received by the corresponding S1-U point-to-point NetDevice of the
-SGW/PGW node, it is delivered locally (as the destination address of
+SGW node, it is delivered locally (as the destination address of
 the outmost IP header matches the address of the point-to-point net
 device). The local delivery process will forward the packet to the
-EpcSgwPgwApplication via the corresponding UDP socket. The
-EpcSgwPgwApplication then removes the GTP header and forwards the
+EpcSgwApplication via the corresponding UDP socket. The
+EpcSgwApplication then perfoms the following operations:
+
+ #. it removes the GTP header and retrieves the S1-U TEID;
+ #. it maps the S1-U TEID to get the S5 TEID to which the packet
+    belongs;
+ #. it determines the PGW to which it must send the packet from
+    the TEID mapping;
+ #. it add a new GTP-U protocol header to the packet;
+ #. finally, it sends the packet over a UDP socket to the S5
+    point-to-point NetDevice, addressed to the corresponding PGW.
+
+At this point, the packet contains the S5 IP, UDP and GTP headers in
+addition to the original end-to-end IP header. When the packet is
+received by the corresponding S5 point-to-point NetDevice of the
+PGW node, it is delivered locally (as the destination address of
+the outmost IP header matches the address of the point-to-point net
+device). The local delivery process will forward the packet to the
+EpcPgwApplication via the corresponding UDP socket. The
+EpcPgwApplication then removes the GTP header and forwards the
 packet to the VirtualNetDevice. At this point, the outmost header
 of the packet is the end-to-end IP header. Hence, if the destination
 address within this header is a remote host on the internet, the
 packet is sent to the internet via the corresponding NetDevice of the
-SGW/PGW. In the event that the packet is addressed to another UE, the
-IP stack of the SGW/PGW will redirect the packet again to the
-VirtualNetDevice, and the packet will go through the dowlink delivery
+PGW. In the event that the packet is addressed to another UE, the
+IP stack of the PGW will redirect the packet again to the
+VirtualNetDevice, and the packet will go through the downlink delivery
 process in order to reach its destination UE.
 
-Note that the EPS Bearer QoS is not enforced on the S1-U
+Note that the EPS Bearer QoS is not enforced on the S1-U and S5
 links, it is assumed that the overprovisioning of the link bandwidth
 is sufficient to meet the QoS requirements of all bearers.
 
@@ -3247,11 +3262,9 @@ S1AP
 +++++
 
 The S1-AP interface provides control plane interaction between the eNB
-and the MME. In the simulator, this interface is modeled in an ideal
-fashion, with direct interaction between the eNB and the MME objects,
-without actually implementing the encoding of S1AP messages and
-information elements specified in [TS36413]_ and without actually
-transmitting any PDU on any link. 
+and the MME. In the simulator, this interface is modeled in a realistic
+fashion transmitting the encoded S1AP messages and information elements
+specified in [TS36413]_ on the S1-MME link.
 
 The S1-AP primitives that are modeled are:
 
@@ -3260,6 +3273,37 @@ The S1-AP primitives that are modeled are:
  * INITIAL CONTEXT SETUP RESPONSE 
  * PATH SWITCH REQUEST
  * PATH SWITCH REQUEST ACKNOWLEDGE 
+
+
+S5 and S11
++++++++++++
+
+The S5 interface provides control plane interaction between the SGW
+and the PGW. The S11 interface provides control plane interaction between
+the SGw and the MME. Both interfaces use the GPRS Tunneling Protocol (GTPv2-C)
+to tunnel signalling messages [TS29274]_ and use UDP as transport protocol.
+In the simulator, these interfaces and protocol are modeled in a realistic
+fashion transmitting the encoded GTP-C messages.
+
+The GTPv2-C primitives that are modeled are:
+
+ * CREATE SESSION REQUEST
+ * CREATE SESSION RESPONSE
+ * MODIFY BEARER REQUEST
+ * MODIFY BEARER RESPONSE
+ * DELETE SESSION REQUEST
+ * DELETE SESSION RESPONSE
+ * DELETE BEARER COMMAND
+ * DELETE BEARER REQUEST
+ * DELETE BEARER RESPONSE
+
+Of these primitives, the first two are used upon initial UE attachment for the establishment
+of the S1-U and S5 bearers. Section :ref:`sec-nas` shows the implementation of the attach
+procedure. The other primitives are used during the handover to switch the S1-U bearers from
+the source eNB to the target eNB as a consequence of the reception by the MME of a
+PATH SWITCH REQUEST S1-AP message.
+
+
 
 .. only:: latex
 
@@ -3350,12 +3394,12 @@ and it provides services to:
 
     * to send/receive RRC messages. The X2 entity sends the RRC message as a transparent container in the X2 message. This RRC message is sent to the UE. 
 
-Figure :ref:`fig-x2-entity-saps` shows the implentation model of the X2 entity and its relationship with all the other entities and services in the protocol stack.
+Figure :ref:`fig-x2-entity-saps` shows the implementation model of the X2 entity and its relationship with all the other entities and services in the protocol stack.
 
 .. _fig-x2-entity-saps:
 
 .. figure:: figures/lte-epc-x2-entity-saps.*
-    :width: 700px
+    :width: 550px
     :align: center
 
     Implementation Model of X2 entity and SAPs
@@ -4120,6 +4164,8 @@ Overview
 This section describes the ns-3 support for Carrier Aggregation.
 The references in the standard are [TS36211]_, [TS36213]_ and [TS36331]_.
 
+**Note:** Carrier Aggregation was introduced in release 3.27 and currently, only works in downlink.
+
 3GPP standardizes, in release R10, the Carrier Aggregation (CA) technology.
 
 This technology consists of the possibility, to aggregate radio resources belonging to 
@@ -4306,7 +4352,7 @@ pointers to MAC, PHY, scheduler, fractional frequency reuse instances.
 ``LteEnbNetDevice`` can contain pointers to several ``ComponentCarrierEnb`` instances. 
 This architecture allows that each CC may have its own configuration for PHY, MAC, 
 scheduling algorithm and franctional frequency reuse algorithm.  These attributes are 
-currently mantained also in the ``LteEnbNetDevice`` for backward compatibility purpose. 
+currently maintained also in the ``LteEnbNetDevice`` for backward compatibility purpose. 
 By default the ``LteEnbNetDevice`` attributes are the same as the 
 primary carrier attributes. 
 
