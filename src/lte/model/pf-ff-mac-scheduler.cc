@@ -1270,7 +1270,7 @@ PfFfMacScheduler::DoSchedDlCqiInfoReq (const struct FfMacSchedSapProvider::Sched
           double achievableRate = 0.0;
           int rbgSize = GetRbgSize (m_cschedCellConfig.m_dlBandwidth);
           // achievableRate += ((m_amc->GetTbSizeFromMcs (mcs, rbgSize) / 8) / 0.001);   // = TB size / TTI
-          achievableRate += (m_amc->GetTbSizeFromMcs (mcs, rbgSize) / 0.001);   // = TB size / TTI
+          achievableRate += (m_amc->GetDlTbSizeFromMcs (mcs, rbgSize) / 0.001);   // = TB size / TTI
 
           // if we are to print CQI values
           Time now = Simulator::Now ();

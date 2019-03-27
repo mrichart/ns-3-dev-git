@@ -496,14 +496,15 @@ main (int argc, char *argv[])
   uint32_t nMacroUes = round (macroUeAreaSize * macroUeDensity);
   NS_LOG_LOGIC ("nMacroUes = " << nMacroUes << " (density=" << macroUeDensity << ")");
 
+
+  NodeContainer macroUes;
+  macroUes.Create (nMacroUes);
   NodeContainer homeEnbs;
   homeEnbs.Create (nHomeEnbs);
   NodeContainer macroEnbs;
   macroEnbs.Create (3 * nMacroEnbSites);
   NodeContainer homeUes;
   homeUes.Create (nHomeUes);
-  NodeContainer macroUes;
-  macroUes.Create (nMacroUes);
 
   MobilityHelper mobility;
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
@@ -511,7 +512,7 @@ main (int argc, char *argv[])
 
   Ptr <LteHelper> lteHelper = CreateObject<LteHelper> ();
   lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::FriisPropagationLossModel"));
-  lteHelper->SetAttribute ("Scheduler", StringValue ("ns3::PfFfMacScheduler"));
+  lteHelper->SetAttribute ("Scheduler", StringValue ("ns3::RrFfMacScheduler"));
 
   //lteHelper->SetPathlossModelAttribute ("ShadowSigmaExtWalls", DoubleValue (0));
   //lteHelper->SetPathlossModelAttribute ("ShadowSigmaOutdoor", DoubleValue (1));
@@ -591,7 +592,6 @@ main (int argc, char *argv[])
   //NS_LOG_LOGIC ("randomly allocating macro UEs in " << macroUeBox << " speedMin " << outdoorUeMinSpeed << " speedMax " << outdoorUeMaxSpeed);
   if (outdoorUeMaxSpeed!=0.0)
     {
-      
 	  Ns2MobilityHelper traceMobility = Ns2MobilityHelper ("dispositions.txt");
 	  traceMobility.Install();
 
