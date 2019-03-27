@@ -154,7 +154,7 @@ private:
    */
   struct TraceEntry
   {
-    uint32_t timeToSend; //!< Time to send the frame
+    double timeToSend; //!< Time to send the frame
     uint32_t packetSize; //!< Size of the frame
     char frameType; //!< Frame type (I, P or B)
   };

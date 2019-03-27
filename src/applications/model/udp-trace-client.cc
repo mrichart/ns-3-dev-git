@@ -184,12 +184,9 @@ void
 UdpTraceClient::LoadTrace (std::string filename)
 {
   NS_LOG_FUNCTION (this << filename);
-  uint32_t time = 0;
-  uint32_t index = 0;
-  uint32_t oldIndex = 0;
+  double time = 0;
   uint32_t size = 0;
-  uint32_t prevTime = 0;
-  char frameType;
+  double prevTime = 0;
   TraceEntry entry;
   std::ifstream ifTraceFile;
   ifTraceFile.open (filename.c_str (), std::ifstream::in);
@@ -200,24 +197,16 @@ UdpTraceClient::LoadTrace (std::string filename)
     }
   while (ifTraceFile.good ())
     {
-      ifTraceFile >> index >> frameType >> time >> size;
-      if (index == oldIndex)
-        {
-          continue;
-        }
-      if (frameType == 'B')
-        {
-          entry.timeToSend = 0;
-        }
-      else
-        {
+      ifTraceFile >> time >> size;
+      //NS_LOG_UNCOND(time << " " << size);
+
+
           entry.timeToSend = time - prevTime;
           prevTime = time;
-        }
+
       entry.packetSize = size;
-      entry.frameType = frameType;
+      entry.frameType = 'I';
       m_entries.push_back (entry);
-      oldIndex = index;
     }
   ifTraceFile.close ();
   NS_ASSERT_MSG (prevTime != 0, "A trace file can not contain B frames only.");
@@ -228,7 +217,7 @@ void
 UdpTraceClient::LoadDefaultTrace (void)
 {
   NS_LOG_FUNCTION (this);
-  uint32_t prevTime = 0;
+  double prevTime = 0;
   for (uint32_t i = 0; i < (sizeof (g_defaultEntries) / sizeof (struct TraceEntry)); i++)
     {
       struct TraceEntry entry = g_defaultEntries[i];
@@ -238,7 +227,7 @@ UdpTraceClient::LoadDefaultTrace (void)
         }
       else
         {
-          uint32_t tmp = entry.timeToSend;
+          double tmp = entry.timeToSend;
           entry.timeToSend -= prevTime;
           prevTime = tmp;
         }
@@ -383,7 +372,7 @@ UdpTraceClient::Send (void)
 
   if (!cycled || m_traceLoop)
     {
-      m_sendEvent = Simulator::Schedule (MilliSeconds (entry->timeToSend), &UdpTraceClient::Send, this);
+      m_sendEvent = Simulator::Schedule (Seconds (entry->timeToSend), &UdpTraceClient::Send, this);
     }
 }
 

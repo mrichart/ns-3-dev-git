@@ -39,6 +39,7 @@
 // the term "room" used in the BuildingsMobilityModel 
 
 using namespace ns3;
+using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("LenaDualStripe");
 
@@ -363,10 +364,10 @@ static ns3::GlobalValue g_srsPeriodicity ("srsPeriodicity",
                                           "greater than the number of UEs per eNB)",
                                           ns3::UintegerValue (80),
                                           ns3::MakeUintegerChecker<uint16_t> ());
-static ns3::GlobalValue g_outdoorUeMinSpeed ("outdoorUeMinSpeed",
-                                             "Minimum speed value of macor UE with random waypoint model [m/s].",
-                                             ns3::DoubleValue (0.0),
-                                             ns3::MakeDoubleChecker<double> ());
+//static ns3::GlobalValue g_outdoorUeMinSpeed ("outdoorUeMinSpeed",
+//                                             "Minimum speed value of macor UE with random waypoint model [m/s].",
+//                                             ns3::DoubleValue (0.0),
+ //                                            ns3::MakeDoubleChecker<double> ());
 static ns3::GlobalValue g_outdoorUeMaxSpeed ("outdoorUeMaxSpeed",
                                              "Maximum speed value of macor UE with random waypoint model [m/s].",
                                              ns3::DoubleValue (0.0),
@@ -449,8 +450,8 @@ main (int argc, char *argv[])
   uint16_t numBearersPerUe = uintegerValue.Get ();
   GlobalValue::GetValueByName ("srsPeriodicity", uintegerValue);
   uint16_t srsPeriodicity = uintegerValue.Get ();
-  GlobalValue::GetValueByName ("outdoorUeMinSpeed", doubleValue);
-  uint16_t outdoorUeMinSpeed = doubleValue.Get ();
+  //GlobalValue::GetValueByName ("outdoorUeMinSpeed", doubleValue);
+  //uint16_t outdoorUeMinSpeed = doubleValue.Get ();
   GlobalValue::GetValueByName ("outdoorUeMaxSpeed", doubleValue);
   uint16_t outdoorUeMaxSpeed = doubleValue.Get ();
 
@@ -495,14 +496,15 @@ main (int argc, char *argv[])
   uint32_t nMacroUes = round (macroUeAreaSize * macroUeDensity);
   NS_LOG_LOGIC ("nMacroUes = " << nMacroUes << " (density=" << macroUeDensity << ")");
 
+
+  NodeContainer macroUes;
+  macroUes.Create (nMacroUes);
   NodeContainer homeEnbs;
   homeEnbs.Create (nHomeEnbs);
   NodeContainer macroEnbs;
   macroEnbs.Create (3 * nMacroEnbSites);
   NodeContainer homeUes;
   homeUes.Create (nHomeUes);
-  NodeContainer macroUes;
-  macroUes.Create (nMacroUes);
 
   MobilityHelper mobility;
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
@@ -543,7 +545,7 @@ main (int argc, char *argv[])
   Ptr<LteHexGridEnbTopologyHelper> lteHexGridEnbTopologyHelper = CreateObject<LteHexGridEnbTopologyHelper> ();
   lteHexGridEnbTopologyHelper->SetLteHelper (lteHelper);
   lteHexGridEnbTopologyHelper->SetAttribute ("InterSiteDistance", DoubleValue (interSiteDistance));
-  lteHexGridEnbTopologyHelper->SetAttribute ("MinX", DoubleValue (interSiteDistance/2));
+  lteHexGridEnbTopologyHelper->SetAttribute ("MinX", DoubleValue (0));
   lteHexGridEnbTopologyHelper->SetAttribute ("GridWidth", UintegerValue (nMacroEnbSitesX));
   Config::SetDefault ("ns3::LteEnbPhy::TxPower", DoubleValue (macroEnbTxPowerDbm));
   lteHelper->SetEnbAntennaModelType ("ns3::ParabolicAntennaModel");
@@ -587,26 +589,30 @@ main (int argc, char *argv[])
   NetDeviceContainer homeUeDevs = lteHelper->InstallUeDevice (homeUes);
 
   // macro Ues
-  NS_LOG_LOGIC ("randomly allocating macro UEs in " << macroUeBox << " speedMin " << outdoorUeMinSpeed << " speedMax " << outdoorUeMaxSpeed);
+  //NS_LOG_LOGIC ("randomly allocating macro UEs in " << macroUeBox << " speedMin " << outdoorUeMinSpeed << " speedMax " << outdoorUeMaxSpeed);
   if (outdoorUeMaxSpeed!=0.0)
     {
-      mobility.SetMobilityModel ("ns3::SteadyStateRandomWaypointMobilityModel");
-      
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinX", DoubleValue (macroUeBox.xMin));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinY", DoubleValue (macroUeBox.yMin));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxX", DoubleValue (macroUeBox.xMax));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxY", DoubleValue (macroUeBox.yMax));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::Z", DoubleValue (ueZ));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxSpeed", DoubleValue (outdoorUeMaxSpeed));
-      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinSpeed", DoubleValue (outdoorUeMinSpeed));
 
-      // this is not used since SteadyStateRandomWaypointMobilityModel
-      // takes care of initializing the positions;  however we need to
-      // reset it since the previously used PositionAllocator
-      // (SameRoom) will cause an error when used with homeDeploymentRatio=0
-      positionAlloc = CreateObject<RandomBoxPositionAllocator> ();
-      mobility.SetPositionAllocator (positionAlloc);
-      mobility.Install (macroUes);
+	  Ns2MobilityHelper traceMobility = Ns2MobilityHelper ("dispositions.txt");
+	  traceMobility.Install();
+
+//      mobility.SetMobilityModel ("ns3::SteadyStateRandomWaypointMobilityModel");
+//
+//      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinX", DoubleValue (macroUeBox.xMin));
+//      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinY", DoubleValue (macroUeBox.yMin));
+//      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxX", DoubleValue (macroUeBox.xMax));
+//      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxY", DoubleValue (macroUeBox.yMax));
+//      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::Z", DoubleValue (ueZ));
+//      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MaxSpeed", DoubleValue (outdoorUeMaxSpeed));
+//      Config::SetDefault ("ns3::SteadyStateRandomWaypointMobilityModel::MinSpeed", DoubleValue (outdoorUeMinSpeed));
+//
+//      // this is not used since SteadyStateRandomWaypointMobilityModel
+//      // takes care of initializing the positions;  however we need to
+//      // reset it since the previously used PositionAllocator
+//      // (SameRoom) will cause an error when used with homeDeploymentRatio=0
+//      positionAlloc = CreateObject<RandomBoxPositionAllocator> ();
+//      mobility.SetPositionAllocator (positionAlloc);
+//      mobility.Install (macroUes);
       
       // forcing initialization so we don't have to wait for Nodes to
       // start before positions are assigned (which is needed to
@@ -756,7 +762,10 @@ main (int argc, char *argv[])
                   if (epcDl)
                     {
                       NS_LOG_LOGIC ("installing UDP DL app for UE " << u);
-                      UdpClientHelper dlClientHelper (ueIpIfaces.GetAddress (u), dlPort);
+                      stringstream ss;
+                      ss << u+1;
+                      string str = ss.str();
+                      UdpTraceClientHelper dlClientHelper (ueIpIfaces.GetAddress (u), dlPort, (str + ".csv").c_str ());
                       clientApps.Add (dlClientHelper.Install (remoteHost));
                       PacketSinkHelper dlPacketSinkHelper ("ns3::UdpSocketFactory", 
                                                            InetSocketAddress (Ipv4Address::GetAny (), dlPort));
