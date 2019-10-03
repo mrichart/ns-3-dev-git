@@ -955,6 +955,7 @@ UeManager::RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupComplet
           SwitchToState (CONNECTED_NORMALLY);
         }
       m_rrc->m_connectionEstablishedTrace (m_imsi, m_rrc->ComponentCarrierToCellId (m_componentCarrierId), m_rnti);
+      NS_LOG_UNCOND ("Connection Established: " << m_imsi << " " << m_rrc->ComponentCarrierToCellId (m_componentCarrierId) << " " << m_rnti);
       break;
 
     default:
@@ -991,6 +992,7 @@ UeManager::RecvRrcConnectionReconfigurationCompleted (LteRrcSap::RrcConnectionRe
         }
       SwitchToState (CONNECTED_NORMALLY);
       m_rrc->m_connectionReconfigurationTrace (m_imsi, m_rrc->ComponentCarrierToCellId (m_componentCarrierId), m_rnti);
+      NS_LOG_UNCOND ("Connection Reconfigured: " << m_imsi << " " << m_rrc->ComponentCarrierToCellId (m_componentCarrierId) << " " << m_rnti);
       break;
 
     // This case is added to NS-3 in order to handle bearer de-activation scenario for CONNECTED state UE

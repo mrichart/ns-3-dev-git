@@ -512,7 +512,7 @@ main (int argc, char *argv[])
 
   Ptr <LteHelper> lteHelper = CreateObject<LteHelper> ();
   lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::FriisPropagationLossModel"));
-  lteHelper->SetAttribute ("Scheduler", StringValue ("ns3::RrFfMacScheduler"));
+  lteHelper->SetAttribute ("Scheduler", StringValue ("ns3::PfFfMacScheduler"));
 
   //lteHelper->SetPathlossModelAttribute ("ShadowSigmaExtWalls", DoubleValue (0));
   //lteHelper->SetPathlossModelAttribute ("ShadowSigmaOutdoor", DoubleValue (1));
@@ -555,6 +555,13 @@ main (int argc, char *argv[])
   lteHelper->SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (macroEnbDlEarfcn + 18000));
   lteHelper->SetEnbDeviceAttribute ("DlBandwidth", UintegerValue (macroEnbBandwidth));
   lteHelper->SetEnbDeviceAttribute ("UlBandwidth", UintegerValue (macroEnbBandwidth));
+
+  lteHelper->SetHandoverAlgorithmType ("ns3::A2A4RsrqHandoverAlgorithm");
+  lteHelper->SetHandoverAlgorithmAttribute ("ServingCellThreshold",
+                                            UintegerValue (30));
+  lteHelper->SetHandoverAlgorithmAttribute ("NeighbourCellOffset",
+                                            UintegerValue (1));
+
   NetDeviceContainer macroEnbDevs = lteHexGridEnbTopologyHelper->SetPositionAndInstallEnbDevice (macroEnbs);
 
   if (epc)
@@ -592,7 +599,7 @@ main (int argc, char *argv[])
   //NS_LOG_LOGIC ("randomly allocating macro UEs in " << macroUeBox << " speedMin " << outdoorUeMinSpeed << " speedMax " << outdoorUeMaxSpeed);
   if (outdoorUeMaxSpeed!=0.0)
     {
-	  Ns2MobilityHelper traceMobility = Ns2MobilityHelper ("dispositions.txt");
+	  Ns2MobilityHelper traceMobility = Ns2MobilityHelper ("S3/dispositions/dispositions3.txt");
 	  traceMobility.Install();
 
 //      mobility.SetMobilityModel ("ns3::SteadyStateRandomWaypointMobilityModel");
@@ -762,9 +769,9 @@ main (int argc, char *argv[])
                     {
                       NS_LOG_LOGIC ("installing UDP DL app for UE " << u);
                       stringstream ss;
-                      ss << u+1;
+                      ss << u;
                       string str = ss.str();
-                      UdpTraceClientHelper dlClientHelper (ueIpIfaces.GetAddress (u), dlPort, (str + ".csv").c_str ());
+                      UdpTraceClientHelper dlClientHelper (ueIpIfaces.GetAddress (u), dlPort, ("S3/traffic/" + str + ".csv").c_str ());
                       clientApps.Add (dlClientHelper.Install (remoteHost));
                       PacketSinkHelper dlPacketSinkHelper ("ns3::UdpSocketFactory", 
                                                            InetSocketAddress (Ipv4Address::GetAny (), dlPort));
@@ -865,10 +872,10 @@ main (int argc, char *argv[])
       remHelper = CreateObject<RadioEnvironmentMapHelper> ();
       remHelper->SetAttribute ("ChannelPath", StringValue ("/ChannelList/0"));
       remHelper->SetAttribute ("OutputFile", StringValue ("lena-dual-stripe.rem"));
-      remHelper->SetAttribute ("XMin", DoubleValue (macroUeBox.xMin));
-      remHelper->SetAttribute ("XMax", DoubleValue (macroUeBox.xMax));
-      remHelper->SetAttribute ("YMin", DoubleValue (macroUeBox.yMin));
-      remHelper->SetAttribute ("YMax", DoubleValue (macroUeBox.yMax));
+      remHelper->SetAttribute ("XMin", DoubleValue (-300));
+      remHelper->SetAttribute ("XMax", DoubleValue (300));
+      remHelper->SetAttribute ("YMin", DoubleValue (-300));
+      remHelper->SetAttribute ("YMax", DoubleValue (300));
       remHelper->SetAttribute ("Z", DoubleValue (1.5));
 
       if (remRbId >= 0)
@@ -894,6 +901,13 @@ main (int argc, char *argv[])
     }
 
   Simulator::Run ();
+
+  for (int u = 0; u < 15; ++u){
+  		Ptr<Node> ue = ues.Get (u);
+  		ns3::Ipv4Address adr = ueIpIfaces.GetAddress (u);
+  		uint64_t imsi = macroUeDevs.Get (u)->GetObject<LteUeNetDevice> ()->GetImsi ();
+  		NS_LOG_UNCOND(u << " " << adr.Get() << " " << imsi);
+  	}
 
   //GtkConfigStore config;
   //config.ConfigureAttributes ();

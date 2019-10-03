@@ -1274,7 +1274,7 @@ PfFfMacScheduler::DoSchedDlCqiInfoReq (const struct FfMacSchedSapProvider::Sched
 
           // if we are to print CQI values
           Time now = Simulator::Now ();
-          //std::cout <<"Time: "<< now.GetSeconds()<< " RNTI = " << rnti << " CellID = "<< m_cellId << " achievableRate = " << achievableRate << " CQI = " <<  (uint32_t) params.m_cqiList.at (i).m_wbCqi.at (0) << "\n";
+          std::cout <<"Time: "<< now.GetSeconds()<< " RNTI = " << rnti << " CellID = "<< m_cellId << " achievableRate = " << achievableRate << " CQI = " <<  (uint32_t) params.m_cqiList.at (i).m_wbCqi.at (0) << "\n";
 
           if (it == m_p10CqiRxed.end ())
             {
