@@ -1541,14 +1541,14 @@ WifiRemoteStationManager::RecordStationInSlice (Mac48Address address, uint8_t ti
           Slice* slice = new Slice;
           slice->m_numClients = 1;
           slice->m_id = tid;
-          slice->m_ratio = GetRatioSlice (tid);
+          slice->m_ratio = m_sliceRatios[tid];
           const_cast<WifiRemoteStationManager *> (this)->m_slices.insert (std::make_pair(tid, slice));
         }
       else
         {
           m_slices.at(tid)->m_numClients++;
         }
-      NS_LOG_UNCOND ("New client in slice. " << "Client:" << address << " Slice:" << (int)tid << " #:" << m_slices.at(tid)->m_numClients);
+      //NS_LOG_UNCOND ("New client in slice. " << "Client:" << address << " Slice:" << (int)tid << " #:" << m_slices.at(tid)->m_numClients);
       RecalculateQuantums ();
     }
 }
@@ -1561,7 +1561,7 @@ WifiRemoteStationManager::RemoveStationInSlice (Mac48Address address, uint8_t ti
       Slice* slice = m_slices.at(tid);
       NS_ASSERT(slice->m_numClients != 0);
       slice->m_numClients--;
-      NS_LOG_UNCOND ("Remove client in slice. " << "Client:" << address << " Slice:" << (int)tid << " #:" << m_slices.at(tid)->m_numClients);
+      //NS_LOG_UNCOND ("Remove client in slice. " << "Client:" << address << " Slice:" << (int)tid << " #:" << m_slices.at(tid)->m_numClients);
       if (slice->m_numClients == 0)
         {
           const_cast<WifiRemoteStationManager *> (this)->m_slices.erase(tid);
@@ -1572,33 +1572,18 @@ WifiRemoteStationManager::RemoveStationInSlice (Mac48Address address, uint8_t ti
     }
 }
 
-double
-WifiRemoteStationManager::GetRatioSlice (uint8_t tid) const
+void
+WifiRemoteStationManager::UpdateRatioSlice (const uint8_t tid, const double ratio)
 {
   NS_ASSERT_MSG (tid < 6, "Slice ID " << (uint16_t) tid << " out of range");
   NS_ASSERT_MSG (tid > 0, "Slice ID " << (uint16_t) tid << " out of range");
-  switch (tid)
+  m_sliceRatios[tid] = ratio;
+  if (m_slices.count(tid) != 0)
   {
-  case 1:
-    return 0.6;
-    break;
-  case 2:
-    return 0.1;
-    break;
-  case 3:
-    return 0.3;
-    break;
-  case 4:
-    return 0.2;
-    break;
-  case 5:
-    return 0.05;
-    break;
-  case 6:
-    return 0.05;
-    break;
+	  m_slices.at(tid)->m_ratio = ratio;
+	  RecalculateQuantums ();
   }
-  return 0;
+
 }
 
 void
@@ -1619,7 +1604,7 @@ WifiRemoteStationManager::RecalculateQuantums (void) const
             }
         }
       maxSlice->second->m_quantum = MicroSeconds(500);
-      NS_LOG_UNCOND(this << " Max Slice " << (int)maxSlice->first << ": Q=" << maxSlice->second->m_quantum.GetMicroSeconds() << " C=" << maxSlice->second->m_numClients);
+      //NS_LOG_UNCOND(this << " Max Slice " << (int)maxSlice->first << ": Q=" << maxSlice->second->m_quantum.GetMicroSeconds() << " C=" << maxSlice->second->m_numClients);
       for (Slices::const_iterator i = m_slices.begin (); i != m_slices.end (); i++)
         {
           if (i != maxSlice)
@@ -1636,7 +1621,7 @@ WifiRemoteStationManager::RecalculateQuantums (void) const
                 }
               int newQuantum = ceil((i->second->m_ratio * sumQuantums) / (sumRatios * i->second->m_numClients));
               i->second->m_quantum = MicroSeconds (newQuantum);
-              NS_LOG_UNCOND  (this << " Slice " << (int)i->first << ": Q=" << i->second->m_quantum.GetMicroSeconds() << " C=" << i->second->m_numClients);
+              //NS_LOG_UNCOND  (this << " Slice " << (int)i->first << ": Q=" << i->second->m_quantum.GetMicroSeconds() << " C=" << i->second->m_numClients);
             }
           for (Stations::const_iterator j = m_stations.begin (); j != m_stations.end (); j++)
             {

@@ -761,6 +761,8 @@ public:
 
   void RemoveStationInSlice (Mac48Address address, uint8_t tid);
 
+  void UpdateRatioSlice (const uint8_t tid, const double ratio);
+
   /**
    * TracedCallback signature for power change events.
    *
@@ -1206,8 +1208,6 @@ private:
 
   void RecalculateQuantums (void) const;
 
-  double GetRatioSlice (uint8_t tid) const;
-
   /**
    * A vector of WifiRemoteStations
    */
@@ -1254,6 +1254,7 @@ private:
   StationStates m_states;  //!< States of known stations
   Stations m_stations;     //!< Information for each known stations
   Slices m_slices;         //!< Information for each known slice
+  double m_sliceRatios[6]; //!< Ratios of each possible slice
 
   WifiMode m_defaultTxMode; //!< The default transmission mode
   WifiMode m_defaultTxMcs;   //!< The default transmission modulation-coding scheme (MCS)
