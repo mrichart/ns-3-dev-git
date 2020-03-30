@@ -1597,13 +1597,14 @@ WifiRemoteStationManager::RecalculateQuantums (void) const
         {
           i->second->m_quantum = MicroSeconds(0);
           double current = i->second->m_ratio / i->second->m_numClients;
-          if (current < min)
+          if (current < min && current != 0)
             {
               min = current;
               maxSlice = i;
             }
         }
-      maxSlice->second->m_quantum = MicroSeconds(500);
+      if (maxSlice->second->m_ratio != 0)
+    	  maxSlice->second->m_quantum = MicroSeconds(500);
       //NS_LOG_UNCOND(this << " Max Slice " << (int)maxSlice->first << ": Q=" << maxSlice->second->m_quantum.GetMicroSeconds() << " C=" << maxSlice->second->m_numClients);
       for (Slices::const_iterator i = m_slices.begin (); i != m_slices.end (); i++)
         {
@@ -1619,7 +1620,9 @@ WifiRemoteStationManager::RecalculateQuantums (void) const
                       sumRatios += j->second->m_ratio;
                     }
                 }
-              int newQuantum = ceil((i->second->m_ratio * sumQuantums) / (sumRatios * i->second->m_numClients));
+              int newQuantum = 0;
+              if (i->second->m_ratio != 0)
+            	  newQuantum = ceil((i->second->m_ratio * sumQuantums) / (sumRatios * i->second->m_numClients));
               i->second->m_quantum = MicroSeconds (newQuantum);
               //NS_LOG_UNCOND  (this << " Slice " << (int)i->first << ": Q=" << i->second->m_quantum.GetMicroSeconds() << " C=" << i->second->m_numClients);
             }
@@ -2044,6 +2047,13 @@ WifiRemoteStationManager::IncreaseAirtimeDeficit (Mac48Address address, uint8_t 
   NS_LOG_FUNCTION (this << address);
   WifiRemoteStation *station = Lookup (address, tid);
   station->m_airtimeDeficit += tid == 0 ? m_defaultAirtimeDeficit : m_slices.at(tid)->m_quantum;
+}
+
+int
+WifiRemoteStationManager::GetQuantum (uint8_t tid)
+{
+  NS_LOG_FUNCTION (this << tid);
+  return tid == 0 ? m_defaultAirtimeDeficit.GetMicroSeconds() : m_slices.at(tid)->m_quantum.GetMicroSeconds();
 }
 
 WifiRemoteStationInfo::WifiRemoteStationInfo ()

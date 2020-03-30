@@ -503,6 +503,8 @@ EdcaTxopN::ScheduleTransmission(void)
   NS_LOG_FUNCTION (this);
   TxQueueInfo *queueInfo;
   bool empty = true;
+  //m_queue = 0;
+  //m_queueInfo = 0;
 
   while (empty)
     {
@@ -511,9 +513,9 @@ EdcaTxopN::ScheduleTransmission(void)
         {
           queueInfo = m_tidQueueNew.front ();
 
-          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid) <= Seconds (0.0))
+          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid).GetMicroSeconds() <= 0 && m_stationManager->GetQuantum(queueInfo->tid) != 0)
             {
-              NS_LOG_DEBUG ("Found a new queue with negative deficit. Station: " << queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
+        	  NS_LOG_DEBUG ("Found a new queue with negative deficit. Station: " << queueInfo->sta << " TID: " << (int) queueInfo->tid << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid).GetMicroSeconds() << " Quantum: " << m_stationManager->GetQuantum(queueInfo->tid));;
               m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, queueInfo->tid);
               queueInfo->status = TxQueueStatus::OLD;
               m_tidQueueOld.push_back (queueInfo);
@@ -521,7 +523,7 @@ EdcaTxopN::ScheduleTransmission(void)
             }
           else
             {
-              NS_LOG_DEBUG ("Found a new queue with positive deficit. Station: " <<  queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
+        	  NS_LOG_DEBUG ("Found a new queue with positive deficit. Station: " <<  queueInfo->sta << " TID: " << (int) queueInfo->tid << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid).GetMicroSeconds() << " Quantum: " << m_stationManager->GetQuantum(queueInfo->tid));;
               found = true;
             }
         }
@@ -530,9 +532,9 @@ EdcaTxopN::ScheduleTransmission(void)
         {
           queueInfo = m_tidQueueOld.front ();
 
-          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid) <= Seconds (0.0))
+          if (queueInfo->airtimeActive && m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid).GetMicroSeconds() <= 0 && m_stationManager->GetQuantum(queueInfo->tid) != 0)
             {
-              NS_LOG_DEBUG ("Found an old queue with negative deficit. Station: " << queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
+        	  NS_LOG_DEBUG ("Found an old queue with negative deficit. Station: " << queueInfo->sta << " TID: " << (int) queueInfo->tid << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid).GetMicroSeconds() << " Quantum: " << m_stationManager->GetQuantum(queueInfo->tid));
               m_stationManager->IncreaseAirtimeDeficit (queueInfo->sta, queueInfo->tid);
               queueInfo->status = TxQueueStatus::OLD;
               m_tidQueueOld.push_back (queueInfo);
@@ -540,20 +542,23 @@ EdcaTxopN::ScheduleTransmission(void)
             }
           else
             {
-              NS_LOG_DEBUG ("Found an old queue with positive deficit. Station: " << queueInfo->sta << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid));
+        	  NS_LOG_DEBUG ("Found an old queue with positive deficit. Station: " << queueInfo->sta << " TID: " << (int) queueInfo->tid << " Deficit: " << m_stationManager->GetAirtimeDeficit (queueInfo->sta, queueInfo->tid).GetMicroSeconds() << " Quantum: " << m_stationManager->GetQuantum(queueInfo->tid));;
               found = true;
             }
         }
 
       if (!found)
         {
-          NS_LOG_DEBUG ("No queue found to dequeue a packet");
+    	  NS_LOG_DEBUG ("No queue found to dequeue a packet");
           return;
         }
 
-      if (!TidHasBuffered (queueInfo))
+      if (!TidHasBuffered (queueInfo) || m_stationManager->GetQuantum(queueInfo->tid) == 0)
         {
-          NS_LOG_DEBUG ("Could not get a packet from the selected queue");
+    	  if (!TidHasBuffered (queueInfo))
+    		  NS_LOG_DEBUG ("Could not get a packet from the selected queue");
+    	  else
+    		  NS_LOG_DEBUG ("Selected queue with quantum 0");
           if (queueInfo->status == TxQueueStatus::NEW)
             {
               if (!m_tidQueueOld.empty())
@@ -578,7 +583,7 @@ EdcaTxopN::ScheduleTransmission(void)
         }
       else
         {
-          NS_LOG_DEBUG ("Found a queue with packets. TID: " << (int) queueInfo->tid << " Address: " << queueInfo->sta << " Queue size: " << queueInfo->queue->GetSize() << " Retry Queue size: " << m_baManager->GetNRetryNeededPackets(queueInfo->sta, queueInfo->tid));
+    	  NS_LOG_DEBUG ("Found a queue with packets. TID: " << (int) queueInfo->tid << " Address: " << queueInfo->sta << " Queue size: " << queueInfo->queue->GetSize() << " Retry Queue size: " << m_baManager->GetNRetryNeededPackets(queueInfo->sta, queueInfo->tid));
           m_queueInfo = queueInfo;
           m_queue = queueInfo->queue;
           empty = false;
@@ -634,7 +639,7 @@ EdcaTxopN::NotifyAccessGranted (void)
       NS_LOG_DEBUG ("Access granted but no packet. Get packet from some queue.");
       if (m_queueInfo == 0)
         ScheduleTransmission();
-      if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || !TidHasBuffered(m_queueInfo)) && !m_baManager->HasPackets ())
+      if (m_fastQueue->IsEmpty() && (m_queueInfo == 0 || (!TidHasBuffered(m_queueInfo) && !m_baManager->HasPackets ())))
         {
            NS_LOG_DEBUG ("All queues are empty.");
            return;
@@ -809,66 +814,70 @@ void EdcaTxopN::NotifyInternalCollision (void)
   WifiMacHeader header;
   if (m_currentPacket == 0)
     {
-      packet = m_queue->Peek (&header);
-      NS_ASSERT_MSG (packet, "Internal collision but no packet in queue");
+	  if (m_queue != 0)
+		  packet = m_queue->Peek (&header);
+      //NS_ASSERT_MSG (packet, "Internal collision but no packet in queue");
     }
   else
     {
       packet = m_currentPacket;
       header = m_currentHdr;
     }
-  if (m_stationManager->NeedRts (header.GetAddr1 (), &header, packet, m_low->GetDataTxVector (packet, &header)))
+  if (packet != 0)
     {
-      if (!NeedRtsRetransmission (packet, header))
-      {
-        resetDcf = true;
-        m_stationManager->ReportFinalRtsFailed (header.GetAddr1 (), &header);
-      }
-      else
-      {
-        m_stationManager->ReportRtsFailed (header.GetAddr1 (), &header);
-      }
-    }
-  else if (header.GetAddr1 () == Mac48Address::GetBroadcast ())
-    {
-      resetDcf = false;
-    }
-  else
-    {
-      if (!NeedDataRetransmission (packet, header))
-      {
-        resetDcf = true;
-        m_stationManager->ReportFinalDataFailed (header.GetAddr1 (), &header);
-      }
-      else
-      {
-        m_stationManager->ReportDataFailed (header.GetAddr1 (), &header);
-      }
-    }
-  if (resetDcf)
-    {
-      NS_LOG_DEBUG ("reset DCF");
-      if (!m_txFailedCallback.IsNull ())
-        {
-          m_txFailedCallback (header);
-        }
-      //to reset the dcf.
-      if (m_currentPacket)
-        {
-          NS_LOG_DEBUG ("Discarding m_currentPacket");
-          m_currentPacket = 0;
-        }
-      else
-        {
-          NS_LOG_DEBUG ("Dequeueing and discarding head of queue");
-          packet = m_queue->Peek (&header);//TODO parece haber un error aqui. no habria que hacer un dequeue?
-        }
-      //UpdateTxQueue();
-      m_dcf->ResetCw ();
-    }
-  else
-    {
-      m_dcf->UpdateFailedCw ();
+	  if (m_stationManager->NeedRts (header.GetAddr1 (), &header, packet, m_low->GetDataTxVector (packet, &header)))
+		{
+		  if (!NeedRtsRetransmission (packet, header))
+		  {
+			resetDcf = true;
+			m_stationManager->ReportFinalRtsFailed (header.GetAddr1 (), &header);
+		  }
+		  else
+		  {
+			m_stationManager->ReportRtsFailed (header.GetAddr1 (), &header);
+		  }
+		}
+	  else if (header.GetAddr1 () == Mac48Address::GetBroadcast ())
+		{
+		  resetDcf = false;
+		}
+	  else
+		{
+		  if (!NeedDataRetransmission (packet, header))
+		  {
+			resetDcf = true;
+			m_stationManager->ReportFinalDataFailed (header.GetAddr1 (), &header);
+		  }
+		  else
+		  {
+			m_stationManager->ReportDataFailed (header.GetAddr1 (), &header);
+		  }
+		}
+	  if (resetDcf)
+		{
+		  NS_LOG_DEBUG ("reset DCF");
+		  if (!m_txFailedCallback.IsNull ())
+			{
+			  m_txFailedCallback (header);
+			}
+		  //to reset the dcf.
+		  if (m_currentPacket)
+			{
+			  NS_LOG_DEBUG ("Discarding m_currentPacket");
+			  m_currentPacket = 0;
+			}
+		  else
+			{
+			  NS_LOG_DEBUG ("Dequeueing and discarding head of queue");
+			  packet = m_queue->Peek (&header);//TODO parece haber un error aqui. no habria que hacer un dequeue?
+			}
+		  //UpdateTxQueue();
+		  m_dcf->ResetCw ();
+		}
+	  else
+		{
+		  m_dcf->UpdateFailedCw ();
+		}
     }
   m_backoffTrace = m_rng->GetNext (0, m_dcf->GetCw ());
   m_dcf->StartBackoffNow (m_backoffTrace);

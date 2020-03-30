@@ -757,6 +757,8 @@ public:
    */
   void IncreaseAirtimeDeficit (Mac48Address address, uint8_t tid);
 
+  int GetQuantum (uint8_t tid);
+
   void RecordStationInSlice (Mac48Address address, uint8_t tid);
 
   void RemoveStationInSlice (Mac48Address address, uint8_t tid);
@@ -1254,7 +1256,7 @@ private:
   StationStates m_states;  //!< States of known stations
   Stations m_stations;     //!< Information for each known stations
   Slices m_slices;         //!< Information for each known slice
-  double m_sliceRatios[6]; //!< Ratios of each possible slice
+  double m_sliceRatios[6] = {0.1,0.1,0.1,0.1,0.1,0.1}; //!< Ratios of each possible slice
 
   WifiMode m_defaultTxMode; //!< The default transmission mode
   WifiMode m_defaultTxMcs;   //!< The default transmission modulation-coding scheme (MCS)
